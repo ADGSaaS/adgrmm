@@ -600,11 +600,10 @@ emit_caddyfile() {
         if [ "$TLS" = 1 ] && [ -n "${ACME_EMAIL:-}" ]; then printf '{\n\temail %s\n}\n\n' "$ACME_EMAIL"; fi
         printf '%s {\n' "$names"
         if [ "$TLS" = 3 ]; then printf '\ttls internal\n'; fi
-        # Browser hardening (Caddy 2 header directive; a plain field sets the header, replacing any from upstream). HSTS only with a
-        # real certificate: with the self-signed test certificate it would lock browsers out of clicking through the warning for a year.
-        printf '\theader {\n\t\tX-Frame-Options DENY\n\t\tX-Content-Type-Options nosniff\n\t\tReferrer-Policy strict-origin-when-cross-origin\n'
-        if [ "$TLS" = 1 ]; then printf '\t\tStrict-Transport-Security "max-age=31536000"\n'; fi
-        printf '\t}\n'
+        # The web app and the API already send X-Frame-Options, X-Content-Type-Options and Referrer-Policy (Caddy would add a second
+        # copy next to them). Caddy adds only HSTS, and only with a real certificate: with the self-signed test certificate it would
+        # lock browsers out of clicking through the warning for a year.
+        if [ "$TLS" = 1 ]; then printf '\theader Strict-Transport-Security "max-age=31536000"\n'; fi
         printf '\treverse_proxy %s\n}\n' "$upstream"
     } >"$dest"
 }

@@ -27,7 +27,7 @@ let portalDomainCache: { at: number; domain: string | null } | null = null;
 
 async function portalDomain(req: NextRequest): Promise<string | null> {
     const now = Date.now();
-    if (portalDomainCache && now - portalDomainCache.at < 15_000) return portalDomainCache.domain;
+    if (portalDomainCache && now - portalDomainCache.at < 5_000) return portalDomainCache.domain;
     try {
         const res = await fetch(`${getApiBase(req)}/api/portal/config`, { cache: "no-store", signal: AbortSignal.timeout(2500) });
         if (res.ok) {
@@ -37,7 +37,7 @@ async function portalDomain(req: NextRequest): Promise<string | null> {
     } catch {
         /* keep what we knew; a short outage must not turn the portal into the staff app */
     }
-    if (!portalDomainCache) portalDomainCache = { at: now - 10_000, domain: null };
+    if (!portalDomainCache) portalDomainCache = { at: now - 4_000, domain: null };
     return portalDomainCache.domain;
 }
 
