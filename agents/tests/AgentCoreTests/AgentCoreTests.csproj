@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- A plain program rather than a test framework, so it runs with no extra packages or services.
+       It only reads this machine: nothing is installed and no service is touched. -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0-windows10.0.19041.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <ManagePackageVersionsCentrally>false</ManagePackageVersionsCentrally>
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="System.ServiceProcess.ServiceController" Version="8.0.1" />
+    <PackageReference Include="System.Diagnostics.PerformanceCounter" Version="8.0.1" />
+    <PackageReference Include="Microsoft.Extensions.Hosting.WindowsServices" Version="8.0.1" />
+    <Compile Include="..\..\shared\*.cs" LinkBase="Shared" />
+    <Compile Include="..\..\windows\RemoteIQ.Agent\Services\WindowsCheckProbes.cs" Link="WindowsCheckProbes.cs" />
+    <Compile Include="..\..\windows\RemoteIQ.Agent\Services\WindowsUpdatePlatform.cs" Link="WindowsUpdatePlatform.cs" />
+    <Compile Include="..\..\linux\RemoteIQ.Agent.Linux\LinuxCheckProbes.cs" Link="LinuxCheckProbes.cs" />
+    <Compile Include="..\..\linux\RemoteIQ.Agent.Linux\LinuxInit.cs" Link="LinuxInit.cs" />
+    <None Include="samples\*" CopyToOutputDirectory="PreserveNewest" LinkBase="samples" />
+  </ItemGroup>
+
+</Project>

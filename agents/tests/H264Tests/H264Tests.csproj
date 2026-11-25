@@ -1,0 +1,29 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- A plain program rather than a test framework, like AgentCoreTests: it runs with no extra packages or services.
+       "H264Tests" checks the packetizer, the codec choice and the fallback rules. "H264Tests probe" also tries the
+       encoders of this machine, which only exists on Windows with a display driver. -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0-windows10.0.19041.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <ManagePackageVersionsCentrally>false</ManagePackageVersionsCentrally>
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="SIPSorcery" Version="10.0.17" />
+    <PackageReference Include="SIPSorceryMedia.Abstractions" Version="10.0.17" />
+    <Compile Include="..\..\windows\RemoteIQ.Agent\Services\MfInterop.cs" Link="MfInterop.cs" />
+    <Compile Include="..\..\windows\RemoteIQ.Agent\Services\MfD3d.cs" Link="MfD3d.cs" />
+    <Compile Include="..\..\windows\RemoteIQ.Agent\Services\MfH264Encoder.cs" Link="MfH264Encoder.cs" />
+    <Compile Include="..\..\windows\RemoteIQ.Agent\Services\H264Packetizer.cs" Link="H264Packetizer.cs" />
+    <Compile Include="..\..\windows\RemoteIQ.Agent\Services\H264Sps.cs" Link="H264Sps.cs" />
+    <Compile Include="..\..\windows\RemoteIQ.Agent\Services\H264SelfTest.cs" Link="H264SelfTest.cs" />
+    <Compile Include="..\..\windows\RemoteIQ.Agent\Services\ConsoleVideoCodecs.cs" Link="ConsoleVideoCodecs.cs" />
+    <Compile Include="..\..\windows\RemoteIQ.Agent\Services\ConsoleVideoSender.cs" Link="ConsoleVideoSender.cs" />
+  </ItemGroup>
+
+</Project>

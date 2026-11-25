@@ -1,0 +1,30 @@
+// backend/src/remote-desktop/remote-desktop.module.ts
+
+import { Module } from "@nestjs/common";
+import { CommonModule } from "../common/common.module";
+import { StorageModule } from "../storage/storage.module";
+import { AccessModule } from "../access/access.module";
+
+import { RemoteDesktopTunnelService } from "./remote-desktop-tunnel.service";
+import { RemoteDesktopTunnelGateway } from "./remote-desktop-tunnel.gateway";
+
+import { RemoteDesktopDevController } from "./remote-desktop-dev.controller";
+import { RemoteDesktopController } from "./remote-desktop.controller";
+
+// (Optional) Back-compat wrapper if anything still imports RemoteDesktopService
+import { RemoteDesktopService } from "./remote-desktop.service";
+
+@Module({
+    imports: [StorageModule, CommonModule, AccessModule], // PrismaService, JobSignerService
+    controllers: [
+        RemoteDesktopController, // ✅ real API
+        RemoteDesktopDevController, // ✅ dev-only helpers
+    ],
+    providers: [
+        RemoteDesktopTunnelService,
+        RemoteDesktopTunnelGateway, // ✅ gateways must be providers
+        RemoteDesktopService, // ✅ optional back-compat (safe even if unused)
+    ],
+    exports: [RemoteDesktopTunnelService],
+})
+export class RemoteDesktopModule { }
