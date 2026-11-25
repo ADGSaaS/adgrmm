@@ -93,6 +93,12 @@
     "readdir-glob": {
       "minimatch": "11.0.9"
     },
+    "@nestjs/cli": {
+      "glob": "14.0.4"
+    },
+    "glob": {
+      "minimatch": "11.0.9"
+    },
     "js-yaml": "4.3.2",
     "lodash": "4.18.1",
     "qs": "6.17.1"
