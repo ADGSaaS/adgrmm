@@ -42,7 +42,7 @@
     "class-validator": "^0.14.2",
     "cookie": "^1.0.2",
     "cookie-parser": "^1.4.6",
-    "cron-parser": "^5.4.0",
+    "cron-parser": "^5.10.6",
     "dotenv": "^17.2.3",
     "express": "^4.19.2",
     "file-type": "^21.0.0",
