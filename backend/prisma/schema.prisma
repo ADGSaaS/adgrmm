@@ -1,0 +1,2989 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model agent_software {
+  id                String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  agent_id          String    @db.Uuid
+  name              String
+  publisher         String?
+  version           String?
+  install_location  String?
+  install_date      DateTime? @db.Timestamptz(6)
+  uninstall_command String?
+  /// "machine" for a program installed for every user, "user" for one installed under a single user's profile.
+  scope             String    @default("machine")
+  /// For a user-scope program, the account whose profile holds it.
+  installed_user    String?
+  /// Best effort: who ran the installer.
+  installed_by      String?
+  created_at        DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at        DateTime  @default(now()) @db.Timestamptz(6)
+  agents            agents    @relation(fields: [agent_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([agent_id], map: "idx_agent_software_agent")
+  @@index([name], map: "idx_agent_software_name")
+}
+
+model agent_task_results {
+  run_id          String          @id @db.Uuid
+  stdout          String?
+  stderr          String?
+  artifacts       Json?
+  created_at      DateTime        @default(now()) @db.Timestamptz(6)
+  agent_task_runs agent_task_runs @relation(fields: [run_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model agent_task_runs {
+  id                 String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  task_id            String              @db.Uuid
+  attempt            Int                 @default(1)
+  status             agent_task_status
+  started_at         DateTime            @default(now()) @db.Timestamptz(6)
+  finished_at        DateTime?           @db.Timestamptz(6)
+  output             Json?
+  created_at         DateTime            @default(now()) @db.Timestamptz(6)
+  agent_task_results agent_task_results?
+  agent_tasks        agent_tasks         @relation(fields: [task_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  automation_runs    automation_runs[]
+
+  @@index([task_id], map: "idx_agent_task_runs_task")
+}
+
+model agent_tasks {
+  id              String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  agent_id        String            @db.Uuid
+  type            agent_task_type
+  payload         Json
+  status          agent_task_status @default(pending)
+  queued_at       DateTime?         @db.Timestamptz(6)
+  started_at      DateTime?         @db.Timestamptz(6)
+  completed_at    DateTime?         @db.Timestamptz(6)
+  created_by      String?           @db.Uuid
+  created_at      DateTime          @default(now()) @db.Timestamptz(6)
+  updated_at      DateTime          @default(now()) @db.Timestamptz(6)
+  agent_task_runs agent_task_runs[]
+  agents          agents            @relation(fields: [agent_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  users           users?            @relation(fields: [created_by], references: [id], onUpdate: NoAction)
+
+  @@index([agent_id, status], map: "idx_agent_tasks_agent_status")
+}
+
+model agents {
+  id               String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  device_id        String           @unique @db.Uuid
+  agent_uuid       String           @unique
+  version          String
+  last_check_in_at DateTime?        @db.Timestamptz(6)
+  facts            Json             @default("{}")
+  created_at       DateTime         @default(now()) @db.Timestamptz(6)
+  updated_at       DateTime         @default(now()) @db.Timestamptz(6)
+  token            String?
+  agent_token      String?
+  hostname         String?
+  version_changed_at DateTime?      @db.Timestamptz(6)
+  agent_software   agent_software[]
+  agent_tasks      agent_tasks[]
+  agent_user_accounts agent_user_accounts[]
+  devices          devices          @relation(fields: [device_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  jobs             jobs[]
+}
+
+model automation_runs {
+  id              String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  automation_id   String            @db.Uuid
+  task_run_id     String?           @db.Uuid
+  triggered_by    String?           @db.Uuid
+  status          agent_task_status
+  started_at      DateTime          @default(now()) @db.Timestamptz(6)
+  finished_at     DateTime?         @db.Timestamptz(6)
+  output          Json?
+  created_at      DateTime          @default(now()) @db.Timestamptz(6)
+  automations     automations       @relation(fields: [automation_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  agent_task_runs agent_task_runs?  @relation(fields: [task_run_id], references: [id], onUpdate: NoAction)
+  users           users?            @relation(fields: [triggered_by], references: [id], onUpdate: NoAction)
+}
+
+model automations {
+  id              String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organization_id String            @db.Uuid
+  name            String
+  type            agent_task_type
+  description     String?
+  script          String?
+  configuration   Json              @default("{}")
+  created_by      String?           @db.Uuid
+  created_at      DateTime          @default(now()) @db.Timestamptz(6)
+  updated_at      DateTime          @default(now()) @db.Timestamptz(6)
+  automation_runs automation_runs[]
+  script_runs     script_runs[]
+  script_schedules script_schedules[]
+  users           users?            @relation(fields: [created_by], references: [id], onUpdate: NoAction)
+  organizations   organizations     @relation(fields: [organization_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([organization_id, name])
+}
+
+model backup_destinations {
+  id                         String                       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organization_id            String                       @db.Uuid
+  name                       String
+  provider                   String
+  configuration              Json
+  created_at                 DateTime                     @default(now()) @db.Timestamptz(6)
+  updated_at                 DateTime                     @default(now()) @db.Timestamptz(6)
+  organizations              organizations                @relation(fields: [organization_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  backup_job_destinations    backup_job_destinations[]
+  backup_policies            backup_policies[]
+  backup_policy_destinations backup_policy_destinations[]
+  backup_run_destinations    backup_run_destinations[]
+
+  @@unique([organization_id, name])
+}
+
+model backup_job_artifacts {
+  id               String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  backup_job_id    String      @db.Uuid
+  artifact_type    String
+  storage_location String
+  size_bytes       BigInt?
+  checksum         String?
+  created_at       DateTime    @default(now()) @db.Timestamptz(6)
+  backup_jobs      backup_jobs @relation(fields: [backup_job_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model backup_job_destinations {
+  job_id              String              @db.Uuid
+  destination_id      String              @db.Uuid
+  is_primary          Boolean             @default(false)
+  priority            Int                 @default(100)
+  created_at          DateTime            @default(now()) @db.Timestamptz(6)
+  backup_destinations backup_destinations @relation(fields: [destination_id], references: [id], onUpdate: NoAction)
+  backup_jobs         backup_jobs         @relation(fields: [job_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@id([job_id, destination_id])
+  @@index([destination_id], map: "idx_bjd_dest")
+  @@index([job_id], map: "idx_bjd_job")
+}
+
+model backup_job_logs {
+  job_id      String      @id @db.Uuid
+  log_text    String      @default("")
+  created_at  DateTime    @default(now()) @db.Timestamptz(6)
+  updated_at  DateTime    @default(now()) @db.Timestamptz(6)
+  backup_jobs backup_jobs @relation(fields: [job_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model backup_job_manifests {
+  job_id      String      @id @db.Uuid
+  manifest    Json        @default("{}")
+  created_at  DateTime    @default(now()) @db.Timestamptz(6)
+  updated_at  DateTime    @default(now()) @db.Timestamptz(6)
+  backup_jobs backup_jobs @relation(fields: [job_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model backup_jobs {
+  id                      String                    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  policy_id               String?                   @db.Uuid
+  status                  backup_status
+  note                    String?
+  size_bytes              BigInt?
+  duration_sec            Int?
+  verified                Boolean?
+  cancelled               Boolean                   @default(false)
+  artifact_location       Json?
+  started_at              DateTime                  @default(now()) @db.Timestamptz(6)
+  finished_at             DateTime?                 @db.Timestamptz(6)
+  error                   String?
+  created_at              DateTime                  @default(now()) @db.Timestamptz(6)
+  min_success             Int                       @default(1)
+  parallelism             Int                       @default(2)
+  archive_name            String?
+  checksum                String?
+  backup_kind             String                    @default("logical")
+  config_snapshot         Json                      @default("{}")
+  backup_job_artifacts    backup_job_artifacts[]
+  backup_job_destinations backup_job_destinations[]
+  backup_job_logs         backup_job_logs?
+  backup_job_manifests    backup_job_manifests?
+  backup_policies         backup_policies?          @relation(fields: [policy_id], references: [id], onUpdate: NoAction)
+  backup_restores         backup_restores[]
+  backup_run_destinations backup_run_destinations[]
+
+  @@index([policy_id, started_at(sort: Desc)], map: "idx_backup_jobs_policy")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model backup_policies {
+  id                         String                       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organization_id            String                       @db.Uuid
+  name                       String
+  description                String?
+  schedule                   String
+  retention                  Json
+  destination_id             String?                      @db.Uuid
+  target_type                check_target_type
+  target_id                  String?                      @db.Uuid
+  created_by                 String?                      @db.Uuid
+  options                    Json                         @default("{}")
+  is_default                 Boolean                      @default(false)
+  created_at                 DateTime                     @default(now()) @db.Timestamptz(6)
+  updated_at                 DateTime                     @default(now()) @db.Timestamptz(6)
+  backup_kind                String                       @default("logical")
+  backup_jobs                backup_jobs[]
+  users                      users?                       @relation(fields: [created_by], references: [id], onUpdate: NoAction)
+  backup_destinations        backup_destinations?         @relation(fields: [destination_id], references: [id], onUpdate: NoAction)
+  organizations              organizations                @relation(fields: [organization_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  backup_policy_destinations backup_policy_destinations[]
+
+  @@unique([organization_id, name])
+}
+
+model backup_policy_destinations {
+  policy_id           String              @db.Uuid
+  destination_id      String              @db.Uuid
+  is_primary          Boolean             @default(false)
+  priority            Int                 @default(100)
+  created_at          DateTime            @default(now()) @db.Timestamptz(6)
+  backup_destinations backup_destinations @relation(fields: [destination_id], references: [id], onUpdate: NoAction)
+  backup_policies     backup_policies     @relation(fields: [policy_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@id([policy_id, destination_id])
+}
+
+model backup_restores {
+  id               String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  backup_job_id    String        @db.Uuid
+  requested_by     String?       @db.Uuid
+  requested_at     DateTime      @default(now()) @db.Timestamptz(6)
+  status           backup_status
+  notes            String?
+  created_at       DateTime      @default(now()) @db.Timestamptz(6)
+  updated_at       DateTime      @default(now()) @db.Timestamptz(6)
+  finished_at      DateTime?     @db.Timestamptz(6)
+  error            String?
+  restore_database String?
+  verification     Json          @default("{}")
+  backup_jobs      backup_jobs   @relation(fields: [backup_job_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  users            users?        @relation(fields: [requested_by], references: [id], onUpdate: NoAction)
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model backup_run_destinations {
+  id                  String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  job_id              String              @db.Uuid
+  destination_id      String              @db.Uuid
+  status              String              @default("pending")
+  phases              Json                @default("{}")
+  error               String?
+  remote_path         String?
+  size_bytes          BigInt?
+  etag                String?
+  checksum            String?
+  finished_at         DateTime?           @db.Timestamptz(6)
+  created_at          DateTime            @default(now()) @db.Timestamptz(6)
+  backup_destinations backup_destinations @relation(fields: [destination_id], references: [id], onUpdate: NoAction)
+  backup_jobs         backup_jobs         @relation(fields: [job_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([destination_id], map: "idx_brd_dest")
+  @@index([job_id], map: "idx_brd_job")
+  @@index([status], map: "idx_brd_status")
+}
+
+model backups_config {
+  id                String    @id @default("singleton")
+  enabled           Boolean   @default(false)
+  targets           Json      @default("[]")
+  schedule          String    @default("daily")
+  cron_expr         String?
+  retention_days    Int       @default(30)
+  encrypt           Boolean   @default(true)
+  destination       Json      @default("{}")
+  notifications     Json      @default("{}")
+  last_scheduled_at DateTime? @db.Timestamptz(6)
+  created_at        DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at        DateTime  @default(now()) @db.Timestamptz(6)
+}
+
+model branding_settings {
+  id                        Int      @id
+  primary_color             String?
+  secondary_color           String?
+  logo_light_url            String?
+  logo_dark_url             String?
+  login_background_url      String?
+  favicon_url               String?
+  email_header              String?
+  email_footer              String?
+  custom_css                String?
+  allow_client_theme_toggle Boolean?
+}
+
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
+model canned_responses {
+  id              String   @id @db.Uuid
+  organization_id String   @db.Uuid
+  title           String
+  body            String
+  is_active       Boolean  @default(true)
+  created_at      DateTime @default(now()) @db.Timestamptz(6)
+  updated_at      DateTime @default(now()) @db.Timestamptz(6)
+
+  @@index([organization_id], map: "canned_responses_org_idx")
+}
+
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
+model canned_variables {
+  id              String   @id @db.Uuid
+  organization_id String   @db.Uuid
+  key             String
+  value           String
+  is_active       Boolean  @default(true)
+  created_at      DateTime @default(now()) @db.Timestamptz(6)
+  updated_at      DateTime @default(now()) @db.Timestamptz(6)
+
+  @@index([organization_id], map: "canned_variables_org_idx")
+}
+
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
+model check_assignments {
+  id          String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  check_id    String?      @db.Uuid
+  target_type String?
+  target_id   String?      @db.Uuid
+  created_by  String?      @db.Uuid
+  created_at  DateTime     @default(now()) @db.Timestamptz(6)
+  updated_at  DateTime     @default(now()) @db.Timestamptz(6)
+  device_id   String?
+  dedupe_key  String?
+  check_type  String?
+  check_name  String?
+  checks      checks?      @relation(fields: [check_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  users       users?       @relation(fields: [created_by], references: [id], onUpdate: NoAction)
+  check_runs  check_runs[]
+
+  @@unique([target_type, target_id, dedupe_key], map: "check_assignments_target_dedupe_uk")
+  @@index([device_id])
+  @@index([target_type, target_id], map: "check_assignments_target_idx")
+  @@index([target_type, target_id], map: "idx_check_assignments_target")
+}
+
+model check_profile_members {
+  profile_id     String         @db.Uuid
+  check_id       String         @db.Uuid
+  created_at     DateTime       @default(now()) @db.Timestamptz(6)
+  checks         checks         @relation(fields: [check_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  check_profiles check_profiles @relation(fields: [profile_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@id([profile_id, check_id])
+}
+
+/// A policy kept as a pattern. It is never applied to anything; people copy it to a global, customer, site or tag policy and edit that.
+model policy_templates {
+  id              String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organization_id String        @db.Uuid
+  name            String
+  description     String?
+  priority        Int           @default(100)
+  os              String        @default("any")
+  enforced        Boolean       @default(false)
+  sections        Json          @default("{}")
+  created_by      String?       @db.Uuid
+  created_at      DateTime      @default(now()) @db.Timestamptz(6)
+  updated_at      DateTime      @default(now()) @db.Timestamptz(6)
+  organizations   organizations @relation(fields: [organization_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([organization_id, name])
+}
+
+/// The catalog policies pick software from, and the installer details used to put it on endpoints.
+/// The accounts a device has, reported with its software inventory, so a person can pick which user to install for.
+model agent_user_accounts {
+  agent_id   String   @db.Uuid
+  account    String
+  logged_in  Boolean  @default(false)
+  updated_at DateTime @default(now()) @db.Timestamptz(6)
+  agents     agents   @relation(fields: [agent_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@id([agent_id, account])
+}
+
+model software_library {
+  id               String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organization_id  String        @db.Uuid
+  name             String
+  category         String        @default("Other")
+  match_text       String
+  publisher        String?
+  chocolatey_id    String?
+  chocolatey_params       String?
+  chocolatey_install_args String?
+  winget_id        String?
+  installer_url    String?
+  installer_sha256 String?
+  installer_kind   String?
+  silent_args      String?
+  linux_package    String?
+  notes            String?
+  built_in         Boolean       @default(false)
+  created_by       String?       @db.Uuid
+  created_at       DateTime      @default(now()) @db.Timestamptz(6)
+  updated_at       DateTime      @default(now()) @db.Timestamptz(6)
+  organizations    organizations @relation(fields: [organization_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([organization_id, name])
+}
+
+model check_profiles {
+  id                    String                  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organization_id       String                  @db.Uuid
+  name                  String
+  description           String?
+  created_by            String?                 @db.Uuid
+  created_at            DateTime                @default(now()) @db.Timestamptz(6)
+  updated_at            DateTime                @default(now()) @db.Timestamptz(6)
+  check_profile_members check_profile_members[]
+  users                 users?                  @relation(fields: [created_by], references: [id], onUpdate: NoAction)
+  organizations         organizations           @relation(fields: [organization_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([organization_id, name])
+}
+
+model check_runs {
+  id                String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  assignment_id     String            @db.Uuid
+  status            String
+  severity          String?
+  started_at        DateTime          @default(now()) @db.Timestamptz(6)
+  finished_at       DateTime?         @db.Timestamptz(6)
+  metrics           Json?
+  output            String?
+  created_at        DateTime          @default(now()) @db.Timestamptz(6)
+  device_id         String?
+  check_assignments check_assignments @relation(fields: [assignment_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([assignment_id])
+  @@index([created_at])
+  @@index([device_id])
+  @@index([assignment_id, started_at(sort: Desc)], map: "idx_check_runs_assignment")
+}
+
+model checks {
+  id                    String                  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organization_id       String                  @db.Uuid
+  name                  String
+  type                  check_type
+  category              String?
+  description           String?
+  schedule              String
+  config                Json
+  created_by            String?                 @db.Uuid
+  created_at            DateTime                @default(now()) @db.Timestamptz(6)
+  updated_at            DateTime                @default(now()) @db.Timestamptz(6)
+  enabled               Boolean                 @default(true)
+  check_assignments     check_assignments[]
+  check_profile_members check_profile_members[]
+  users                 users?                  @relation(fields: [created_by], references: [id], onUpdate: NoAction)
+  organizations         organizations           @relation(fields: [organization_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([organization_id, name])
+}
+
+model clients {
+  id                   String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organization_id      String                 @db.Uuid
+  name                 String
+  external_ref         String?
+  contact              Json                   @default("{}")
+  remote_console_consent String               @default("notice")
+  record_remote_sessions Boolean              @default(false)
+  remote_console_codec String                 @default("auto")
+  default_update_ring  String                 @default("stable")
+  status               String                 @default("active")
+  legal_name           String?
+  industry             String?
+  website              String?
+  phone                String?
+  email                String?
+  billing_email        String?
+  tax_id               String?
+  time_zone            String?
+  currency             String?
+  payment_terms        String?
+  employee_count       Int?
+  customer_since       DateTime?              @db.Date
+  address              Json                   @default("{}")
+  billing_address      Json                   @default("{}")
+  billing_same_as_address Boolean             @default(true)
+  notes                String?
+  tags                 String[]               @default([])
+  /// Values of the custom fields the organization defines, by field key.
+  custom_fields        Json                   @default("{}")
+  customer_contacts    customer_contacts[]
+  archived_at          DateTime?              @db.Timestamptz(6)
+  created_at           DateTime               @default(now()) @db.Timestamptz(6)
+  updated_at           DateTime               @default(now()) @db.Timestamptz(6)
+  organizations        organizations          @relation(fields: [organization_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  endpoint_enrollments endpoint_enrollments[]
+  site_enrollment_keys site_enrollment_keys[]
+  sites                sites[]
+
+  contracts    contracts[]
+  invoices     invoices[]
+  time_entries time_entries[]
+  assets      assets[]
+  report_schedules report_schedules[]
+  @@unique([organization_id, name])
+}
+
+model company_profile {
+  id         Int     @id
+  name       String
+  legal_name String?
+  email      String?
+  phone      String?
+  fax        String?
+  website    String?
+  vat_tin    String?
+  address1   String?
+  address2   String?
+  city       String?
+  state      String?
+  postal     String?
+  country    String?
+}
+
+model contacts {
+  id              String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organization_id String        @db.Uuid
+  name            String
+  email           String?       @db.Citext
+  phone           String?
+  metadata        Json          @default("{}")
+  created_at      DateTime      @default(now()) @db.Timestamptz(6)
+  updated_at      DateTime      @default(now()) @db.Timestamptz(6)
+  organizations   organizations @relation(fields: [organization_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  tickets         tickets[]
+}
+
+model device_deletion_requests {
+  id                   String    @id @db.Uuid
+  device_id            String    @unique @db.Uuid
+  status               String
+  requested_by_user_id String?   @db.Uuid
+  requested_at         DateTime  @default(now()) @db.Timestamptz(6)
+  approved_by_user_id  String?   @db.Uuid
+  approved_at          DateTime? @db.Timestamptz(6)
+  completed_at         DateTime? @db.Timestamptz(6)
+  /// Why the person asked for the device to be removed.
+  reason               String?
+  /// The ticket opened for the approval, when the person asked for one.
+  ticket_id            String?   @db.Uuid
+
+  @@index([status])
+}
+
+model devices {
+  id                   String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  site_id              String?                @db.Uuid
+  hostname             String
+  serial_number        String?
+  operating_system     String?
+  architecture         String?
+  status               device_status          @default(online)
+  primary_user         String?
+  last_seen_at         DateTime?              @db.Timestamptz(6)
+  created_at           DateTime               @default(now()) @db.Timestamptz(6)
+  updated_at           DateTime               @default(now()) @db.Timestamptz(6)
+  alias                String?
+  /// 'pilot' | 'stable'; null follows the customer's default_update_ring.
+  update_ring          String?
+  agents               agents?
+  script_runs          script_runs[]
+  alerts               alerts[]
+  sites                sites?                 @relation(fields: [site_id], references: [id], onUpdate: NoAction)
+  endpoint_enrollments endpoint_enrollments[]
+  tickets              tickets[]
+
+  assets assets?
+  device_daily   device_daily[]
+  device_changes device_changes[]
+  device_tags    device_tags[]
+  ticket_devices ticket_devices[]
+  @@unique([site_id, hostname])
+}
+
+model dkim_domains {
+  id              String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organization_id String        @db.Uuid
+  domain          String
+  created_at      DateTime      @default(now()) @db.Timestamptz(6)
+  updated_at      DateTime      @default(now()) @db.Timestamptz(6)
+  organizations   organizations @relation(fields: [organization_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  dkim_keys       dkim_keys[]
+
+  @@unique([organization_id, domain])
+}
+
+model dkim_keys {
+  id             String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  dkim_domain_id String       @db.Uuid
+  selector       String
+  public_key     String
+  private_key    String
+  created_at     DateTime     @default(now()) @db.Timestamptz(6)
+  rotated_at     DateTime?    @db.Timestamptz(6)
+  dkim_domains   dkim_domains @relation(fields: [dkim_domain_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([dkim_domain_id, selector])
+}
+
+model dkim_settings {
+  id          Int      @id
+  domain      String   @default("")
+  selector    String   @default("")
+  private_key String?
+  updated_at  DateTime @default(now()) @db.Timestamptz(6)
+}
+
+model email_channels {
+  id                  String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organization_id     String                @db.Uuid
+  name                String
+  purpose             email_channel_purpose
+  is_inbound_enabled  Boolean               @default(false)
+  is_outbound_enabled Boolean               @default(true)
+  smtp_settings       Json                  @default("{}")
+  imap_settings       Json                  @default("{}")
+  created_at          DateTime              @default(now()) @db.Timestamptz(6)
+  updated_at          DateTime              @default(now()) @db.Timestamptz(6)
+  organizations       organizations         @relation(fields: [organization_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  email_ingest_state  email_ingest_state?
+  email_messages      email_messages[]
+
+  @@unique([organization_id, name])
+}
+
+model email_ingest_state {
+  channel_id     String         @id @db.Uuid
+  last_uid       BigInt?
+  last_synced_at DateTime?      @db.Timestamptz(6)
+  created_at     DateTime       @default(now()) @db.Timestamptz(6)
+  updated_at     DateTime       @default(now()) @db.Timestamptz(6)
+  email_channels email_channels @relation(fields: [channel_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model email_messages {
+  id             String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  channel_id     String         @db.Uuid
+  ticket_id      String?        @db.Uuid
+  direction      String
+  message_id     String?
+  subject        String?
+  from_address   String?
+  to_addresses   String[]
+  cc_addresses   String[]
+  bcc_addresses  String[]
+  sent_at        DateTime?      @db.Timestamptz(6)
+  received_at    DateTime?      @db.Timestamptz(6)
+  payload        Json
+  created_at     DateTime       @default(now()) @db.Timestamptz(6)
+  email_channels email_channels @relation(fields: [channel_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  tickets        tickets?       @relation(fields: [ticket_id], references: [id], onUpdate: NoAction)
+
+  @@index([channel_id, received_at(sort: Desc)], map: "idx_email_messages_channel")
+}
+
+model email_settings {
+  purpose           String   @id
+  enabled           Boolean  @default(true)
+  smtp_host         String   @default("")
+  smtp_port         Int?
+  smtp_username     String   @default("")
+  smtp_password     String?
+  smtp_use_tls      Boolean  @default(true)
+  smtp_use_ssl      Boolean  @default(false)
+  smtp_from_address String   @default("")
+  imap_host         String   @default("")
+  imap_port         Int?
+  imap_username     String   @default("")
+  imap_password     String?
+  imap_use_ssl      Boolean  @default(true)
+  pop_host          String   @default("")
+  pop_port          Int?
+  pop_username      String   @default("")
+  pop_password      String?
+  pop_use_ssl       Boolean  @default(true)
+  updated_at        DateTime @default(now()) @db.Timestamptz(6)
+}
+
+model endpoint_enrollments {
+  id         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  client_id  String    @db.Uuid
+  site_id    String    @db.Uuid
+  device_id  String    @db.Uuid
+  os         String
+  alias      String
+  token_hash String    @unique
+  expires_at DateTime  @db.Timestamptz(6)
+  used_at    DateTime? @db.Timestamptz(6)
+  created_at DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at DateTime  @default(now()) @db.Timestamptz(6)
+  clients    clients   @relation(fields: [client_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  devices    devices   @relation(fields: [device_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  sites      sites     @relation(fields: [site_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([device_id], map: "endpoint_enrollments_device_idx")
+  @@index([expires_at], map: "endpoint_enrollments_expires_idx")
+}
+
+model imap_ingested {
+  id                BigInt   @id @default(autoincrement())
+  purpose           String
+  uid               BigInt
+  from_addr         String?
+  subject           String?
+  size_bytes        Int?
+  headers_snippet   String?
+  is_bounce         Boolean  @default(false)
+  bounce_recipient  String?
+  bounce_status     String?
+  bounce_action     String?
+  bounce_diagnostic String?
+  created_at        DateTime @default(now()) @db.Timestamptz(6)
+
+  @@unique([purpose, uid])
+}
+
+model imap_state {
+  purpose    String   @id
+  last_uid   BigInt   @default(0)
+  updated_at DateTime @default(now()) @db.Timestamptz(6)
+}
+
+model installer_bundles {
+  id                  String   @id @db.Uuid
+  client_id           String   @db.Uuid
+  site_id             String   @db.Uuid
+  os                  String
+  filename            String
+  content             String
+  download_token_hash String
+  expires_at          DateTime @db.Timestamptz(6)
+  created_at          DateTime @default(now()) @db.Timestamptz(6)
+
+  @@index([expires_at])
+}
+
+model job_results {
+  job_id      String @id @db.Uuid
+  exit_code   Int    @default(0)
+  stdout      String @default("")
+  stderr      String @default("")
+  duration_ms BigInt @default(0)
+  jobs        jobs   @relation(fields: [job_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model jobs {
+  id            String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  agent_id      String       @db.Uuid
+  type          String
+  payload       Json         @default("{}")
+  status        String       @default("queued")
+  created_at    DateTime     @default(now()) @db.Timestamptz(6)
+  dispatched_at DateTime?    @db.Timestamptz(6)
+  started_at    DateTime?    @db.Timestamptz(6)
+  finished_at   DateTime?    @db.Timestamptz(6)
+  job_results   job_results?
+  agents        agents       @relation(fields: [agent_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  script_runs      script_runs[]
+  @@index([agent_id, status], map: "jobs_agent_status_idx")
+  @@index([created_at])
+}
+
+model localization_settings {
+  organization_id   String        @id @db.Uuid
+  locale            String        @default("en-US")
+  language          String        @default("en-US")
+  timezone          String        @default("America/New_York")
+  time_zone         String        @default("America/New_York")
+  date_format       String        @default("yyyy-MM-dd")
+  time_format       String        @default("HH:mm")
+  number_format     String        @default("1,234.56")
+  first_day_of_week Int           @default(0)
+  created_at        DateTime      @default(now()) @db.Timestamptz(6)
+  updated_at        DateTime      @default(now()) @db.Timestamptz(6)
+  id                String?       @unique(map: "uq_localization_settings_id_text")
+  currency          String
+  organizations     organizations @relation(fields: [organization_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model login_challenges {
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id     String    @db.Uuid
+  challenge   String
+  expires_at  DateTime  @db.Timestamptz(6)
+  consumed_at DateTime? @db.Timestamptz(6)
+  created_at  DateTime  @default(now()) @db.Timestamptz(6)
+  users       users     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model organization_setting_audits {
+  id              String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organization_id String        @db.Uuid
+  settings_type   String
+  previous        Json?
+  next            Json?
+  changed_by      String?       @db.Uuid
+  created_at      DateTime      @default(now()) @db.Timestamptz(6)
+  users           users?        @relation(fields: [changed_by], references: [id], onUpdate: NoAction)
+  organizations   organizations @relation(fields: [organization_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model organization_settings {
+  organization_id String        @id @db.Uuid
+  branding        Json          @default("{}")
+  localization    Json          @default("{}")
+  support         Json          @default("{}")
+  notifications   Json          @default("{}")
+  created_at      DateTime      @default(now()) @db.Timestamptz(6)
+  updated_at      DateTime      @default(now()) @db.Timestamptz(6)
+  organizations   organizations @relation(fields: [organization_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model organizations {
+  support_mailbox             support_mailbox?
+  id                          String                        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name                        String
+  slug                        String                        @unique
+  time_zone                   String                        @default("UTC")
+  created_at                  DateTime                      @default(now()) @db.Timestamptz(6)
+  updated_at                  DateTime                      @default(now()) @db.Timestamptz(6)
+  automations                 automations[]
+  backup_destinations         backup_destinations[]
+  backup_policies             backup_policies[]
+  check_profiles              check_profiles[]
+  checks                      checks[]
+  clients                     clients[]
+  policies                    policies[]
+  policy_templates            policy_templates[]
+  software_library            software_library[]
+  tag_defs                    tag_defs[]
+  user_groups                 user_groups[]
+  contacts                    contacts[]
+  dkim_domains                dkim_domains[]
+  email_channels              email_channels[]
+  localization_settings       localization_settings?
+  organization_setting_audits organization_setting_audits[]
+  organization_settings       organization_settings?
+  roles                       roles[]
+  storage_connections         storage_connections[]
+  support_channels            support_channels[]
+  tickets                     tickets[]
+  users                       users[]
+  billing_settings billing_settings?
+  catalog_items    catalog_items[]
+  contracts        contracts[]
+  invoices         invoices[]
+  time_entries     time_entries[]
+  assets       assets[]
+  entity_links entity_links[]
+  report_schedules report_schedules[]
+  report_views report_views[]
+}
+
+model permissions {
+  permission_key   String             @id @unique(map: "permissions_permission_key_uidx")
+  label            String
+  group_key        String
+  group_label      String
+  description      String?
+  created_at       DateTime           @default(now()) @db.Timestamptz(6)
+  updated_at       DateTime           @default(now()) @db.Timestamptz(6)
+  role_permissions role_permissions[]
+  user_group_permissions user_group_permissions[]
+}
+
+model personal_access_tokens {
+  id           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id      String    @db.Uuid
+  token_hash   String
+  description  String?
+  expires_at   DateTime? @db.Timestamptz(6)
+  created_at   DateTime  @default(now()) @db.Timestamptz(6)
+  last_used_at DateTime? @db.Timestamptz(6)
+  revoked_at   DateTime? @db.Timestamptz(6)
+  users        users     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model role_permissions {
+  role_id        String      @db.Uuid
+  permission_key String
+  granted_by     String?     @db.Uuid
+  granted_at     DateTime    @default(now()) @db.Timestamptz(6)
+  users          users?      @relation(fields: [granted_by], references: [id], onUpdate: NoAction)
+  permissions    permissions @relation(fields: [permission_key], references: [permission_key], onDelete: Cascade, onUpdate: NoAction)
+  roles          roles       @relation(fields: [role_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@id([role_id, permission_key])
+}
+
+model roles {
+  id               String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organization_id  String?            @db.Uuid
+  scope            role_scope
+  name             String
+  description      String?
+  created_at       DateTime           @default(now()) @db.Timestamptz(6)
+  updated_at       DateTime           @default(now()) @db.Timestamptz(6)
+  role_permissions role_permissions[]
+  organizations    organizations?     @relation(fields: [organization_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  user_roles       user_roles[]
+
+  @@unique([organization_id, name], map: "uq_roles_scope_name")
+}
+
+model sessions {
+  id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id       String    @db.Uuid
+  refresh_token String
+  user_agent    String?
+  ip_address    String?   @db.Inet
+  trusted       Boolean   @default(false)
+  created_at    DateTime  @default(now()) @db.Timestamptz(6)
+  last_seen_at  DateTime  @default(now()) @db.Timestamptz(6)
+  revoked_at    DateTime? @db.Timestamptz(6)
+  users         users     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model site_enrollment_keys {
+  id                 String    @id @db.Uuid
+  client_id          String    @db.Uuid
+  site_id            String    @db.Uuid
+  name               String?
+  token_hash         String    @unique
+  expires_at         DateTime  @db.Timestamptz(6)
+  revoked_at         DateTime? @db.Timestamptz(6)
+  last_used_at       DateTime? @db.Timestamptz(6)
+  /// How many devices have enrolled with it.
+  use_count          Int       @default(0)
+  created_by_user_id String?   @db.Uuid
+  created_at         DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at         DateTime  @default(now()) @db.Timestamptz(6)
+  clients            clients   @relation(fields: [client_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  users              users?    @relation(fields: [created_by_user_id], references: [id], onUpdate: NoAction)
+  sites              sites     @relation(fields: [site_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([expires_at], map: "site_enrollment_keys_expires_idx")
+  @@index([site_id], map: "site_enrollment_keys_site_idx")
+}
+
+model sites {
+  id                   String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  client_id            String                 @db.Uuid
+  name                 String
+  address              Json                   @default("{}")
+  phone                String?
+  email                String?
+  contact_name         String?
+  contact_email        String?
+  contact_phone        String?
+  time_zone            String?
+  notes                String?
+  created_at           DateTime               @default(now()) @db.Timestamptz(6)
+  updated_at           DateTime               @default(now()) @db.Timestamptz(6)
+  devices              devices[]
+  endpoint_enrollments endpoint_enrollments[]
+  site_enrollment_keys site_enrollment_keys[]
+  clients              clients                @relation(fields: [client_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([client_id, name])
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model storage_connections {
+  id              String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organization_id String        @db.Uuid
+  name            String
+  kind            String
+  config          Json          @default("{}")
+  secrets         Json          @default("{}")
+  meta            Json          @default("{}")
+  capabilities    Json          @default("{}")
+  health          Json          @default("{}")
+  created_at      DateTime      @default(now()) @db.Timestamptz(6)
+  updated_at      DateTime      @default(now()) @db.Timestamptz(6)
+  organizations   organizations @relation(fields: [organization_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([organization_id, name])
+}
+
+model support_channels {
+  id              String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organization_id String        @db.Uuid
+  channel_key     String
+  channel_type    String
+  configuration   Json          @default("{}")
+  created_at      DateTime      @default(now()) @db.Timestamptz(6)
+  updated_at      DateTime      @default(now()) @db.Timestamptz(6)
+  organizations   organizations @relation(fields: [organization_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([organization_id, channel_key])
+}
+
+model support_legal {
+  id                 Int     @id
+  support_email      String?
+  support_phone      String?
+  knowledge_base_url String?
+  status_page_url    String?
+  privacy_policy_url String?
+  terms_url          String?
+  gdpr_contact_email String?
+  legal_address      String?
+  ticket_portal_url  String?
+  phone_hours        String?
+  notes_html         String?
+}
+
+model ticket_activity {
+  id                  String   @id @db.Uuid
+  ticket_id           String   @db.Uuid
+  kind                String
+  body                String   @default("")
+  attachments         Json     @default("[]")
+  time_worked_seconds Int      @default(0)
+  notify_customer     Boolean  @default(false)
+  author              String
+  created_at          DateTime @default(now()) @db.Timestamptz(6)
+  is_internal         Boolean  @default(false)
+  /// A private note left for the next technician: where the ticket was left.
+  is_handoff          Boolean  @default(false)
+  /// A reply that arrived by email from the customer.
+  is_inbound          Boolean  @default(false)
+  /// Where a customer reply came from: portal, or null for email.
+  via                 String?
+  field               String?
+  from_value          String?
+  to_value            String?
+  tickets             tickets  @relation(fields: [ticket_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([ticket_id, created_at(sort: Desc)], map: "ticket_activity_ticket_created_idx")
+}
+
+model ticket_attachments {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  ticket_id    String   @db.Uuid
+  file_name    String
+  content_type String
+  storage_path String
+  size_bytes   BigInt
+  created_at   DateTime @default(now()) @db.Timestamptz(6)
+  tickets      tickets  @relation(fields: [ticket_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model ticket_links {
+  id                                             String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  ticket_id                                      String  @db.Uuid
+  linked_ticket_id                               String  @db.Uuid
+  tickets_ticket_links_linked_ticket_idTotickets tickets @relation("ticket_links_linked_ticket_idTotickets", fields: [linked_ticket_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  tickets_ticket_links_ticket_idTotickets        tickets @relation("ticket_links_ticket_idTotickets", fields: [ticket_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([ticket_id, linked_ticket_id], map: "ticket_links_pair_uq")
+  @@index([ticket_id])
+}
+
+model ticket_tags {
+  ticket_id  String   @db.Uuid
+  tag        String
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+  tickets    tickets  @relation(fields: [ticket_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@id([ticket_id, tag])
+}
+
+model ticket_updates {
+  id             String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  ticket_id      String         @db.Uuid
+  author_user_id String?        @db.Uuid
+  message        String?
+  status         ticket_status?
+  created_at     DateTime       @default(now()) @db.Timestamptz(6)
+  users          users?         @relation(fields: [author_user_id], references: [id], onUpdate: NoAction)
+  tickets        tickets        @relation(fields: [ticket_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([ticket_id, created_at(sort: Desc)], map: "idx_ticket_updates_ticket")
+}
+
+model tickets {
+  id                                                  String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organization_id                                     String               @db.Uuid
+  ticket_number                                       BigInt
+  requester_contact_id                                String?              @db.Uuid
+  device_id                                           String?              @db.Uuid
+  subject                                             String
+  description                                         String?
+  status                                              ticket_status        @default(open)
+  priority                                            ticket_priority      @default(normal)
+  assignee_user_id                                    String?              @db.Uuid
+  created_at                                          DateTime             @default(now()) @db.Timestamptz(6)
+  updated_at                                          DateTime             @default(now()) @db.Timestamptz(6)
+  closed_at                                           DateTime?            @db.Timestamptz(6)
+  due_at                                              DateTime?            @db.Timestamptz(6)
+  email_messages                                      email_messages[]
+  ticket_activity                                     ticket_activity[]
+  ticket_attachments                                  ticket_attachments[]
+  ticket_links_ticket_links_linked_ticket_idTotickets ticket_links[]       @relation("ticket_links_linked_ticket_idTotickets")
+  ticket_links_ticket_links_ticket_idTotickets        ticket_links[]       @relation("ticket_links_ticket_idTotickets")
+  ticket_tags                                         ticket_tags[]
+  ticket_updates                                      ticket_updates[]
+  users                                               users?               @relation(fields: [assignee_user_id], references: [id], onUpdate: NoAction)
+  devices                                             devices?             @relation(fields: [device_id], references: [id], onUpdate: NoAction)
+  organizations                                       organizations        @relation(fields: [organization_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  contacts                                            contacts?            @relation(fields: [requester_contact_id], references: [id], onUpdate: NoAction)
+
+  /// The customer the ticket is for, so the client portal can show it to them.
+  client_id String? @db.Uuid
+  /// The portal person who opened it, when it came from the portal.
+  portal_account_id String? @db.Uuid
+  /// Values of the ticket custom fields the organization defines, by field key.
+  custom_fields Json @default("{}")
+  /// The queue the ticket waits in. The foreign key is in the migration.
+  queue_id String? @db.Uuid
+  /// Where it came from: ui, email, portal, alert, api.
+  created_via String?
+
+  /// The customer's own contact who asked (the contact list on the customer record). The foreign key is in the migration.
+  requester_customer_contact_id String? @db.Uuid
+  /// The recurring schedule that opened it, if any.
+  recurring_id String? @db.Uuid
+  /// Every device on the ticket; device_id is the main one.
+  ticket_devices ticket_devices[]
+
+  time_entries time_entries[]
+  ticket_timers ticket_timers[]
+  @@unique([organization_id, ticket_number])
+}
+
+/// A technician's stopwatch on a ticket: started and stopped on purpose, kept on the server.
+model ticket_timers {
+  id                  String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organization_id     String    @db.Uuid
+  user_id             String    @db.Uuid
+  ticket_id           String    @db.Uuid
+  /// When it was last started; null while paused.
+  started_at          DateTime? @db.Timestamptz(6)
+  /// What it had counted before the current run.
+  accumulated_seconds Int       @default(0)
+  created_at          DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at          DateTime  @default(now()) @db.Timestamptz(6)
+  users               users     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  tickets             tickets   @relation(fields: [ticket_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([user_id, ticket_id])
+  @@index([user_id])
+}
+
+model trusted_devices {
+  id                 String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id            String   @db.Uuid
+  device_fingerprint String
+  last_seen_at       DateTime @default(now()) @db.Timestamptz(6)
+  created_at         DateTime @default(now()) @db.Timestamptz(6)
+  users              users    @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model user_roles {
+  user_id                             String   @db.Uuid
+  role_id                             String   @db.Uuid
+  assigned_at                         DateTime @default(now()) @db.Timestamptz(6)
+  assigned_by                         String?  @db.Uuid
+  users_user_roles_assigned_byTousers users?   @relation("user_roles_assigned_byTousers", fields: [assigned_by], references: [id], onUpdate: NoAction)
+  roles                               roles    @relation(fields: [role_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  users_user_roles_user_idTousers     users    @relation("user_roles_user_idTousers", fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@id([user_id, role_id])
+}
+
+model user_security {
+  user_id             String    @id @db.Uuid
+  two_factor_enabled  Boolean   @default(false)
+  totp_secret         String?
+  recovery_codes      String[]
+  password_changed_at DateTime? @db.Timestamptz(6)
+  created_at          DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at          DateTime  @default(now()) @db.Timestamptz(6)
+  users               users     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model users {
+  id                                       String                        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organization_id                          String                        @db.Uuid
+  email                                    String                        @db.Citext
+  password_hash                            String
+  first_name                               String?
+  last_name                                String?
+  status                                   user_status                   @default(active)
+  last_seen_at                             DateTime?                     @db.Timestamptz(6)
+  created_at                               DateTime                      @default(now()) @db.Timestamptz(6)
+  updated_at                               DateTime                      @default(now()) @db.Timestamptz(6)
+  phone                                    String?
+  timezone                                 String?
+  locale                                   String?
+  avatar_url                               String?
+  avatar_thumb_url                         String?
+  address1                                 String?
+  address2                                 String?
+  city                                     String?
+  state                                    String?
+  postal                                   String?
+  country                                  String?
+  agent_tasks                              agent_tasks[]
+  automation_runs                          automation_runs[]
+  automations                              automations[]
+  backup_policies                          backup_policies[]
+  backup_restores                          backup_restores[]
+  check_assignments                        check_assignments[]
+  check_profiles                           check_profiles[]
+  checks                                   checks[]
+  login_challenges                         login_challenges[]
+  organization_setting_audits              organization_setting_audits[]
+  personal_access_tokens                   personal_access_tokens[]
+  role_permissions                         role_permissions[]
+  sessions                                 sessions[]
+  site_enrollment_keys                     site_enrollment_keys[]
+  ticket_updates                           ticket_updates[]
+  tickets                                  tickets[]
+  trusted_devices                          trusted_devices[]
+  user_roles_user_roles_assigned_byTousers user_roles[]                  @relation("user_roles_assigned_byTousers")
+  user_roles_user_roles_user_idTousers     user_roles[]                  @relation("user_roles_user_idTousers")
+  user_security                            user_security?
+  organizations                            organizations                 @relation(fields: [organization_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  time_entries_time_entries_user_idTousers time_entries[] @relation("time_entries_user_idTousers")
+  user_group_members                       user_group_members[]
+  @@unique([organization_id, email])
+  report_views report_views[]
+  ticket_timers                            ticket_timers[]
+}
+
+enum agent_task_status {
+  pending
+  queued
+  running
+  succeeded
+  failed
+  cancelled
+}
+
+enum agent_task_type {
+  script
+  policy
+  update
+  command
+  patch_scan
+  patch_install
+  run_checks
+  software_install
+  software_updates_scan
+}
+
+enum backup_status {
+  pending
+  running
+  completed
+  failed
+  cancelled
+  queued
+}
+
+enum check_severity {
+  info
+  low
+  medium
+  high
+  critical
+}
+
+enum check_status {
+  passed
+  warning
+  failed
+  muted
+}
+
+enum check_target_type {
+  organization
+  client
+  site
+  device
+}
+
+enum check_type {
+  ping
+  service
+  process
+  metric
+  script
+}
+
+enum device_status {
+  online
+  offline
+  retired
+  decommissioned
+}
+
+enum email_channel_purpose {
+  alerts
+  support
+  marketing
+  system
+}
+
+enum role_scope {
+  system
+  organization
+}
+
+enum ticket_priority {
+  low
+  normal
+  high
+  urgent
+}
+
+enum ticket_status {
+  open
+  pending
+  resolved
+  closed
+  in_progress
+}
+
+enum user_status {
+  active
+  invited
+  disabled
+}
+
+model alerts {
+  id                      String                    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  device_id               String                    @db.Uuid
+  assignment_id           String?                   @db.Uuid
+  kind                    String
+  dedupe_key              String
+  state                   String                    @default("OPEN")
+  severity                String
+  title                   String
+  detail                  String?
+  open_count              Int                       @default(1)
+  first_seen_at           DateTime                  @default(now()) @db.Timestamptz(6)
+  last_seen_at            DateTime                  @default(now()) @db.Timestamptz(6)
+  state_changed_at        DateTime                  @default(now()) @db.Timestamptz(6)
+  silenced_until          DateTime?                 @db.Timestamptz(6)
+  resolved_at             DateTime?                 @db.Timestamptz(6)
+  last_notified_at        DateTime?                 @db.Timestamptz(6)
+  ticket_id               String?                   @db.Uuid
+  devices                 devices                   @relation(fields: [device_id], references: [id], onDelete: Cascade)
+  alert_events            alert_events[]
+  notification_deliveries notification_deliveries[]
+
+  @@index([state, last_seen_at(sort: Desc)])
+  @@index([device_id])
+}
+
+model alert_events {
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  alert_id      String   @db.Uuid
+  type          String
+  actor_user_id String?  @db.Uuid
+  reason        String?
+  created_at    DateTime @default(now()) @db.Timestamptz(6)
+  alerts        alerts   @relation(fields: [alert_id], references: [id], onDelete: Cascade)
+
+  @@index([alert_id, created_at])
+}
+
+model alert_settings {
+  id                       Int      @id @default(1)
+  offline_after_minutes    Int      @default(15)
+  renotify_after_hours     Int      @default(0)
+  auto_ticket              Boolean  @default(false)
+  auto_ticket_min_severity String   @default("CRIT")
+  auto_resolve_ticket      Boolean  @default(true)
+  updated_at               DateTime @default(now()) @db.Timestamptz(6)
+}
+
+model notification_channels {
+  id                      String                    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name                    String
+  kind                    String
+  enabled                 Boolean                   @default(true)
+  min_severity            String                    @default("WARN")
+  notify_on_resolve       Boolean                   @default(true)
+  config                  Json                      @default("{}")
+  created_at              DateTime                  @default(now()) @db.Timestamptz(6)
+  updated_at              DateTime                  @default(now()) @db.Timestamptz(6)
+  notification_deliveries notification_deliveries[]
+}
+
+model notification_deliveries {
+  id                    String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  channel_id            String                @db.Uuid
+  alert_id              String?               @db.Uuid
+  event                 String
+  status                String                @default("pending")
+  attempts              Int                   @default(0)
+  next_attempt_at       DateTime              @default(now()) @db.Timestamptz(6)
+  last_error            String?
+  created_at            DateTime              @default(now()) @db.Timestamptz(6)
+  delivered_at          DateTime?             @db.Timestamptz(6)
+  notification_channels notification_channels @relation(fields: [channel_id], references: [id], onDelete: Cascade)
+  alerts                alerts?               @relation(fields: [alert_id], references: [id], onDelete: Cascade)
+
+  @@index([status, next_attempt_at])
+}
+
+model script_runs {
+  id            String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  automation_id String?      @db.Uuid
+  script_name   String
+  job_id        String       @db.Uuid
+  device_id     String       @db.Uuid
+  schedule_id   String?      @db.Uuid
+  triggered_by  String?      @db.Uuid
+  created_at    DateTime     @default(now()) @db.Timestamptz(6)
+  automations   automations? @relation(fields: [automation_id], references: [id])
+  jobs          jobs         @relation(fields: [job_id], references: [id], onDelete: Cascade)
+  devices       devices      @relation(fields: [device_id], references: [id], onDelete: Cascade)
+
+  @@index([created_at(sort: Desc)])
+  @@index([automation_id])
+  @@index([device_id])
+}
+
+model script_schedules {
+  id               String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  automation_id    String      @db.Uuid
+  name             String
+  target_type      String
+  target_id        String?     @db.Uuid
+  interval_minutes Int
+  next_run_at      DateTime    @db.Timestamptz(6)
+  last_run_at      DateTime?   @db.Timestamptz(6)
+  enabled          Boolean     @default(true)
+  parameters       Json        @default("{}")
+  created_by       String?     @db.Uuid
+  created_at       DateTime    @default(now()) @db.Timestamptz(6)
+  updated_at       DateTime    @default(now()) @db.Timestamptz(6)
+  automations      automations @relation(fields: [automation_id], references: [id], onDelete: Cascade)
+
+  @@index([enabled, next_run_at])
+}
+
+model audit_events {
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  created_at    DateTime @default(now()) @db.Timestamptz(3)
+  actor_user_id String?  @db.Uuid
+  actor_email   String?
+  action        String
+  category      String
+  target_type   String?
+  target_id     String?
+  target_label  String?
+  ip            String?
+  user_agent    String?
+  outcome       String
+  details       Json?
+
+  @@index([created_at(sort: Desc)], map: "idx_audit_events_created_at")
+  @@index([actor_user_id], map: "idx_audit_events_actor")
+  @@index([target_type, target_id], map: "idx_audit_events_target")
+  @@index([category], map: "idx_audit_events_category")
+}
+
+model billing_settings {
+  organization_id           String        @id @db.Uuid
+  currency                  String        @default("USD")
+  tax_rate_bps              Int           @default(0)
+  payment_terms_days        Int           @default(30)
+  invoice_prefix            String        @default("INV-")
+  next_invoice_number       Int           @default(1001)
+  quote_prefix              String        @default("QUO-")
+  next_quote_number         Int           @default(1001)
+  labor_cost_cents          Int           @default(0)
+  default_hourly_rate_cents Int           @default(0)
+  footer                    String?
+  public_base_url           String?
+  stripe_secret_key         String?
+  stripe_webhook_secret     String?
+  updated_at                DateTime      @default(now()) @db.Timestamptz(6)
+  organizations             organizations @relation(fields: [organization_id], references: [id], onDelete: Cascade)
+}
+
+model catalog_items {
+  id               String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organization_id  String        @db.Uuid
+  name             String
+  description      String?
+  unit_price_cents Int           @default(0)
+  taxable          Boolean       @default(true)
+  active           Boolean       @default(true)
+  created_at       DateTime      @default(now()) @db.Timestamptz(6)
+  updated_at       DateTime      @default(now()) @db.Timestamptz(6)
+  organizations    organizations @relation(fields: [organization_id], references: [id], onDelete: Cascade)
+
+  @@unique([organization_id, name])
+}
+
+model contracts {
+  id                      String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organization_id         String        @db.Uuid
+  client_id               String        @db.Uuid
+  name                    String
+  kind                    String
+  status                  String        @default("active")
+  billing_interval_months Int           @default(1)
+  start_date              DateTime      @db.Date
+  end_date                DateTime?     @db.Date
+  next_invoice_date       DateTime      @db.Date
+  price_cents             Int           @default(0)
+  quantity                Decimal?      @db.Decimal(12, 2)
+  block_hours             Decimal?      @db.Decimal(10, 2)
+  hourly_rate_cents       Int?
+  overage_rate_cents      Int?
+  taxable                 Boolean       @default(true)
+  notes                   String?
+  created_at              DateTime      @default(now()) @db.Timestamptz(6)
+  updated_at              DateTime      @default(now()) @db.Timestamptz(6)
+  organizations           organizations @relation(fields: [organization_id], references: [id], onDelete: Cascade)
+  clients                 clients       @relation(fields: [client_id], references: [id])
+  invoices                invoices[]
+
+  @@index([status, next_invoice_date])
+  @@index([client_id])
+}
+
+model invoices {
+  id                String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organization_id   String          @db.Uuid
+  client_id         String          @db.Uuid
+  contract_id       String?         @db.Uuid
+  kind              String          @default("invoice")
+  number            String?
+  status            String          @default("draft")
+  currency          String          @default("USD")
+  tax_rate_bps      Int             @default(0)
+  subtotal_cents    Int             @default(0)
+  tax_cents         Int             @default(0)
+  total_cents       Int             @default(0)
+  paid_cents        Int             @default(0)
+  issue_date        DateTime?       @db.Date
+  due_date          DateTime?       @db.Date
+  period_start      DateTime?       @db.Date
+  period_end        DateTime?       @db.Date
+  recipient_email   String?
+  notes             String?
+  public_token_hash String?         @unique
+  converted_from_id String?         @db.Uuid
+  sent_at           DateTime?       @db.Timestamptz(6)
+  created_at        DateTime        @default(now()) @db.Timestamptz(6)
+  updated_at        DateTime        @default(now()) @db.Timestamptz(6)
+  organizations     organizations   @relation(fields: [organization_id], references: [id], onDelete: Cascade)
+  clients           clients         @relation(fields: [client_id], references: [id])
+  contracts         contracts?      @relation(fields: [contract_id], references: [id])
+  invoice_lines     invoice_lines[]
+  payments          payments[]
+
+  @@unique([organization_id, kind, number])
+  @@unique([contract_id, period_start])
+  @@index([kind, status])
+  @@index([client_id])
+}
+
+model invoice_lines {
+  id               String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  invoice_id       String         @db.Uuid
+  position         Int            @default(0)
+  description      String
+  quantity         Decimal        @default(1) @db.Decimal(12, 2)
+  unit_price_cents Int            @default(0)
+  amount_cents     Int            @default(0)
+  taxable          Boolean        @default(true)
+  invoices         invoices       @relation(fields: [invoice_id], references: [id], onDelete: Cascade)
+  time_entries     time_entries[]
+
+  @@index([invoice_id])
+}
+
+model payments {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  invoice_id   String   @db.Uuid
+  amount_cents Int
+  method       String
+  reference    String?
+  paid_at      DateTime @default(now()) @db.Timestamptz(6)
+  recorded_by  String?  @db.Uuid
+  created_at   DateTime @default(now()) @db.Timestamptz(6)
+  invoices     invoices @relation(fields: [invoice_id], references: [id])
+
+  @@unique([method, reference])
+  @@index([invoice_id])
+}
+
+model time_entries {
+  id                                 String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organization_id                    String         @db.Uuid
+  user_id                            String         @db.Uuid
+  client_id                          String?        @db.Uuid
+  ticket_id                          String?        @db.Uuid
+  work_date                          DateTime       @db.Date
+  minutes                            Int
+  billable                           Boolean        @default(true)
+  note                               String?
+  status                             String         @default("pending")
+  approved_by                        String?        @db.Uuid
+  approved_at                        DateTime?      @db.Timestamptz(6)
+  invoice_line_id                    String?        @db.Uuid
+  created_at                         DateTime       @default(now()) @db.Timestamptz(6)
+  updated_at                         DateTime       @default(now()) @db.Timestamptz(6)
+  organizations                      organizations  @relation(fields: [organization_id], references: [id], onDelete: Cascade)
+  users_time_entries_user_idTousers  users          @relation("time_entries_user_idTousers", fields: [user_id], references: [id])
+  clients                            clients?       @relation(fields: [client_id], references: [id])
+  tickets                            tickets?       @relation(fields: [ticket_id], references: [id])
+  invoice_lines                      invoice_lines? @relation(fields: [invoice_line_id], references: [id])
+
+  @@index([user_id, work_date])
+  @@index([client_id, status])
+  @@index([ticket_id])
+}
+
+model assets {
+  id                 String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organization_id    String        @db.Uuid
+  client_id          String        @db.Uuid
+  device_id          String?       @unique @db.Uuid
+  name               String
+  kind               String        @default("other")
+  manufacturer       String?
+  model              String?
+  serial_number      String?
+  location           String?
+  purchase_date      DateTime?     @db.Date
+  expires_at         DateTime?     @db.Date
+  notes              String?
+  details            Json          @default("{}")
+  source             String        @default("manual")
+  last_synced_at     DateTime?     @db.Timestamptz(6)
+  expiry_notice_days Int?
+  created_at         DateTime      @default(now()) @db.Timestamptz(6)
+  updated_at         DateTime      @default(now()) @db.Timestamptz(6)
+  organizations      organizations @relation(fields: [organization_id], references: [id], onDelete: Cascade)
+  clients            clients       @relation(fields: [client_id], references: [id], onDelete: Cascade)
+  devices            devices?      @relation(fields: [device_id], references: [id])
+
+  @@index([client_id])
+  @@index([expires_at])
+}
+
+model entity_links {
+  id              String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organization_id String        @db.Uuid
+  a_type          String
+  a_id            String        @db.Uuid
+  b_type          String
+  b_id            String        @db.Uuid
+  created_by      String?       @db.Uuid
+  created_at      DateTime      @default(now()) @db.Timestamptz(6)
+  organizations   organizations @relation(fields: [organization_id], references: [id], onDelete: Cascade)
+
+  @@unique([a_type, a_id, b_type, b_id])
+  @@index([b_type, b_id])
+}
+
+model report_schedules {
+  id              String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organization_id String        @db.Uuid
+  /// The customer a report covers. Empty means every customer, for the reports that can span them.
+  client_id       String?       @db.Uuid
+  /// "customer-health" (the original customer summary) or the key of an endpoint report.
+  report_key      String        @default("customer-health")
+  /// Scope, limits, period and the filter, sort, grouping and columns to send, copied from a saved view or set directly.
+  config          Json          @default("{}")
+  /// pdf, csv or both.
+  format          String        @default("pdf")
+  /// When false, a run with nothing to report sends nothing.
+  send_if_empty   Boolean       @default(true)
+  /// daily, weekly, monthly or once.
+  frequency       String        @default("monthly")
+  /// The time of day to send, 24 hour HH:MM, in the time zone below.
+  time_of_day     String        @default("07:00")
+  /// An IANA zone, so a customer's report arrives at their local time, daylight saving included.
+  timezone        String        @default("UTC")
+  /// Weekly: which days, 0 is Sunday.
+  days_of_week    Int[]         @default([])
+  /// Monthly: 1 to 31, or -1 for the last day.
+  day_of_month    Int?
+  /// Monthly, instead of a day: the first to fourth (or -1 last) weekday of the month.
+  nth_week        Int?
+  nth_weekday     Int?
+  /// Once: the date, yyyy-mm-dd.
+  once_date       String?
+  recipients      String[]      @default([])
+  enabled         Boolean       @default(true)
+  next_run_at     DateTime      @db.Timestamptz(6)
+  last_run_at     DateTime?     @db.Timestamptz(6)
+  last_error      String?
+  last_result     String?
+  created_at      DateTime      @default(now()) @db.Timestamptz(6)
+  updated_at      DateTime      @default(now()) @db.Timestamptz(6)
+  organizations   organizations @relation(fields: [organization_id], references: [id], onDelete: Cascade)
+  clients         clients?      @relation(fields: [client_id], references: [id], onDelete: Cascade)
+
+  @@index([enabled, next_run_at])
+}
+
+/// A saved way of looking at a report: its scope, limits, filter, sort, grouping and columns.
+model report_views {
+  id              String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organization_id String        @db.Uuid
+  report_key      String
+  name            String
+  config          Json          @default("{}")
+  created_by      String?       @db.Uuid
+  created_at      DateTime      @default(now()) @db.Timestamptz(6)
+  updated_at      DateTime      @default(now()) @db.Timestamptz(6)
+  organizations   organizations @relation(fields: [organization_id], references: [id], onDelete: Cascade)
+  users           users?        @relation(fields: [created_by], references: [id], onDelete: SetNull)
+
+  @@unique([organization_id, report_key, name])
+}
+
+/// Every row the demo data created, so turning demo data off removes exactly those and never anything real.
+model demo_records {
+  table_name String
+  record_id  String   @db.Uuid
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+
+  @@id([table_name, record_id])
+}
+
+/// One row per device per day: how often it was seen online and how full its disks were, sampled every 15 minutes.
+/// Availability and disk-space trends are worked out from these.
+model device_daily {
+  device_id         String   @db.Uuid
+  day               DateTime @db.Date
+  samples           Int      @default(0)
+  online_samples    Int      @default(0)
+  disk_free_pct_min Float?
+  disk_total_bytes  BigInt?
+  disk_free_bytes   BigInt?
+  business_samples        Int      @default(0)
+  business_online_samples Int      @default(0)
+  devices           devices  @relation(fields: [device_id], references: [id], onDelete: Cascade)
+
+  @@id([device_id, day])
+  @@index([day])
+}
+
+/// Software added, removed or updated, and hardware or operating system changes, noticed when a device reports in.
+model device_changes {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  device_id  String   @db.Uuid
+  changed_at DateTime @default(now()) @db.Timestamptz(6)
+  kind       String
+  summary    String
+  before     Json?
+  after      Json?
+  devices    devices  @relation(fields: [device_id], references: [id], onDelete: Cascade)
+
+  @@index([device_id, changed_at(sort: Desc)])
+  @@index([changed_at(sort: Desc)])
+}
+
+/// A report someone designed: a title, cover text and any number of the built-in reports, each with its own columns,
+/// filter, sort, grouping and limits. It runs for any customer, site or device and can be scheduled like the others.
+model custom_reports {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organization_id String   @db.Uuid
+  name            String
+  description     String?
+  config          Json     @default("{}")
+  created_by      String?  @db.Uuid
+  created_at      DateTime @default(now()) @db.Timestamptz(6)
+  updated_at      DateTime @default(now()) @db.Timestamptz(6)
+
+  @@unique([organization_id, name])
+}
+
+/// Software a customer must have, or must not have, by part of the program's name. A row with no customer applies to all.
+model software_policies {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organization_id String   @db.Uuid
+  client_id       String?  @db.Uuid
+  kind            String
+  pattern         String
+  note            String?
+  created_at      DateTime @default(now()) @db.Timestamptz(6)
+
+  @@index([organization_id, client_id])
+}
+
+/// When the working day is, for availability measured in business hours only.
+model report_settings {
+  organization_id String   @id @db.Uuid
+  business_days   Int[]    @default([1, 2, 3, 4, 5])
+  business_start  String   @default("08:00")
+  business_end    String   @default("18:00")
+  timezone        String   @default("UTC")
+  updated_at      DateTime @default(now()) @db.Timestamptz(6)
+}
+
+/// A customer's own look for the reports sent to them: colour, logo, a note on the cover and a footer on every page.
+/// The people at a customer: who to call, who gets the invoice, who looks after the technology.
+model customer_contacts {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  client_id  String   @db.Uuid
+  name       String
+  job_title  String?
+  email      String?
+  phone      String?
+  mobile     String?
+  role       String   @default("other")
+  is_primary Boolean  @default(false)
+  notes      String?
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+  updated_at DateTime @default(now()) @db.Timestamptz(6)
+  clients    clients  @relation(fields: [client_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([client_id])
+}
+
+model client_report_settings {
+  client_id     String   @id @db.Uuid
+  primary_color String?
+  logo_file     String?
+  cover_text    String?
+  footer_text   String?
+  updated_at    DateTime @default(now()) @db.Timestamptz(6)
+}
+
+/// Every time a scheduled report was sent or tried, kept after the schedule is gone.
+model report_deliveries {
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  schedule_id    String?  @db.Uuid
+  schedule_label String?
+  report_key     String
+  ran_at         DateTime @default(now()) @db.Timestamptz(6)
+  trigger        String
+  ok             Boolean
+  recipients     String
+  subject        String?
+  attachments    String?
+  result         String?
+  error          String?
+
+  @@index([schedule_id, ran_at(sort: Desc)])
+  @@index([ran_at(sort: Desc)])
+}
+
+/// People who may only see some customers. A person with no rows here sees all of them.
+model user_client_access {
+  user_id    String   @db.Uuid
+  client_id  String   @db.Uuid
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+
+  @@id([user_id, client_id])
+  @@index([client_id])
+}
+
+/// A named bundle of settings that applies to a customer, site, device or everyone. See docs/design/POLICIES.md.
+model policies {
+  id              String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organization_id String               @db.Uuid
+  name            String
+  description     String?
+  enabled         Boolean              @default(true)
+  priority        Int                  @default(100)
+  os              String               @default("any")
+  enforced        Boolean              @default(false)
+  apply_to_new_customers Boolean       @default(false)
+  sections        Json                 @default("{}")
+  version         Int                  @default(1)
+  created_by      String?              @db.Uuid
+  created_at      DateTime             @default(now()) @db.Timestamptz(6)
+  updated_at      DateTime             @default(now()) @db.Timestamptz(6)
+  organizations   organizations        @relation(fields: [organization_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  assignments     policy_assignments[]
+
+  @@unique([organization_id, name])
+}
+
+/// Where a policy applies, or where it is switched off (exclude).
+model policy_assignments {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  policy_id  String   @db.Uuid
+  level      String
+  target_id  String?  @db.Uuid
+  exclude    Boolean  @default(false)
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+  policies   policies @relation(fields: [policy_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([policy_id])
+  @@index([level, target_id])
+}
+
+/// Every change to a policy, kept after the policy is gone, so a change can be seen and undone.
+model policy_audit {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organization_id String   @db.Uuid
+  policy_id       String?  @db.Uuid
+  policy_name     String
+  action          String
+  actor_id        String?  @db.Uuid
+  actor_name      String?
+  version         Int?
+  before          Json?
+  after           Json?
+  at              DateTime @default(now()) @db.Timestamptz(6)
+
+  @@index([policy_id, at(sort: Desc)])
+  @@index([organization_id, at(sort: Desc)])
+}
+
+/// What policies did on their own: patches started, restarts requested. Also keeps each from repeating too soon.
+model policy_actions {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organization_id String   @db.Uuid
+  device_id       String   @db.Uuid
+  policy_id       String?  @db.Uuid
+  policy_name     String?
+  kind            String
+  detail          Json     @default("{}")
+  created_at      DateTime @default(now()) @db.Timestamptz(6)
+
+  @@index([device_id, kind, created_at(sort: Desc)])
+  @@index([organization_id, created_at(sort: Desc)])
+}
+
+/// A label that can be put on devices, so a policy can reach "all servers" without naming each one.
+model tag_defs {
+  id              String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organization_id String        @db.Uuid
+  name            String
+  color           String?
+  created_at      DateTime      @default(now()) @db.Timestamptz(6)
+  organizations   organizations @relation(fields: [organization_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  device_tags     device_tags[]
+
+  @@unique([organization_id, name])
+}
+
+model device_tags {
+  device_id  String   @db.Uuid
+  tag_id     String   @db.Uuid
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+  devices    devices  @relation(fields: [device_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  tag_defs   tag_defs @relation(fields: [tag_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@id([device_id, tag_id])
+  @@index([tag_id])
+}
+
+/// A check that has started failing but has not lasted long enough to raise an alert yet.
+model alert_pending {
+  dedupe_key    String   @id
+  device_id     String   @db.Uuid
+  first_seen_at DateTime @default(now()) @db.Timestamptz(6)
+  last_seen_at  DateTime @default(now()) @db.Timestamptz(6)
+
+  @@index([last_seen_at])
+}
+
+model user_groups {
+  id                     String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organization_id        String                   @db.Uuid
+  name                   String
+  description            String?
+  created_at             DateTime                 @default(now()) @db.Timestamptz(6)
+  updated_at             DateTime                 @default(now()) @db.Timestamptz(6)
+  organizations          organizations            @relation(fields: [organization_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  user_group_members     user_group_members[]
+  user_group_permissions user_group_permissions[]
+  user_group_scope       user_group_scope[]
+
+  @@unique([organization_id, name])
+}
+
+model user_group_members {
+  group_id    String      @db.Uuid
+  user_id     String      @db.Uuid
+  added_at    DateTime    @default(now()) @db.Timestamptz(6)
+  user_groups user_groups @relation(fields: [group_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  users       users       @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@id([group_id, user_id])
+  @@index([user_id])
+}
+
+model user_group_permissions {
+  group_id       String      @db.Uuid
+  permission_key String
+  user_groups    user_groups @relation(fields: [group_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  permissions    permissions @relation(fields: [permission_key], references: [permission_key], onDelete: Cascade, onUpdate: NoAction)
+
+  @@id([group_id, permission_key])
+}
+
+model user_group_scope {
+  group_id    String      @db.Uuid
+  kind        String
+  target_id   String      @db.Uuid
+  user_groups user_groups @relation(fields: [group_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@id([group_id, kind, target_id])
+}
+
+/// The Microsoft 365 mailbox that support mail is read from and replies are sent from.
+model support_mailbox {
+  organization_id     String        @id @db.Uuid
+  enabled             Boolean       @default(false)
+  source              String        @default("microsoft")
+  tenant_id           String        @default("")
+  client_id           String        @default("")
+  client_secret       String?
+  refresh_token       String?
+  mailbox_address     String        @default("")
+  connected_at        DateTime?     @db.Timestamptz(6)
+  oauth_state         String?
+  oauth_state_expires DateTime?     @db.Timestamptz(6)
+  oauth_return_to     String?
+  last_polled_at      DateTime?     @db.Timestamptz(6)
+  last_error          String?
+  last_error_at       DateTime?     @db.Timestamptz(6)
+  created_at          DateTime      @default(now()) @db.Timestamptz(6)
+  updated_at          DateTime      @default(now()) @db.Timestamptz(6)
+  organizations       organizations @relation(fields: [organization_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+/// A piece of script kept for reuse: private to its writer, or shared with everyone who writes scripts.
+model script_snippets {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organization_id String   @db.Uuid
+  owner_user_id   String?  @db.Uuid
+  title           String
+  description     String?
+  language        String   @default("any")
+  body            String
+  is_shared       Boolean  @default(false)
+  created_at      DateTime @default(now()) @db.Timestamptz(6)
+  updated_at      DateTime @default(now()) @db.Timestamptz(6)
+
+  @@index([organization_id])
+}
+
+/// Single sign-on through an OpenID Connect provider.
+model sso_config {
+  organization_id String   @id @db.Uuid
+  enabled         Boolean  @default(false)
+  display_name    String   @default("Single sign-on")
+  issuer          String   @default("")
+  client_id       String   @default("")
+  client_secret   String?
+  scopes          String   @default("openid email profile")
+  jit_enabled     Boolean  @default(false)
+  default_role_id String?  @db.Uuid
+  allowed_domains String   @default("")
+  password_login  Boolean  @default(true)
+  created_at      DateTime @default(now()) @db.Timestamptz(6)
+  updated_at      DateTime @default(now()) @db.Timestamptz(6)
+}
+
+/// Which provider account belongs to which user.
+model sso_identities {
+  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organization_id String    @db.Uuid
+  user_id         String    @db.Uuid
+  issuer          String
+  subject         String
+  email           String?
+  created_at      DateTime  @default(now()) @db.Timestamptz(6)
+  last_login_at   DateTime? @db.Timestamptz(6)
+
+  @@unique([issuer, subject])
+  @@unique([user_id, issuer])
+}
+
+/// A sign-in in progress, kept for a few minutes.
+model sso_login_states {
+  state           String   @id
+  organization_id String   @db.Uuid
+  nonce           String
+  code_verifier   String
+  return_to       String?
+  expires_at      DateTime @db.Timestamptz(6)
+
+  @@index([expires_at])
+}
+
+/// An import from another helpdesk: preview, then run.
+model import_jobs {
+  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organization_id String    @db.Uuid
+  source          String
+  status          String
+  config          Json      @default("{}")
+  options         Json      @default("{}")
+  preview         Json?
+  progress        Json      @default("{}")
+  errors          Json      @default("[]")
+  message         String?
+  created_by      String?   @db.Uuid
+  created_at      DateTime  @default(now()) @db.Timestamptz(6)
+  started_at      DateTime? @db.Timestamptz(6)
+  finished_at     DateTime? @db.Timestamptz(6)
+  updated_at      DateTime  @default(now()) @db.Timestamptz(6)
+
+  @@index([organization_id, created_at(sort: Desc)])
+}
+
+/// Which imported thing became which record here.
+model import_links {
+  organization_id String   @db.Uuid
+  source          String
+  kind            String
+  external_id     String
+  local_id        String?  @db.Uuid
+  created_at      DateTime @default(now()) @db.Timestamptz(6)
+
+  @@id([organization_id, source, kind, external_id])
+}
+
+/// A field the organization keeps about its customers.
+model custom_field_defs {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organization_id String   @db.Uuid
+  entity          String   @default("customer")
+  key             String
+  label           String
+  type            String
+  options         Json     @default("[]")
+  required        Boolean  @default(false)
+  help            String?
+  sort_order      Int      @default(0)
+  active          Boolean  @default(true)
+  /// Ticket fields only: shown to the customer on their ticket in the client portal.
+  visible_to_customer Boolean @default(false)
+  created_at      DateTime @default(now()) @db.Timestamptz(6)
+  updated_at      DateTime @default(now()) @db.Timestamptz(6)
+
+  @@unique([organization_id, entity, key])
+}
+
+/// The client portal's settings: its own domain and what customers can open there.
+model portal_settings {
+  organization_id     String   @id @db.Uuid
+  enabled             Boolean  @default(false)
+  domain              String?
+  modules             String[] @default(["dashboard", "tickets", "devices", "invoices", "reports"])
+  allow_ticket_create Boolean  @default(true)
+  welcome_title       String   @default("")
+  welcome_text        String   @default("")
+  support_email       String   @default("")
+  support_phone       String   @default("")
+  updated_at          DateTime @default(now()) @db.Timestamptz(6)
+}
+
+/// A customer's person who can sign in to the portal.
+model portal_accounts {
+  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organization_id String    @db.Uuid
+  client_id       String    @db.Uuid
+  contact_id      String?   @db.Uuid
+  email           String    @db.Citext
+  name            String
+  role            String    @default("user")
+  status          String    @default("invited")
+  password_hash   String?
+  failed_logins   Int       @default(0)
+  locked_until    DateTime? @db.Timestamptz(6)
+  last_login_at   DateTime? @db.Timestamptz(6)
+  created_by      String?   @db.Uuid
+  created_at      DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at      DateTime  @default(now()) @db.Timestamptz(6)
+
+  @@unique([email])
+  @@index([client_id])
+}
+
+model portal_tokens {
+  id         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  account_id String    @db.Uuid
+  kind       String
+  token_hash String    @unique
+  expires_at DateTime  @db.Timestamptz(6)
+  used_at    DateTime? @db.Timestamptz(6)
+  created_at DateTime  @default(now()) @db.Timestamptz(6)
+
+  @@index([account_id])
+}
+
+model portal_sessions {
+  id         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  account_id String    @db.Uuid
+  created_at DateTime  @default(now()) @db.Timestamptz(6)
+  expires_at DateTime  @db.Timestamptz(6)
+  revoked_at DateTime? @db.Timestamptz(6)
+  ip         String?
+  user_agent String?
+
+  @@index([account_id])
+}
+
+model portal_ticket_reads {
+  account_id String   @db.Uuid
+  ticket_id  String   @db.Uuid
+  read_at    DateTime @default(now()) @db.Timestamptz(6)
+
+  @@id([account_id, ticket_id])
+}
+
+model ticket_staff_reads {
+  user_id   String   @db.Uuid
+  ticket_id String   @db.Uuid
+  read_at   DateTime @default(now()) @db.Timestamptz(6)
+
+  @@id([user_id, ticket_id])
+}
+
+/// Administration > Security Policies: password rules, session limits, sign-in address list and CAPTCHA.
+model security_policies {
+  organization_id            String   @id @db.Uuid
+  password_min_length        Int      @default(8)
+  password_require_numbers   Boolean  @default(false)
+  password_require_special   Boolean  @default(false)
+  password_require_uppercase Boolean  @default(false)
+  password_history           Int      @default(0)
+  session_timeout_mins       Int      @default(0)
+  idle_timeout_mins          Int      @default(0)
+  ip_allowlist               String   @default("")
+  captcha_enabled            Boolean  @default(false)
+  turnstile_site_key         String   @default("")
+  turnstile_secret           String?
+  updated_at                 DateTime @default(now()) @db.Timestamptz(6)
+  updated_by                 String?  @db.Uuid
+}
+
+/// Hashes of earlier staff passwords, for the "do not reuse" rule.
+model password_history {
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id       String   @db.Uuid
+  password_hash String
+  created_at    DateTime @default(now()) @db.Timestamptz(6)
+
+  @@index([user_id, created_at(sort: Desc)], map: "password_history_user_idx")
+}
+
+/// Administration > Agents & Endpoints.
+model agent_settings {
+  organization_id         String   @id @db.Uuid
+  install_key_expiry_mins Int      @default(10080)
+  auto_update             Boolean  @default(true)
+  updated_at              DateTime @default(now()) @db.Timestamptz(6)
+  updated_by              String?  @db.Uuid
+}
+
+/// What an administrator changed about a feature flag. The flags and their defaults live in the code.
+model feature_flags {
+  organization_id String   @db.Uuid
+  key             String
+  enabled         Boolean
+  updated_by      String?  @db.Uuid
+  updated_at      DateTime @default(now()) @db.Timestamptz(6)
+
+  @@id([organization_id, key])
+}
+
+/// A starting point for a new ticket: its subject, description, priority and custom field values.
+model ticket_templates {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organization_id String   @db.Uuid
+  name            String
+  hint            String?
+  subject         String   @default("")
+  body            String   @default("")
+  priority        String   @default("medium")
+  custom_fields   Json     @default("{}")
+  sort_order      Int      @default(0)
+  created_by      String?  @db.Uuid
+  created_at      DateTime @default(now()) @db.Timestamptz(6)
+  updated_at      DateTime @default(now()) @db.Timestamptz(6)
+}
+
+/// What an administrator changed about a system email. Without a row the built-in wording is used.
+model email_templates {
+  organization_id String   @db.Uuid
+  key             String
+  subject         String
+  body            String
+  updated_by      String?  @db.Uuid
+  updated_at      DateTime @default(now()) @db.Timestamptz(6)
+
+  @@id([organization_id, key])
+}
+
+/// An address that gets a signed copy of chosen events (Administration > Integrations).
+model webhook_endpoints {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organization_id String   @db.Uuid
+  name            String
+  url             String
+  secret          String
+  events          String[]
+  /// auto (from the address), remoteiq, slack, discord or teams
+  format          String   @default("auto")
+  enabled         Boolean  @default(true)
+  created_by      String?  @db.Uuid
+  created_at      DateTime @default(now()) @db.Timestamptz(6)
+  updated_at      DateTime @default(now()) @db.Timestamptz(6)
+  deliveries      webhook_deliveries[]
+}
+
+/// One event for one webhook: waiting, delivered or given up on.
+model webhook_deliveries {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  endpoint_id     String   @db.Uuid
+  event           String
+  payload         Json
+  status          String   @default("pending")
+  attempts        Int      @default(0)
+  next_attempt_at DateTime @default(now()) @db.Timestamptz(6)
+  response_status Int?
+  last_error      String?
+  created_at      DateTime @default(now()) @db.Timestamptz(6)
+  delivered_at    DateTime? @db.Timestamptz(6)
+  endpoint        webhook_endpoints @relation(fields: [endpoint_id], references: [id], onDelete: Cascade)
+
+  @@index([status, next_attempt_at])
+  @@index([endpoint_id, created_at(sort: Desc)])
+}
+
+/// Internal knowledge base (help desk). Customer documentation lives in the separate docs app, not here.
+model kb_categories {
+  id              String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organization_id String        @db.Uuid
+  name            String
+  sort_order      Int           @default(0)
+  created_at      DateTime      @default(now()) @db.Timestamptz(6)
+  articles        kb_articles[]
+}
+
+model kb_articles {
+  id               String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organization_id  String    @db.Uuid
+  category_id      String?   @db.Uuid
+  title            String
+  body             String    @default("")
+  tags             String[]  @default([])
+  status           String    @default("draft")
+  customer_visible Boolean   @default(false)
+  author_user_id   String?   @db.Uuid
+  updated_by       String?   @db.Uuid
+  version          Int       @default(1)
+  view_count       Int       @default(0)
+  helpful_count    Int       @default(0)
+  unhelpful_count  Int       @default(0)
+  created_at       DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at       DateTime  @default(now()) @db.Timestamptz(6)
+  published_at     DateTime? @db.Timestamptz(6)
+
+  category kb_categories?        @relation(fields: [category_id], references: [id], onDelete: SetNull)
+  versions kb_article_versions[]
+  feedback kb_feedback[]
+  links    kb_ticket_links[]
+
+  @@index([organization_id, status, updated_at(sort: Desc)])
+  @@index([category_id])
+}
+
+model kb_article_versions {
+  id         String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  article_id String      @db.Uuid
+  version    Int
+  title      String
+  body       String
+  tags       String[]    @default([])
+  saved_by   String?     @db.Uuid
+  saved_at   DateTime    @default(now()) @db.Timestamptz(6)
+  note       String?
+  article    kb_articles @relation(fields: [article_id], references: [id], onDelete: Cascade)
+
+  @@unique([article_id, version])
+}
+
+model kb_feedback {
+  article_id String      @db.Uuid
+  voter_key  String
+  helpful    Boolean
+  created_at DateTime    @default(now()) @db.Timestamptz(6)
+  article    kb_articles @relation(fields: [article_id], references: [id], onDelete: Cascade)
+
+  @@id([article_id, voter_key])
+}
+
+model kb_ticket_links {
+  ticket_id  String      @db.Uuid
+  article_id String      @db.Uuid
+  linked_by  String?     @db.Uuid
+  created_at DateTime    @default(now()) @db.Timestamptz(6)
+  article    kb_articles @relation(fields: [article_id], references: [id], onDelete: Cascade)
+
+  @@id([ticket_id, article_id])
+  @@index([article_id])
+}
+
+/// A visit booked against a ticket: when, where, who goes, and how far along it is. Foreign keys are in the migration.
+model ticket_visits {
+  id                   String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organization_id      String               @db.Uuid
+  ticket_id            String               @db.Uuid
+  client_id            String?              @db.Uuid
+  title                String
+  notes                String?
+  location             String?
+  status               String               @default("scheduled")
+  starts_at            DateTime             @db.Timestamptz(6)
+  ends_at              DateTime             @db.Timestamptz(6)
+  time_zone            String               @default("UTC")
+  customer_notified_at DateTime?            @db.Timestamptz(6)
+  time_entry_id        String?              @db.Uuid
+  sequence             Int                  @default(0)
+  created_by           String?              @db.Uuid
+  created_at           DateTime             @default(now()) @db.Timestamptz(6)
+  updated_at           DateTime             @default(now()) @db.Timestamptz(6)
+  techs                ticket_visit_techs[]
+
+  @@index([organization_id, starts_at])
+  @@index([ticket_id])
+}
+
+model ticket_visit_techs {
+  visit_id String        @db.Uuid
+  user_id  String        @db.Uuid
+  visit    ticket_visits @relation(fields: [visit_id], references: [id], onDelete: Cascade)
+
+  @@id([visit_id, user_id])
+  @@index([user_id])
+}
+
+/// A technician's weekly working hours (Monday..Sunday) in their own time zone.
+model tech_availability {
+  user_id         String   @id @db.Uuid
+  organization_id String   @db.Uuid
+  time_zone       String   @default("UTC")
+  hours           Json     @default("[]")
+  updated_at      DateTime @default(now()) @db.Timestamptz(6)
+}
+
+model tech_time_off {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organization_id String   @db.Uuid
+  user_id         String   @db.Uuid
+  starts_at       DateTime @db.Timestamptz(6)
+  ends_at         DateTime @db.Timestamptz(6)
+  reason          String?
+  created_at      DateTime @default(now()) @db.Timestamptz(6)
+
+  @@index([user_id, starts_at])
+}
+
+/// A device on a ticket. A ticket can have none, one or several, all of the ticket's customer.
+model ticket_devices {
+  ticket_id String   @db.Uuid
+  device_id String   @db.Uuid
+  added_by  String?
+  added_at  DateTime @default(now()) @db.Timestamptz(6)
+  tickets   tickets  @relation(fields: [ticket_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  devices   devices  @relation(fields: [device_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@id([ticket_id, device_id])
+  @@index([device_id])
+}
+
+/// A ticket made from a template on a schedule. Foreign keys are in the migration.
+model recurring_tickets {
+  id               String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organization_id  String    @db.Uuid
+  name             String
+  template_id      String?   @db.Uuid
+  subject          String?
+  description      String?
+  priority         String?
+  client_id        String    @db.Uuid
+  site_id          String?   @db.Uuid
+  device_id        String?   @db.Uuid
+  assignee_user_id String?   @db.Uuid
+  frequency        String
+  run_time         String    @default("08:00")
+  timezone         String    @default("UTC")
+  days_of_week     Int[]     @default([])
+  day_of_month     Int?
+  month_of_year    Int?
+  start_date       DateTime? @db.Date
+  end_date         DateTime? @db.Date
+  skip_if_open     Boolean   @default(true)
+  enabled          Boolean   @default(true)
+  next_run_at      DateTime? @db.Timestamptz(6)
+  last_run_at      DateTime? @db.Timestamptz(6)
+  last_status      String?
+  last_error       String?
+  created_by       String?   @db.Uuid
+  created_at       DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at       DateTime  @default(now()) @db.Timestamptz(6)
+  runs             recurring_ticket_runs[]
+
+  @@unique([organization_id, name])
+}
+
+/// One row per period a recurring schedule has run for; the unique run key stops a second ticket for the same period.
+model recurring_ticket_runs {
+  id            String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  recurring_id  String            @db.Uuid
+  run_key       String
+  scheduled_for DateTime          @db.Timestamptz(6)
+  trigger       String            @default("scheduled")
+  status        String            @default("pending")
+  ticket_id     String?           @db.Uuid
+  error         String?
+  created_at    DateTime          @default(now()) @db.Timestamptz(6)
+  finished_at   DateTime?         @db.Timestamptz(6)
+  recurring     recurring_tickets @relation(fields: [recurring_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([recurring_id, run_key])
+  @@index([recurring_id, created_at(sort: Desc)])
+}
+
+/// Customer satisfaction surveys: the settings of the organization.
+model survey_settings {
+  organization_id     String    @id @db.Uuid
+  enabled             Boolean   @default(false)
+  trigger_statuses    String[]  @default(["resolved", "closed"])
+  delay_minutes       Int       @default(60)
+  scope               String    @default("all")
+  client_ids          String[]  @default([]) @db.Uuid
+  throttle_days       Int       @default(14)
+  reminder_enabled    Boolean   @default(false)
+  reminder_after_days Int       @default(3)
+  expiry_days         Int       @default(30)
+  scale               String    @default("stars")
+  low_threshold       Int       @default(2)
+  alert_user_ids      String[]  @default([]) @db.Uuid
+  alert_group_ids     String[]  @default([]) @db.Uuid
+  enabled_at          DateTime? @db.Timestamptz(6)
+  updated_by          String?   @db.Uuid
+  updated_at          DateTime  @default(now()) @db.Timestamptz(6)
+}
+
+/// One survey per ticket: sent to the person who asked, answered once through a signed link or the portal.
+model ticket_surveys {
+  id                 String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organization_id    String    @db.Uuid
+  ticket_id          String    @unique @db.Uuid
+  client_id          String?   @db.Uuid
+  recipient_email    String    @default("")
+  recipient_name     String    @default("")
+  technician_user_id String?   @db.Uuid
+  status             String    @default("pending")
+  skip_reason        String?
+  attempts           Int       @default(0)
+  next_attempt_at    DateTime  @default(now()) @db.Timestamptz(6)
+  last_error         String?
+  portal_link        Boolean   @default(false)
+  triggered_at       DateTime? @db.Timestamptz(6)
+  sent_at            DateTime? @db.Timestamptz(6)
+  reminded_at        DateTime? @db.Timestamptz(6)
+  expires_at         DateTime? @db.Timestamptz(6)
+  answered_at        DateTime? @db.Timestamptz(6)
+  answered_via       String?
+  score              Int?
+  comment            String?
+  low_alerted_at     DateTime? @db.Timestamptz(6)
+  created_at         DateTime  @default(now()) @db.Timestamptz(6)
+
+  @@index([status, next_attempt_at])
+  @@index([organization_id, answered_at])
+}
+
+/// Working hours for SLA clocks: a time zone, working days and hours, and holidays. A policy with none runs around the clock.
+model sla_calendars {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organization_id String   @db.Uuid
+  name            String
+  timezone        String   @default("UTC")
+  days            Int[]    @default([1, 2, 3, 4, 5])
+  start_time      String   @default("09:00")
+  end_time        String   @default("17:00")
+  holidays        Json     @default("[]")
+  created_at      DateTime @default(now()) @db.Timestamptz(6)
+  updated_at      DateTime @default(now()) @db.Timestamptz(6)
+}
+
+/// Response and resolution targets by priority, which statuses stop the clocks, and what happens on a warning or breach.
+model sla_policies {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organization_id String   @db.Uuid
+  name            String
+  description     String?
+  calendar_id     String?  @db.Uuid
+  is_default      Boolean  @default(false)
+  enabled         Boolean  @default(true)
+  targets         Json     @default("{}")
+  pause_statuses  String[] @default(["pending"])
+  warn_percent    Int      @default(80)
+  escalation      Json     @default("{}")
+  created_at      DateTime @default(now()) @db.Timestamptz(6)
+  updated_at      DateTime @default(now()) @db.Timestamptz(6)
+}
+
+model sla_client_policies {
+  client_id  String   @id @db.Uuid
+  policy_id  String   @db.Uuid
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+}
+
+/// Where tickets wait for someone, and who gets them.
+model ticket_queues {
+  id                       String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organization_id          String   @db.Uuid
+  name                     String
+  description              String?
+  enabled                  Boolean  @default(true)
+  assignment               String   @default("none")
+  default_assignee_user_id String?  @db.Uuid
+  pool_user_ids            String[] @db.Uuid
+  pool_group_id            String?  @db.Uuid
+  last_assigned_user_id    String?  @db.Uuid
+  default_sla_policy_id    String?  @db.Uuid
+  created_at               DateTime @default(now()) @db.Timestamptz(6)
+  updated_at               DateTime @default(now()) @db.Timestamptz(6)
+}
+
+model ticket_routing_rules {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organization_id String   @db.Uuid
+  name            String
+  enabled         Boolean  @default(true)
+  position        Int      @default(0)
+  match           String   @default("all")
+  conditions      Json     @default("[]")
+  actions         Json     @default("{}")
+  stop_on_match   Boolean  @default(true)
+  created_at      DateTime @default(now()) @db.Timestamptz(6)
+  updated_at      DateTime @default(now()) @db.Timestamptz(6)
+
+  @@index([organization_id, position])
+}
+
+/// The two SLA clocks of a ticket: target, working time used, when each runs from, and what has been recorded.
+model ticket_sla {
+  ticket_id                String    @id @db.Uuid
+  policy_id                String?   @db.Uuid
+  policy_name              String
+  priority                 String
+  status                   String
+  paused                   Boolean   @default(false)
+  warn_percent             Int       @default(80)
+  response_target_min      Int?
+  response_used_ms         BigInt    @default(0)
+  response_running_since   DateTime? @db.Timestamptz(6)
+  response_due_at          DateTime? @db.Timestamptz(6)
+  response_warn_at         DateTime? @db.Timestamptz(6)
+  response_done_at         DateTime? @db.Timestamptz(6)
+  response_met             Boolean?
+  response_warned_at       DateTime? @db.Timestamptz(6)
+  response_breached_at     DateTime? @db.Timestamptz(6)
+  resolution_target_min    Int?
+  resolution_used_ms       BigInt    @default(0)
+  resolution_running_since DateTime? @db.Timestamptz(6)
+  resolution_due_at        DateTime? @db.Timestamptz(6)
+  resolution_warn_at       DateTime? @db.Timestamptz(6)
+  resolution_done_at       DateTime? @db.Timestamptz(6)
+  resolution_met           Boolean?
+  resolution_warned_at     DateTime? @db.Timestamptz(6)
+  resolution_breached_at   DateTime? @db.Timestamptz(6)
+  updated_at               DateTime  @default(now()) @db.Timestamptz(6)
+}
+
+/// In-app notices for a person (an SLA warning, a breach, an assignment), shown on the tickets screen until read.
+model ticket_notices {
+  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organization_id String    @db.Uuid
+  user_id         String    @db.Uuid
+  ticket_id       String?   @db.Uuid
+  kind            String
+  title           String
+  body            String    @default("")
+  created_at      DateTime  @default(now()) @db.Timestamptz(6)
+  read_at         DateTime? @db.Timestamptz(6)
+
+  @@index([user_id, read_at, created_at(sort: Desc)])
+}
+
+model remote_recording_settings {
+  organization_id  String   @id @db.Uuid
+  retention_days   Int      @default(90)
+  max_recording_mb Int      @default(2048)
+  quota_gb         Int      @default(50)
+  updated_by       String?  @db.Uuid
+  updated_at       DateTime @default(now()) @db.Timestamptz(6)
+}
+
+model remote_session_recordings {
+  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organization_id String    @db.Uuid
+  session_id      String    @unique @db.Uuid
+  device_id       String?   @db.Uuid
+  device_name     String?
+  client_id       String?   @db.Uuid
+  client_name     String?
+  technician_id   String?   @db.Uuid
+  technician_name String?
+  status          String    @default("recording")
+  mime_type       String    @default("video/webm")
+  started_at      DateTime  @default(now()) @db.Timestamptz(6)
+  ended_at        DateTime? @db.Timestamptz(6)
+  last_chunk_at   DateTime? @db.Timestamptz(6)
+  duration_ms     BigInt    @default(0)
+  size_bytes      BigInt    @default(0)
+  chunk_count     Int       @default(0)
+  notice_mode     String?
+  expires_at      DateTime  @db.Timestamptz(6)
+  created_at      DateTime  @default(now()) @db.Timestamptz(6)
+
+  @@index([organization_id, started_at(sort: Desc)])
+  @@index([client_id])
+  @@index([device_id])
+  @@index([expires_at])
+}
+
+/// Something done to many devices at once from the device list (reboot, patch scan, run a script, ...). One row per click.
+model bulk_batches {
+  id              String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organization_id String             @db.Uuid
+  action          String
+  summary         String
+  params          Json               @default("{}")
+  requested       Int
+  succeeded       Int                @default(0)
+  skipped         Int                @default(0)
+  failed          Int                @default(0)
+  created_by      String?            @db.Uuid
+  created_at      DateTime           @default(now()) @db.Timestamptz(6)
+  items           bulk_batch_items[]
+
+  @@index([organization_id, created_at(sort: Desc)], map: "bulk_batches_org_created_idx")
+  @@index([created_by, created_at(sort: Desc)], map: "bulk_batches_user_created_idx")
+}
+
+/// What happened to one device in a batch: done or queued (with its job or task), skipped, or failed, and why.
+model bulk_batch_items {
+  id          String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  batch_id    String       @db.Uuid
+  device_id   String       @db.Uuid
+  device_name String       @default("")
+  client_id   String?      @db.Uuid
+  status      String
+  reason      String?
+  job_id      String?      @db.Uuid
+  task_id     String?      @db.Uuid
+  created_at  DateTime     @default(now()) @db.Timestamptz(6)
+  batch       bulk_batches @relation(fields: [batch_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([batch_id], map: "bulk_batch_items_batch_idx")
+}
+
+/// A program with a newer version, as the last software_updates_scan of a device saw it (winget or Chocolatey).
+model agent_outdated_software {
+  id                String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  agent_id          String   @db.Uuid
+  source            String
+  app_id            String
+  name              String
+  installed_version String?
+  available_version String
+  approximate       Boolean  @default(false)
+  first_seen_at     DateTime @default(now()) @db.Timestamptz(6)
+  scanned_at        DateTime @default(now()) @db.Timestamptz(6)
+
+  @@unique([agent_id, source, app_id], map: "agent_outdated_software_uq")
+}
+
+/// The last outdated-software scan of a device: when it answered, what each tool said, and why not when it failed.
+model agent_software_scans {
+  agent_id     String    @id @db.Uuid
+  attempted_at DateTime  @default(now()) @db.Timestamptz(6)
+  scanned_at   DateTime? @db.Timestamptz(6)
+  ok           Boolean   @default(false)
+  winget_state String?
+  choco_state  String?
+  message      String?
+  app_count    Int       @default(0)
+}
+
+/// "Allowed to update on its own" and "never update" by package id, for the whole organisation or one customer.
+model software_update_rules {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organization_id String   @db.Uuid
+  client_id       String?  @db.Uuid
+  source          String   @default("winget")
+  app_id          String
+  app_name        String?
+  rule            String
+  created_by      String?  @db.Uuid
+  created_at      DateTime @default(now()) @db.Timestamptz(6)
+
+  @@index([organization_id, rule], map: "software_update_rules_org_idx")
+}
+
+model device_registry_changes {
+  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organization_id String    @db.Uuid
+  device_id       String    @db.Uuid
+  user_id         String?   @db.Uuid
+  user_name       String?
+  at              DateTime  @default(now()) @db.Timestamptz(6)
+  action          String
+  hive            String
+  view            String    @default("64")
+  path            String
+  value_name      String?
+  old_type        String?
+  old_data        Json?
+  new_type        String?
+  new_data        Json?
+  outcome         String    @default("pending")
+  error           String?
+  job_id          String?   @db.Uuid
+  undone_at       DateTime? @db.Timestamptz(6)
+  undone_by       String?   @db.Uuid
+  undo_of         String?   @db.Uuid
+
+  @@index([device_id, at(sort: Desc)], map: "device_registry_changes_device_at_idx")
+  @@index([organization_id, at(sort: Desc)], map: "device_registry_changes_org_at_idx")
+}
+
+model agent_releases_log {
+  id               String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organization_id  String?  @db.Uuid
+  at               DateTime @default(now()) @db.Timestamptz(6)
+  actor_user_id    String?  @db.Uuid
+  actor_email      String?
+  action           String
+  os               String?
+  version          String?
+  previous_version String?
+  ring_counts      Json     @default("{}")
+  forced           Boolean  @default(false)
+  reason           String?
+  details          Json     @default("{}")
+
+  @@index([at(sort: Desc)])
+}
+
+/// The last security scan of a Windows device (see 20261119010000_device_security_scans): the checked probes in `raw`, and the score and counts as of that scan.
+model device_security_scans {
+  device_id       String    @id @db.Uuid
+  scanned_at      DateTime? @db.Timestamptz(6)
+  attempted_at    DateTime  @default(now()) @db.Timestamptz(6)
+  ok              Boolean   @default(false)
+  raw             Json?
+  score           Int?
+  grade           String?
+  findings_failed Int       @default(0)
+  findings_warned Int       @default(0)
+  critical_failed Int       @default(0)
+  high_failed     Int       @default(0)
+  unknown_count   Int       @default(0)
+  failed_rules    String[]  @default([])
+  message         String?
+  pending_job_id  String?   @db.Uuid
+  pending_at      DateTime? @db.Timestamptz(6)
+
+  @@index([score], map: "device_security_scans_score_idx")
+  @@index([grade], map: "device_security_scans_grade_idx")
+  @@index([attempted_at], map: "device_security_scans_attempted_idx")
+}
+/// The encrypted device-secrets vault (see 20261120010000_device_secrets). Accessed with raw SQL; ciphertext is never selected by listings.
+model device_secrets {
+  id               String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  org_id           String    @db.Uuid
+  device_id        String    @db.Uuid
+  kind             String
+  label            String
+  ref              String
+  ciphertext       String?
+  key_version      Int       @default(1)
+  key_id           String?
+  created_at       DateTime  @default(now()) @db.Timestamptz(6)
+  rotated_at       DateTime? @db.Timestamptz(6)
+  superseded_at    DateTime? @db.Timestamptz(6)
+  last_seen_at     DateTime? @db.Timestamptz(6)
+  missed_reads     Int       @default(0)
+  status           String    @default("current")
+  last_revealed_at DateTime? @db.Timestamptz(6)
+  last_revealed_by String?
+
+  @@index([device_id, kind, status], map: "device_secrets_device_idx")
+  @@index([org_id], map: "device_secrets_org_idx")
+}
+
+/// Who revealed, stored or changed which secret (never the secret itself).
+model device_secret_access {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  device_id   String   @db.Uuid
+  secret_id   String?  @db.Uuid
+  secret_kind String?
+  label       String?
+  user_id     String?  @db.Uuid
+  user_name   String?
+  at          DateTime @default(now()) @db.Timestamptz(6)
+  action      String
+  reason      String?
+  outcome     String
+  error       String?
+
+  @@index([device_id, at(sort: Desc)], map: "device_secret_access_device_at_idx")
+  @@index([at(sort: Desc)], map: "device_secret_access_at_idx")
+}
+
+/// What is waiting or was last tried for the secrets of a device.
+model device_secret_state {
+  device_id             String    @id @db.Uuid
+  escrow_pending_job_id String?   @db.Uuid
+  escrow_pending_at     DateTime? @db.Timestamptz(6)
+  escrow_attempted_at   DateTime? @db.Timestamptz(6)
+  escrow_ok_at          DateTime? @db.Timestamptz(6)
+  escrow_message        String?
+  escrow_by_user        String?   @db.Uuid
+  escrow_by_name        String?
+  escrow_trigger        String?
+  laps_pending_job_id   String?   @db.Uuid
+  laps_pending_at       DateTime? @db.Timestamptz(6)
+  laps_attempted_at     DateTime? @db.Timestamptz(6)
+  laps_ok_at            DateTime? @db.Timestamptz(6)
+  laps_attempt          String?
+  laps_message          String?
+  laps_by_user          String?   @db.Uuid
+  laps_by_name          String?
+  laps_trigger          String?
+  laps_rotate_due_at    DateTime? @db.Timestamptz(6)
+}

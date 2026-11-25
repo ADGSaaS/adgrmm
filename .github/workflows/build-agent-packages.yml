@@ -1,0 +1,70 @@
+# Builds the agent packages on a fresh machine, so a release does not depend on what is on a
+# developer's PC. Build only: nothing is installed or run, and testing happens on real machines.
+name: Build agent packages
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "agent-build-*"
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: windows-2022
+    timeout-minutes: 30
+    steps:
+      # Matches how developers check the code out, because line endings end up in the build.
+      - run: git config --global core.autocrlf true
+
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.427"
+
+      - name: Build
+        shell: pwsh
+        run: |
+          Push-Location agents/windows/RemoteIQ.Agent
+          dotnet --version
+          Pop-Location
+          ./agents/build-packages.ps1 -OutDir "$env:GITHUB_WORKSPACE/out/packages"
+
+      # Bundling compresses the files, so any small difference spreads through a whole exe.
+      - name: List unbundled files for comparison
+        shell: pwsh
+        run: ./agents/tools/compare-build.ps1 -Repo "$env:GITHUB_WORKSPACE" -Out "$env:GITHUB_WORKSPACE/out/compare"
+
+      # Best effort, because runner images limit Defender. Samples are never uploaded from a private repo.
+      - name: Defender scan with cloud protection
+        continue-on-error: true
+        shell: pwsh
+        run: |
+          Set-MpPreference -MAPSReporting Advanced -SubmitSamplesConsent NeverSend
+          Update-MpSignature
+          Get-MpPreference | Select-Object MAPSReporting, SubmitSamplesConsent, CloudBlockLevel | Format-List
+          Get-MpComputerStatus | Select-Object AMServiceEnabled, AntivirusEnabled, AntivirusSignatureVersion | Format-List
+          $scan = "$env:RUNNER_TEMP/scan"
+          Expand-Archive out/packages/windows/remoteiq-agent-windows.zip $scan
+          $mp = "$env:ProgramFiles\Windows Defender\MpCmdRun.exe"
+          Get-ChildItem $scan -Recurse -Filter *.exe | ForEach-Object {
+            Write-Output "--- $($_.Name) $((Get-FileHash $_.FullName).Hash)"
+            & $mp -Scan -ScanType 3 -File $_.FullName -DisableRemediation
+          }
+          Get-MpThreatDetection | Format-List
+
+      # The release workflow reads this artifact: it expects windows/ and linux/ at the top.
+      - uses: actions/upload-artifact@v4
+        with:
+          name: agent-packages
+          path: out/packages
+          retention-days: 30
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: agent-compare
+          path: out/compare
+          retention-days: 30

@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Judges the session starts that backend/test/session-signature.cjs produces, using the agents' own
+       verifier. Plain net8.0 and that one source file, so it runs anywhere with no extra packages. -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <ManagePackageVersionsCentrally>false</ManagePackageVersionsCentrally>
+    <InvariantGlobalization>true</InvariantGlobalization>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="..\..\shared\SessionStartVerifier.cs" Link="SessionStartVerifier.cs" />
+  </ItemGroup>
+
+</Project>

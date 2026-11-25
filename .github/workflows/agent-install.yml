@@ -1,0 +1,285 @@
+# Builds the agent packages, then installs them for real on clean Windows and Linux machines,
+# against a throwaway backend and database running on the same machine.
+name: Agent install
+
+# Manual only. Day-to-day testing happens on real machines.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  security:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: backend
+    env:
+      RIQ_E2E_ALLOW: "1"
+      BASE_URL: http://127.0.0.1:3901
+      DATABASE_URL: postgres://riq:riq@127.0.0.1:5432/riq_e2e_sec
+      JWT_SECRET: e2e-only-not-a-real-secret-e2e-only-not-a-real-secret
+      CONSOLE_ORIGIN: http://console.test
+      AUTH_COOKIE_NAME: auth_token
+      ADMIN_API_KEY: ci-only-admin-key-0123456789abcdef0123
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Start Postgres
+        run: |
+          docker run -d --name riq-pg -p 127.0.0.1:5432:5432 -e POSTGRES_USER=riq -e POSTGRES_PASSWORD=riq -e POSTGRES_DB=riq_e2e_sec postgres:16-alpine
+          until docker exec riq-pg pg_isready -U riq -d riq_e2e_sec >/dev/null 2>&1; do sleep 1; done
+          sleep 2
+      - name: Build
+        run: |
+          npm ci --no-audit --no-fund
+          npx prisma generate
+          npx tsc -p tsconfig.json
+          npx prisma migrate deploy
+      - name: Run the security suite
+        run: |
+          NODE_ENV=production SWAGGER=false PORT=3901 DATABASE_SSL=false IMAP_POLL_ENABLED=false \
+            FRONTEND_ORIGINS=http://console.test ENROLLMENT_SECRET=e2e-secret \
+            nohup node dist/main.js > /tmp/api.log 2>&1 &
+          for i in $(seq 1 60); do curl -sf -o /dev/null http://127.0.0.1:3901/healthz && break; sleep 2; done
+          node test/security-lockdown.e2e.cjs || { tail -n 40 /tmp/api.log | sed -E 's/[A-Za-z0-9_-]{32,}/[redacted]/g'; exit 1; }
+
+  install:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { runner: windows-latest, agent_os: windows }
+          - { runner: ubuntu-latest, agent_os: linux }
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 30
+    defaults:
+      run:
+        shell: pwsh
+    env:
+      AGENT_OS: ${{ matrix.agent_os }}
+      RIQ_E2E_ALLOW: "1"
+      BASE_URL: http://127.0.0.1:3001
+      STATE_DIR: ${{ github.workspace }}/e2e-state
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Build agent packages
+        run: ./agents/build-packages.ps1 -OutDir "$env:GITHUB_WORKSPACE/agent-packages"
+
+      - name: Start Postgres (Windows)
+        if: matrix.agent_os == 'windows'
+        # Third-party action pinned to a movable tag: pin it to a full commit SHA before relying on this workflow for releases.
+        uses: ikalnytskyi/action-setup-postgres@v7
+        id: postgres
+        with:
+          database: riq_e2e
+
+      - name: Use Postgres (Windows)
+        if: matrix.agent_os == 'windows'
+        run: Add-Content $env:GITHUB_ENV "DATABASE_URL=${{ steps.postgres.outputs.connection-uri }}"
+
+      - name: Start Postgres (Linux)
+        if: matrix.agent_os == 'linux'
+        shell: bash
+        run: |
+          docker run -d --name riq-pg -p 127.0.0.1:5432:5432 -e POSTGRES_USER=riq -e POSTGRES_PASSWORD=riq -e POSTGRES_DB=riq_e2e postgres:16-alpine
+          until docker exec riq-pg pg_isready -U riq -d riq_e2e >/dev/null 2>&1; do sleep 1; done
+          sleep 2
+          echo "DATABASE_URL=postgres://riq:riq@127.0.0.1:5432/riq_e2e" >> "$GITHUB_ENV"
+
+      - name: Build backend
+        working-directory: backend
+        run: |
+          npm ci
+          npx prisma generate
+          npx tsc -p tsconfig.json
+
+      - name: Start backend
+        working-directory: backend
+        run: |
+          npx prisma migrate deploy
+          New-Item -ItemType Directory -Force "$env:STATE_DIR" | Out-Null
+          $env:NODE_ENV = 'production'
+          $env:SWAGGER = 'false'
+          $env:PORT = '3001'
+          $env:DATABASE_SSL = 'false'
+          $env:IMAP_POLL_ENABLED = 'false'
+          $env:AUTH_COOKIE_NAME = 'auth_token'
+          $env:FRONTEND_ORIGINS = 'http://console.test'
+          $env:AGENT_PKG_DIR = "$env:GITHUB_WORKSPACE/agent-packages"
+          $env:JWT_SECRET = [Convert]::ToHexString([Security.Cryptography.RandomNumberGenerator]::GetBytes(48))
+          $env:ADMIN_API_KEY = [Convert]::ToHexString([Security.Cryptography.RandomNumberGenerator]::GetBytes(32))
+          $env:ENROLLMENT_SECRET = [Convert]::ToHexString([Security.Cryptography.RandomNumberGenerator]::GetBytes(32))
+          if ($IsWindows) {
+            # The Windows runner kills anything a step started when that step ends, so this starts it from outside the step.
+            $names = 'NODE_ENV','SWAGGER','PORT','DATABASE_URL','DATABASE_SSL','IMAP_POLL_ENABLED','AUTH_COOKIE_NAME','FRONTEND_ORIGINS','AGENT_PKG_DIR','JWT_SECRET','ADMIN_API_KEY','ENROLLMENT_SECRET'
+            $lines = @('@echo off', "cd /d `"$PWD`"")
+            foreach ($n in $names) { $lines += "set `"$n=$([Environment]::GetEnvironmentVariable($n))`"" }
+            $lines += "`"$((Get-Command node).Source)`" dist/main.js > `"$([IO.Path]::GetFullPath("$env:STATE_DIR/api.log"))`" 2> `"$([IO.Path]::GetFullPath("$env:STATE_DIR/api.err.log"))`""
+            $cmd = [IO.Path]::GetFullPath((Join-Path $env:STATE_DIR 'start-api.cmd'))
+            Set-Content -LiteralPath $cmd -Value $lines -Encoding ascii
+            $started = Invoke-CimMethod -ClassName Win32_Process -MethodName Create -Arguments @{ CommandLine = "cmd.exe /c `"$cmd`"" }
+            "Started backend process: return $($started.ReturnValue), pid $($started.ProcessId)"
+          } else {
+            # The wrapper records how the backend ended, in case it stops.
+            Set-Content -LiteralPath "$env:STATE_DIR/start-api.sh" -Value 'node dist/main.js > "$STATE_DIR/api.log" 2> "$STATE_DIR/api.err.log"; echo "backend exited with $? at $(date)" >> "$STATE_DIR/api.err.log"'
+            & bash -c 'setsid nohup bash "$STATE_DIR/start-api.sh" > /dev/null 2>&1 < /dev/null &'
+          }
+          foreach ($i in 1..60) {
+            try { if ((Invoke-WebRequest "$env:BASE_URL/healthz" -UseBasicParsing).StatusCode -eq 200) { 'Backend is up'; exit 0 } } catch {}
+            Start-Sleep -Seconds 2
+          }
+          Get-Content "$env:STATE_DIR/api.log", "$env:STATE_DIR/api.err.log" -Tail 40 -ErrorAction SilentlyContinue
+          exit 1
+
+      - name: Create an installer through the API
+        working-directory: backend
+        run: |
+          node test/agent-install.e2e.cjs seed
+          node test/agent-install.e2e.cjs refusals
+
+      # ---------- first install ----------
+      # A machine can already have a service from an old install or dev build, with a stale config.
+      - name: Leave a stale service behind (Windows)
+        if: matrix.agent_os == 'windows'
+        shell: powershell
+        run: |
+          New-Service -Name RemoteIQAgent -BinaryPathName 'C:\Old Build\missing\RemoteIQ.Agent.exe' -DisplayName 'RemoteIQ Agent' -StartupType Manual | Out-Null
+          New-Item -ItemType Directory -Force "$env:ProgramData\RemoteIQ" | Out-Null
+          '{"ApiBaseUrl":"http://localhost:9","AgentId":"stale-agent","AgentKey":"stale-token","DeviceId":""}' | Set-Content "$env:ProgramData\RemoteIQ\agent.config.json"
+
+      - name: Install (Windows)
+        if: matrix.agent_os == 'windows'
+        shell: powershell
+        run: |
+          $command = Get-Content "$env:STATE_DIR/install-command.txt" -Raw
+          Invoke-Expression $command
+          if ($LASTEXITCODE -ne 0) { throw "Installer exited with $LASTEXITCODE" }
+          $svc = Get-Service RemoteIQAgent
+          "Service: $($svc.Status) $($svc.StartType)"
+          if ($svc.Status -ne 'Running') { throw 'Service is not running' }
+
+      - name: Install (Linux)
+        if: matrix.agent_os == 'linux'
+        shell: bash
+        run: |
+          bash -c "$(cat "$STATE_DIR/install-command.txt")"
+          systemctl is-enabled remoteiq-agent
+          systemctl is-active remoteiq-agent
+
+      - name: Check the key is not left in clear text
+        shell: bash
+        run: |
+          if [ "$AGENT_OS" = windows ]; then f='C:/ProgramData/RemoteIQ/enrollment.json'; else f=/etc/remoteiq/enrollment.json; fi
+          sudo test ! -e "$f" 2>/dev/null || { test ! -e "$f"; }
+
+      - name: Verify the agent
+        working-directory: backend
+        run: |
+          node test/agent-install.e2e.cjs verify
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+          node test/agent-install.e2e.cjs conflict
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+          node test/agent-install.e2e.cjs signing
+
+      - name: Use every tool
+        working-directory: backend
+        run: node test/agent-install.e2e.cjs tools
+
+      # ---------- reinstall over the top ----------
+      # This time from the downloaded file, as if someone saved it and ran it.
+      - name: Reinstall from a saved script (Windows)
+        if: matrix.agent_os == 'windows'
+        shell: powershell
+        run: |
+          $command = Get-Content "$env:STATE_DIR/install-command.txt" -Raw
+          if ($command -notmatch "irm '([^']+)'") { throw 'No URL in the install command' }
+          $file = Join-Path $env:RUNNER_TEMP 'RemoteIQ Installer.ps1'
+          Invoke-WebRequest -Uri $Matches[1] -OutFile $file -UseBasicParsing
+          powershell -NoProfile -ExecutionPolicy Bypass -File $file
+          if ($LASTEXITCODE -ne 0) { throw "Installer exited with $LASTEXITCODE" }
+
+      - name: Reinstall (Linux)
+        if: matrix.agent_os == 'linux'
+        shell: bash
+        run: bash -c "$(cat "$STATE_DIR/install-command.txt")"
+
+      - name: Verify the reinstall kept the device
+        working-directory: backend
+        run: node test/agent-install.e2e.cjs verify --same-device
+
+      # ---------- uninstall, then install as a rebuilt machine ----------
+      - name: Uninstall (Windows)
+        if: matrix.agent_os == 'windows'
+        shell: powershell
+        run: |
+          & "$env:ProgramFiles\RemoteIQ\Agent\uninstall.ps1"
+          if (Get-Service RemoteIQAgent -ErrorAction SilentlyContinue) { throw 'Service still exists' }
+          if (Test-Path "$env:ProgramFiles\RemoteIQ") { throw 'Install folder still exists' }
+          if (Test-Path "$env:ProgramData\RemoteIQ") { throw 'Data folder still exists' }
+
+      - name: Uninstall (Linux)
+        if: matrix.agent_os == 'linux'
+        shell: bash
+        run: |
+          sudo /opt/remoteiq-agent/uninstall.sh
+          ! systemctl cat remoteiq-agent 2>/dev/null
+          test ! -e /opt/remoteiq-agent
+          sudo test ! -e /etc/remoteiq
+
+      - name: Mark the machine as long offline
+        working-directory: backend
+        run: |
+          node test/agent-install.e2e.cjs removed
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+          node test/agent-install.e2e.cjs age
+
+      - name: Install on the rebuilt machine (Windows)
+        if: matrix.agent_os == 'windows'
+        shell: powershell
+        run: |
+          Invoke-Expression (Get-Content "$env:STATE_DIR/install-command.txt" -Raw)
+          if ($LASTEXITCODE -ne 0) { throw "Installer exited with $LASTEXITCODE" }
+
+      - name: Install on the rebuilt machine (Linux)
+        if: matrix.agent_os == 'linux'
+        shell: bash
+        run: bash -c "$(cat "$STATE_DIR/install-command.txt")"
+
+      - name: Verify the rebuilt machine took over its device
+        working-directory: backend
+        run: node test/agent-install.e2e.cjs verify --same-device
+
+      # ---------- diagnostics and output ----------
+      - name: Show logs on failure
+        if: failure()
+        shell: bash
+        continue-on-error: true
+        run: |
+          tail -n 60 "$STATE_DIR/api.log" "$STATE_DIR/api.err.log" | sed -E 's/[A-Za-z0-9_-]{32,}/[redacted]/g' || true
+          if [ "$AGENT_OS" = linux ]; then
+            sudo journalctl -u remoteiq-agent -n 60 --no-pager | sed -E 's/[A-Za-z0-9_-]{32,}/[redacted]/g' || true
+          else
+            tail -n 60 C:/ProgramData/RemoteIQ/Logs/agent-*.log | sed -E 's/[A-Za-z0-9_-]{32,}/[redacted]/g' || true
+            tail -n 30 C:/ProgramData/RemoteIQ/install.log || true
+          fi
+
+      - name: Upload packages
+        uses: actions/upload-artifact@v4
+        with:
+          name: agent-packages-${{ matrix.agent_os }}
+          path: agent-packages/
+          retention-days: 14

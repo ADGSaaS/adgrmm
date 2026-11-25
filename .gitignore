@@ -1,0 +1,32 @@
+# dependencies and build output
+node_modules/
+dist/
+.next/
+out/
+release-out/
+bin/
+obj/
+*.tsbuildinfo
+
+# local settings and secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.pfx
+*.snk
+/secrets/
+
+# editors and operating system
+.vs/
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# logs
+*.log
+
+# user uploads (avatars, logos, ticket attachments) never belong in git
+backend/public/uploads/*
+!backend/public/uploads/avatar-placeholder.png

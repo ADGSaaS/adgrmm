@@ -1,0 +1,75 @@
+# Applies every migration to an empty database, then runs the backend's flows against it.
+# Nothing is installed on a machine, and agent behaviour is tested on real machines instead.
+name: Backend tests
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "backend-test-*"
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: riq
+          POSTGRES_PASSWORD: riq
+          POSTGRES_DB: riq_e2e
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U riq"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    defaults:
+      run:
+        working-directory: backend
+    env:
+      RIQ_E2E_ALLOW: "1"
+      DATABASE_URL: postgres://riq:riq@127.0.0.1:5432/riq_e2e
+      JWT_SECRET: e2e-only-not-a-real-secret-e2e-only-not-a-real-secret
+      DATA_ENCRYPTION_KEY: e2e-only-data-key
+      ADMIN_API_KEY: ci-only-admin-key-0123456789abcdef0123
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - run: npm ci
+      - run: npx prisma generate
+      - run: npx prisma migrate deploy
+      - name: The database matches the schema
+        run: npx prisma migrate diff --from-url "$DATABASE_URL" --to-schema-datamodel prisma/schema.prisma --exit-code
+      - run: npx tsc -p tsconfig.json
+      - name: Run the flows
+        run: |
+          for test in test/billing.e2e.cjs test/itdocs.e2e.cjs test/alerts.e2e.cjs test/reports.e2e.cjs test/reports-http.e2e.cjs test/report-view.cjs test/device-data.cjs test/schedule-time.cjs test/device-changes.cjs test/report-settings.cjs test/customer-profile.e2e.cjs test/policy-engine.cjs test/policies.e2e.cjs test/patch-automation.e2e.cjs test/policy-extras.e2e.cjs test/checks-scripts.e2e.cjs test/secrets-at-rest.e2e.cjs test/credential-encryption.cjs test/backup-archive-encryption.cjs; do
+            echo "== $test"
+            node "$test"
+          done
+      - name: Run the HTTP flows against a running backend
+        env:
+          BASE_URL: http://127.0.0.1:3901
+          PORT: "3901"
+          CONSOLE_ORIGIN: http://console.test
+          AUTH_COOKIE_NAME: auth_token
+        run: |
+          NODE_ENV=production SWAGGER=false DATABASE_SSL=false IMAP_POLL_ENABLED=false FRONTEND_ORIGINS=http://console.test node dist/main.js > /tmp/backend.log 2>&1 &
+          for i in $(seq 1 60); do curl -sf "$BASE_URL/healthz" > /dev/null && break; sleep 1; done
+          status=0
+          for test in test/security-lockdown.e2e.cjs test/customers-http.e2e.cjs test/policies-http.e2e.cjs test/limits-http.e2e.cjs test/access-http.e2e.cjs test/audit-events.e2e.cjs test/billing-http.e2e.cjs; do
+            echo "== $test"
+            node "$test" || status=1
+          done
+          if [ "$status" != 0 ]; then tail -40 /tmp/backend.log; fi
+          exit $status

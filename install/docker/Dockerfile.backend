@@ -1,0 +1,25 @@
+# The RemoteIQ API (and, with another command, the edge router). Built by install.sh from the release bundle.
+FROM node:22-bookworm-slim
+
+# pg_dump and pg_restore for backups: the client has to be the same major version as the database server (16).
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends ca-certificates curl gnupg openssl \
+ && install -d /usr/share/postgresql-common/pgdg \
+ && curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc \
+ && echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt bookworm-pgdg main" > /etc/apt/sources.list.d/pgdg.list \
+ && apt-get update \
+ && apt-get install -y --no-install-recommends postgresql-client-16 \
+ && apt-get purge -y gnupg && apt-get autoremove -y \
+ && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+COPY backend/ /app/
+COPY tools/ /opt/riq/tools/
+RUN mkdir -p /app/public/uploads /app/config /data/var /secrets \
+ && chown -R node:node /app/public /app/config /data /secrets
+
+ENV NODE_ENV=production RIQ_BACKEND_DIR=/app
+USER node
+EXPOSE 3001
+# Migrations first, so an upgrade and a first start are the same thing.
+CMD ["sh", "-c", "node_modules/.bin/prisma migrate deploy && exec node dist/main.js"]

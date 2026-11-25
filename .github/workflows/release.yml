@@ -1,0 +1,90 @@
+# Builds the RemoteIQ release bundle that install.sh downloads, and publishes it as a GitHub release.
+#
+# To make a release: push a tag named after the version.
+#     git tag v0.2.0 && git push origin v0.2.0
+# (or Actions > Release > Run workflow, once this file is on the default branch).
+#
+# The Windows and Linux agents in the bundle are taken from the newest release that has them, unless you run
+# the workflow by hand and give the run id of a "Build agent packages" run (agent_run_id).
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version, for example 1.4.0 (becomes the tag v1.4.0)"
+        required: true
+      agent_run_id:
+        description: "Run id of a 'Build agent packages' run whose agent-packages artifact to include (optional)"
+        required: false
+
+permissions:
+  contents: write
+  actions: read
+
+env:
+  VERSION: ${{ inputs.version || github.ref_name }}
+
+jobs:
+  release:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 60
+    steps:
+      - name: Work out the version
+        run: |
+          v="${VERSION#v}"
+          case "$v" in [0-9]*.[0-9]*.[0-9]*) ;; *) echo "Version must look like 1.2.3, got: $VERSION"; exit 1 ;; esac
+          echo "VERSION=$v" >> "$GITHUB_ENV"
+
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Agent packages from a build run
+        if: ${{ inputs.agent_run_id != '' }}
+        uses: actions/download-artifact@v4
+        with:
+          name: agent-packages
+          run-id: ${{ inputs.agent_run_id }}
+          github-token: ${{ github.token }}
+          path: agent-packages
+
+      - name: Agent packages from the latest release
+        if: ${{ inputs.agent_run_id == '' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # Take the agents out of the newest release that carries them.
+          for tag in $(gh release list --limit 10 --json tagName --jq '.[].tagName'); do
+            [ "$tag" = "v$VERSION" ] && continue
+            mkdir -p prev && rm -rf prev/*
+            gh release download "$tag" --pattern remoteiq-linux-x64.tar.gz --dir prev || continue
+            if tar -tzf prev/remoteiq-linux-x64.tar.gz | grep -q '^remoteiq/agent-packages/windows/'; then
+              tar -xzf prev/remoteiq-linux-x64.tar.gz -C prev remoteiq/agent-packages
+              mv prev/remoteiq/agent-packages agent-packages
+              echo "Agents taken from $tag"
+              break
+            fi
+          done
+          rm -rf prev
+          [ -d agent-packages ] || echo "No earlier release has agent packages; the bundle will have none."
+
+      - name: Build the bundle
+        run: |
+          agents=""
+          [ -d agent-packages ] && agents="--agents agent-packages"
+          bash install/build-release.sh --version "$VERSION" $agents --out out
+
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "v$VERSION" \
+            --title "RemoteIQ $VERSION" --generate-notes \
+            out/remoteiq-linux-x64.tar.gz out/SHA256SUMS out/version.txt out/install.sh
