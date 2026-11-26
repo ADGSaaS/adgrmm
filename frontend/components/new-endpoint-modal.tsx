@@ -10,6 +10,7 @@ import {
     DialogTitle,
     DialogTrigger,
 } from "@/components/ui/dialog";
+import { useDemoMode } from "@/lib/demo";
 
 type NewEndpointModalProps = {
     disabled?: boolean;
@@ -17,6 +18,8 @@ type NewEndpointModalProps = {
 
 export function NewEndpointModal({ disabled }: NewEndpointModalProps) {
     const [open, setOpen] = React.useState(false);
+    const demo = useDemoMode();
+    if (demo) return null; // the demo cannot add devices
 
     return (
         <Dialog open={open} onOpenChange={setOpen}>

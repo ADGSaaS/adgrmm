@@ -18,6 +18,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useBranding } from "@/app/providers/BrandingProvider";
 import { safeRedirectPath } from "@/lib/safe-redirect";
+import { useDemoMode } from "@/lib/demo";
 
 /** Only allow same-origin paths; never /login or legacy /auth/login */
 function safeNext(raw: string | null): string {
@@ -90,8 +91,28 @@ export default function LoginPage() {
     const [remember, setRemember] = React.useState(
         () => (typeof window !== "undefined" ? localStorage.getItem("adg_remember") === "1" : false),
     );
+    // The public demo has no password to type: one button signs the visitor in as the demo user.
+    const demo = useDemoMode();
     const [isLoading, setIsLoading] = React.useState(false);
     const [error, setError] = React.useState<string | null>(null);
+    const enterDemo = async () => {
+        setError(null);
+        setIsLoading(true);
+        try {
+            // The demo may be starting a fresh copy of itself, so try for a short while.
+            for (let i = 0; i < 12; i++) {
+                try {
+                    const r = await fetch(`${API_BASE}/api/demo/enter`, { method: "POST", credentials: "include" });
+                    if (r.ok) { router.replace(nextPath); return; }
+                    if (r.status === 404 || r.status === 403) break;
+                } catch { /* not up yet */ }
+                await new Promise((resolve) => setTimeout(resolve, 2500));
+            }
+            setError("The demo is getting a fresh start. Please try again in a moment.");
+        } finally {
+            setIsLoading(false);
+        }
+    };
     const [showPw, setShowPw] = React.useState(false);
     const [capsLock, setCapsLock] = React.useState(false);
 
@@ -326,7 +347,20 @@ export default function LoginPage() {
                 ) : null}
 
                 {/* Step 1: Email + Password */}
-                {!challengeToken && (
+                {!challengeToken && demo && (
+                    <CardContent className="grid gap-3 pb-6">
+                        <p className="text-center text-sm text-muted-foreground">
+                            A live demo with sample customers, devices and tickets. Look around and try things; nothing you change is kept.
+                        </p>
+                        {error ? (
+                            <div role="alert" className="rounded-md border border-destructive/40 bg-destructive/10 p-2 text-sm text-destructive">{error}</div>
+                        ) : null}
+                        <Button type="button" className="w-full" onClick={enterDemo} disabled={isLoading}>
+                            {isLoading ? "Starting the demo…" : "Enter the demo"}
+                        </Button>
+                    </CardContent>
+                )}
+                {!challengeToken && !demo && (
                     <form onSubmit={handleLogin} noValidate>
                         <CardContent className="space-y-4">
                             <div className="space-y-2">

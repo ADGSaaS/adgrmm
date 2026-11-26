@@ -7,6 +7,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import AmbientTooltips from "@/components/ambient-tooltips";
 import { DashboardProvider } from "@/app/(dashboard)/dashboard-context";
 import IdleSignOut from "@/components/idle-signout";
+import DemoMode from "@/components/demo-mode";
 
 export default function Providers({ children, portal = false }: { children: React.ReactNode; portal?: boolean }) {
     // Customers of the portal never load the staff app's devices, alerts and so on.
@@ -24,6 +25,8 @@ export default function Providers({ children, portal = false }: { children: Reac
                     {children}
                     {/* Follows the session limits from Security Policies: signs out when idle, goes to sign-in when the server ended the session */}
                     <IdleSignOut />
+                    {/* Only does anything in the public demo */}
+                    <DemoMode />
                     {/* Global, zero-config tooltips for elements with data-tooltip="..." */}
                     <AmbientTooltips />
                 </DashboardProvider>

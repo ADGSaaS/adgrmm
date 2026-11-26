@@ -10,6 +10,7 @@ import {
     type DeviceStatus,
 } from "@/app/(dashboard)/dashboard-context";
 import { useCustomers } from "@/app/(dashboard)/customers/customers-context";
+import { useDemoMode } from "@/lib/demo";
 import { CustomerForm } from "@/components/customers/customer-form";
 import { SiteFormDialog } from "@/components/customers/site-form";
 import FiltersRail from "@/components/filters-rail";
@@ -258,6 +259,7 @@ function CustomersActions() {
     // -------------------------
     // Reusable Installer (Option A)
     // -------------------------
+    const demoMode = useDemoMode();
     const [installerOpen, setInstallerOpen] = React.useState(false);
     const [installerClientId, setInstallerClientId] = React.useState<string>("");
     const [installerSiteId, setInstallerSiteId] = React.useState<string>("");
@@ -638,7 +640,7 @@ function CustomersActions() {
                                 <DropdownMenuItem className="text-destructive focus:text-destructive" onSelect={() => { setDeleteMode("site"); setDeleteOpen(true); }}>Delete site</DropdownMenuItem>
                             </DropdownMenuContent>
                         </DropdownMenu>
-                        <Button variant="outline" onClick={() => setInstallerOpen(true)}>Reusable installer</Button>
+                        {!demoMode && <Button variant="outline" onClick={() => setInstallerOpen(true)}>Reusable installer</Button>}
                         <SiteFormDialog
                             open={editSiteOpen}
                             onOpenChange={setEditSiteOpen}
