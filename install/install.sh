@@ -152,6 +152,11 @@ conf_set() {
 preflight() {
     [ "$(id -u)" = 0 ] || die "Run this as root: sudo bash install.sh"
     [ "$(uname -s)" = Linux ] || die "ADG RMM installs on Linux."
+    # Releases before 0.2.0 were called RemoteIQ and lived in /opt/remoteiq. They cannot be upgraded in place: the folder, services and
+    # database user all have new names. Stop here rather than start a second copy that fights the first for its ports.
+    if [ -f /opt/remoteiq/install.conf ] && [ "$ADG_HOME" != /opt/remoteiq ] && [ ! -f "$ADG_HOME/install.conf" ]; then
+        die "An older RemoteIQ install (before ADG RMM 0.2.0) was found in /opt/remoteiq. It cannot be upgraded in place. Back it up, remove it with its own installer (sudo bash /opt/remoteiq/install.sh uninstall), then run this installer again."
+    fi
     [ "$(uname -m)" = x86_64 ] || die "ADG RMM needs an x86_64 (64-bit Intel/AMD) server; this one is $(uname -m)."
     [ -r /etc/os-release ] || die "Cannot tell which Linux this is."
     # shellcheck disable=SC1091
