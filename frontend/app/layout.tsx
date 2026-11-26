@@ -17,6 +17,7 @@ const inter = Inter({ subsets: ["latin"] });
 export const metadata: Metadata = {
   title: "ADG RMM",
   description: "Next-generation Remote Monitoring & Management",
+  icons: { icon: [{ url: "/favicon.ico", sizes: "any" }, { url: "/icon.svg", type: "image/svg+xml" }], apple: "/apple-touch-icon.png" },
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {

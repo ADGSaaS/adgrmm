@@ -1,3 +1,10 @@
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/brand/adg-saas-logo-horizontal-color-on-dark.svg">
+    <img alt="ADG SaaS" src="docs/brand/adg-saas-logo-horizontal-color-on-light.svg" height="64">
+  </picture>
+</p>
+
 # ADG RMM
 
 ADG RMM is an all-in-one platform for managed service providers (MSPs): remote monitoring and management (RMM), a service desk, documentation, billing and client-facing tools in one product.
