@@ -4,7 +4,7 @@
 import * as React from "react";
 import { apiUrl } from "@/lib/api";
 
-export type DemoInfo = { demo: boolean; idleSeconds?: number };
+export type DemoInfo = { demo: boolean; idleSeconds?: number; backUrl?: string };
 
 let cached: Promise<DemoInfo> | null = null;
 
@@ -18,6 +18,17 @@ export function loadDemoInfo(): Promise<DemoInfo> {
             });
     }
     return cached;
+}
+
+/** Everything the server says about the demo (null until it has answered). */
+export function useDemoInfo(): DemoInfo | null {
+    const [info, setInfo] = React.useState<DemoInfo | null>(null);
+    React.useEffect(() => {
+        let live = true;
+        void loadDemoInfo().then((i) => { if (live) setInfo(i); });
+        return () => { live = false; };
+    }, []);
+    return info;
 }
 
 /** True when this is the public demo. False until the server has answered, and in every normal install. */

@@ -6,6 +6,7 @@ What demo mode does (see `backend/src/demo-mode/`):
 
 - **Rules.** The API refuses anything that could reach outside (email, webhooks, URL checks, scans, uploads, running scripts on devices), anything that adds a device (agent enrollment, install keys, installers) and anything that shows how the server is set up (environment, database, storage, diagnostics). Reads of ordinary screens, and edits that only change the demo's own database (tickets, customers, notes, tags, invoices, KB and so on), are allowed. Anything not listed is refused. The list is in `demo-mode.rules.ts` and tested by `backend/test/demo-mode-rules.cjs`.
 - **Sample data.** At every start the database is wiped back to the clean install and filled with fresh sample data (`backend/src/demo/`).
+- **Way back.** A slim bar across the top of the demo links to `DEMO_BACK_URL` (the website's demos page).
 - **Entering.** `POST /api/demo/enter` signs the visitor in as the demo user (`DEMO_USER_EMAIL` / `DEMO_USER_PASSWORD`). The login page shows an "Enter the demo" button.
 - **Leaving.** Open pages send `POST /api/demo/ping` every 10 seconds. After `DEMO_IDLE_SECONDS` (default 60) without one, and if anything was changed (or the sample data has aged), the API exits; Docker restarts it and the start-up step puts back fresh data. Restarting also clears every cache.
 
@@ -20,6 +21,7 @@ Everything sensitive is outside the dashboard: the JWT secret, data key, databas
    DEMO_USER_EMAIL=<the administrator's email>
    DEMO_USER_PASSWORD=<the administrator's password>
    DEMO_IDLE_SECONDS=60
+   DEMO_BACK_URL=https://adgsaas.com/demos/
    ```
 3. Copy `docker-compose.demo.yml` next to the installer's compose file and start with both files (see the header of that file).
 4. Point your proxy at the edge port. Turn websockets on.

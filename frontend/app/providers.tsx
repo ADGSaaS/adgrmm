@@ -8,6 +8,7 @@ import AmbientTooltips from "@/components/ambient-tooltips";
 import { DashboardProvider } from "@/app/(dashboard)/dashboard-context";
 import IdleSignOut from "@/components/idle-signout";
 import DemoMode from "@/components/demo-mode";
+import DemoTopBar from "@/components/demo-top-bar";
 
 export default function Providers({ children, portal = false }: { children: React.ReactNode; portal?: boolean }) {
     // Customers of the portal never load the staff app's devices, alerts and so on.
@@ -22,6 +23,8 @@ export default function Providers({ children, portal = false }: { children: Reac
         <ToastProvider>                                      {/* ✅ now useToast() is safe */}
             <TooltipProvider delayDuration={200}>
                 <DashboardProvider>
+                    {/* Only does anything in the public demo: the way back to the demos page */}
+                    <DemoTopBar />
                     {children}
                     {/* Follows the session limits from Security Policies: signs out when idle, goes to sign-in when the server ended the session */}
                     <IdleSignOut />

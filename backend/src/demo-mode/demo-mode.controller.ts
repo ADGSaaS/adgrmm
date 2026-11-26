@@ -16,7 +16,13 @@ export class DemoModeController {
     @Get("mode")
     mode() {
         if (!isDemoMode()) return { demo: false };
-        return { demo: true, idleSeconds: Math.max(15, Number(process.env.DEMO_IDLE_SECONDS || 60)) };
+        const back = (process.env.DEMO_BACK_URL || "").trim();
+        return {
+            demo: true,
+            idleSeconds: Math.max(15, Number(process.env.DEMO_IDLE_SECONDS || 60)),
+            // Where the bar at the top of the demo leads back to (the website's demos page). Only web addresses are passed on.
+            backUrl: /^https?:\/\//i.test(back) ? back : "",
+        };
     }
 
     /** Signs the visitor in as the demo user, so there is no account to make and no password to know. */
