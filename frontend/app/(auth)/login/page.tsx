@@ -78,7 +78,7 @@ export default function LoginPage() {
     const loginBg = branding?.loginBackgroundUrl ?? undefined;
     const logoLight = branding?.logoLightUrl ?? undefined;
     const logoDark = branding?.logoDarkUrl ?? undefined;
-    const effectiveLogo = logoLight ?? logoDark ?? "/logo.png"; // always a string
+    const effectiveLogo = logoLight ?? logoDark ?? "/adg-saas-icon.png"; // always a string
 
     // Form state
     const [email, setEmail] = React.useState(() => {
@@ -310,14 +310,10 @@ export default function LoginPage() {
                 <CardHeader className="text-center">
                     <div className="mb-3 flex items-center justify-center gap-2">
                         {/* Prefer brand logos; fall back to icon */}
-                        {logoLight || logoDark ? (
-                            <picture>
-                                {logoDark ? <source srcSet={logoDark} media="(prefers-color-scheme: dark)" /> : null}
-                                <img src={effectiveLogo} alt="ADG RMM" className="h-7 w-auto rounded-sm" />
-                            </picture>
-                        ) : (
-                            <Shield className="h-6 w-6" />
-                        )}
+                        <picture>
+                            {logoDark ? <source srcSet={logoDark} media="(prefers-color-scheme: dark)" /> : null}
+                            <img src={effectiveLogo} alt="ADG RMM" className="h-7 w-auto rounded-sm" />
+                        </picture>
                         <CardTitle className="text-2xl">ADG RMM</CardTitle>
                     </div>
                     <CardDescription>

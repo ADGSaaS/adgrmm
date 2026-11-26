@@ -191,7 +191,7 @@ function AppLogo() {
             <picture>
                 {dark ? <source srcSet={dark} media="(prefers-color-scheme: dark)" /> : null}
                 <img
-                    src={light || dark || "/logo.png"}
+                    src={light || dark || "/adg-saas-icon.png"}
                     alt="ADG RMM"
                     width={28}
                     height={28}

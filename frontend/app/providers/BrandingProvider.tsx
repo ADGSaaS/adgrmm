@@ -34,7 +34,7 @@ const BrandingContext = React.createContext<BrandingContextType | undefined>(und
 // These match the colours the theme starts with in styles/globals.css, so a first visit with no saved branding does not flash either.
 const DEFAULT_PRIMARY = "#3b82f6";
 const DEFAULT_SECONDARY = "#22c55e";
-const DEFAULT_FAVICON = "/favicon.ico"; // <- default from public/
+const DEFAULT_FAVICON = "/favicon.ico?v=2"; // <- default from public/
 
 /* ====================== Browser copy of the branding ====================== */
 

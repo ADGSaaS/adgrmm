@@ -4,6 +4,10 @@ import { NextResponse } from "next/server";
 const PUBLIC_PATHS = new Set<string>([
     "/login",
     "/favicon.ico",
+    "/adg-saas-icon.png",
+    "/logo.png",
+    "/icon.svg",
+    "/apple-touch-icon.png",
     "/robots.txt",
     "/sitemap.xml",
 ]);
