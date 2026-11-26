@@ -8,7 +8,6 @@ import NoPermission from "@/components/no-permission";
 import { useMe } from "@/lib/use-me";
 import { hasPerm } from "@/lib/permissions";
 import { useFlags } from "@/lib/flags";
-import { useDemoMode, DEMO_HIDDEN_ADMIN_TABS } from "@/lib/demo";
 
 import { useRouter, useSearchParams } from "next/navigation";
 import { Card } from "@/components/ui/card";
@@ -410,19 +409,12 @@ export default function AdministrationPage() {
 
     // A tab behind a feature flag leaves the menu while its flag is off (the server refuses the feature too).
     const { flags } = useFlags();
-    // The public demo hides the tabs that show or change how the server itself is set up.
-    const demoMode = useDemoMode();
     const menuGroups = React.useMemo(() => {
         const gated: Record<string, string> = { demo: "demo_data", helpdesk_import: "freshdesk_import" };
         return navItemGroups
-            .map((g) => ({ ...g, items: g.items.filter((i) => (!gated[i.v] || flags?.[gated[i.v]] !== false) && !(demoMode && DEMO_HIDDEN_ADMIN_TABS.has(i.v))) }))
+            .map((g) => ({ ...g, items: g.items.filter((i) => (!gated[i.v] || flags?.[gated[i.v]] !== false)) }))
             .filter((g) => g.items.length > 0);
-    }, [navItemGroups, flags, demoMode]);
-
-    // A remembered or typed tab that the demo hides goes back to the first page.
-    React.useEffect(() => {
-        if (demoMode && DEMO_HIDDEN_ADMIN_TABS.has(tab)) setTab("company");
-    }, [demoMode, tab]);
+    }, [navItemGroups, flags]);
 
     // Build set of valid tab keys for validation
     const VALID_TABS = React.useMemo(

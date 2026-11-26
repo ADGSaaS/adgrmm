@@ -3,10 +3,18 @@
 // What a visitor of the public demo may do. The demo is a normal ADG RMM install started with DEMO_MODE=1, so every rule here is
 // about keeping the sample data safe and the server harmless:
 //   * nothing that reaches outside (email, webhooks, URL checks, scans, storage, chat, remote tools),
-//   * nothing that adds a device (agent enrollment, install keys, installers),
+//   * nothing that adds a device (agent enrollment, installers that really enroll),
 //   * nothing that shows how the server itself is set up (environment, database, paths, hosts, keys).
+// Every administration page is visible. The pages that would show the real server (system, database, storage, backups, mail logins,
+// single sign-on, sessions, install keys, secrets, diagnostics, integrations, agents, migrations, ...) are answered with made-up sample
+// data from demo-fixtures.ts, by the gate, before any real controller runs. The "make an installer / install key / endpoint" calls return
+// sample values too (a command that does nothing, a text file saying it is a demo), so the flow can be walked through; they create nothing.
+// Reads of those routes that have no sample, and all writes, stay refused (judge() below still says "refuse" for every one of them).
 // Reads are open except for the "sensitive" list; writes are refused unless they are on the allow list. Anything not listed
 // is therefore refused, so a new route stays closed in the demo until someone opens it on purpose.
+// Agent enrollment (/api/agent/*, /api/agents/*) stays refused, so no device can ever really join the demo.
+
+import { findFixture, type FixtureHit } from "./demo-fixtures";
 
 export const isDemoMode = (): boolean => process.env.DEMO_MODE === "1";
 
@@ -17,7 +25,8 @@ export const DENY_ANY: RegExp[] = [
     /^\/api\/users\/me\/(tokens|webauthn)(\/|$)/,
     /^\/api\/devices\/[^/]+\/secrets(\/|$)/,
     /^\/api\/notifications\/channels(\/|$)/,
-    /^\/api\/portal-admin\/accounts(\/|$)/,
+    /^\/api\/portal-admin\/(accounts|settings)(\/|$)/,
+    /^\/api\/support-mailbox(\/|$)/,
 ];
 
 /** Refused for writes even where a broader allow rule would match (anything that sends, fetches, uploads or runs). */
@@ -85,4 +94,16 @@ export function judge(method: string, rawUrl: string): Verdict {
     if (DENY_WRITE.some((r) => r.test(path))) return "refuse";
     if (ALLOW_WRITE.some((r) => r.test(path))) return "write-ok";
     return "refuse";
+}
+
+export type Decision = { kind: "fixture"; hit: FixtureHit; method: string; path: string } | { kind: Verdict };
+
+/** What the gate does with a request: answer it from a sample (kind "fixture"), or the verdict of judge(). */
+export function decide(method: string, rawUrl: string): Decision {
+    const { path, suspicious } = normalizePath(rawUrl);
+    if (path.startsWith("/api/")) {
+        const hit = findFixture(method, path, rawUrl, suspicious);
+        if (hit) return { kind: "fixture", hit, method: method.toUpperCase(), path };
+    }
+    return { kind: judge(method, rawUrl) };
 }

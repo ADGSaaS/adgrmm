@@ -156,9 +156,10 @@ async function bootstrap() {
   app.use(/^\/api\/devices\/[^/]+\/files\/write\/?$/, (req: any, res: any, next: any) => fileWriteBodyParser(req, res, next));
 
   app.use(cookieParser());
+  configureCors(app);
+  // After CORS, so that a sample answer or a refusal carries the same headers as a real one.
   // The public demo: refuse everything that could reach outside, add a device or show how the server is set up (see demo-mode/).
   if (isDemoMode()) app.use(createDemoGate(app.get(DemoModeService)));
-  configureCors(app);
 
   // ✅ TS-only fix for Nest websocket adapter interface mismatch
   app.useWebSocketAdapter(new WsAdapter(app) as any);

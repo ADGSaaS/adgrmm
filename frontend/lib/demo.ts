@@ -41,9 +41,3 @@ export function useDemoMode(): boolean {
     }, []);
     return demo;
 }
-
-/** Administration tabs that show or change how the server itself is set up. The demo hides them. */
-export const DEMO_HIDDEN_ADMIN_TABS: ReadonlySet<string> = new Set([
-    "smtp", "mailbox", "sso", "helpdesk_import", "install_keys", "diagnostics", "integrations", "database", "storage", "backups",
-    "system", "migrations", "secrets", "import_export", "sessions", "agents", "demo", "flags", "client_portal",
-]);
