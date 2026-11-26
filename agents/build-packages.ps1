@@ -12,7 +12,7 @@
 # package's hash, so a package and version file that do not belong together are never offered.
 param(
     [string]$OutDir = (Join-Path $PSScriptRoot 'dist/agent-packages'),
-    [string]$Version = '1.3.61'
+    [string]$Version = '1.3.62'
 )
 
 $ErrorActionPreference = 'Stop'
