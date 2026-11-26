@@ -78,7 +78,7 @@ export default function LoginPage() {
     const loginBg = branding?.loginBackgroundUrl ?? undefined;
     const logoLight = branding?.logoLightUrl ?? undefined;
     const logoDark = branding?.logoDarkUrl ?? undefined;
-    const effectiveLogo = logoLight ?? logoDark ?? "/adg-saas-icon.png"; // always a string
+    const effectiveLogo = logoLight || logoDark || "/adg-saas-icon.png"; // an empty saved value counts as "not set"
 
     // Form state
     const [email, setEmail] = React.useState(() => {
