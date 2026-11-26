@@ -17,6 +17,8 @@ const inter = Inter({ subsets: ["latin"] });
 export const metadata: Metadata = {
   title: "ADG RMM",
   description: "Next-generation Remote Monitoring & Management",
+  // The console and the public demo are not meant to be found through search engines.
+  robots: { index: false, follow: false },
   icons: { icon: [{ url: "/favicon.ico?v=2", sizes: "any" }, { url: "/icon.svg", type: "image/svg+xml" }], apple: "/apple-touch-icon.png" },
 };
 

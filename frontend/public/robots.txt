@@ -1,0 +1,3 @@
+# The ADG RMM web app is a private console, not a public website: keep it out of search engines.
+User-agent: *
+Disallow: /
