@@ -26,7 +26,7 @@ $PackageSha256 = '__PACKAGE_SHA256__'
 $OnlyIfMissing = __ONLY_IF_MISSING__
 
 $ServiceName = 'AdgRmmAgent'
-$DataDir = Join-Path $env:ProgramData 'ADG RMM'
+$DataDir = Join-Path $env:ProgramData 'AdgRmm'
 $InstallDir = Join-Path $env:ProgramFiles 'AdgRmm\Agent'
 $ConfigPath = Join-Path $DataDir 'agent.config.json'
 $EnrollmentPath = Join-Path $DataDir 'enrollment.json'
