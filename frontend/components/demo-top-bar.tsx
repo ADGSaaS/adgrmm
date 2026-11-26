@@ -1,12 +1,24 @@
 "use client";
 // In the public demo only: a slim bar across the very top with a way back to the demos page on the website.
 import * as React from "react";
+import { usePathname } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { useDemoInfo } from "@/lib/demo";
 
 export default function DemoTopBar() {
     const info = useDemoInfo();
-    if (!info?.demo) return null;
+    const pathname = usePathname();
+    const isDemo = !!info?.demo;
+
+    // After a page change the browser scrolls the new page into view from just below this bar, which hides the bar. Put it back.
+    // (Only when the page is within the bar's own height of the top, so a person who has scrolled further is left alone.)
+    React.useEffect(() => {
+        if (!isDemo) return;
+        const t = window.setTimeout(() => { if (window.scrollY > 0 && window.scrollY <= 40) window.scrollTo(0, 0); }, 60);
+        return () => window.clearTimeout(t);
+    }, [pathname, isDemo]);
+
+    if (!isDemo) return null;
     return (
         <div role="navigation" aria-label="Demo" className="flex h-9 items-center justify-between gap-3 border-b border-amber-500/40 bg-amber-500/10 px-3 text-xs">
             {info.backUrl ? (
