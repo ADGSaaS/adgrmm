@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # ADG RMM installer.
 #
-#   curl -fsSL https://github.com/adgrmm/adgrmm/releases/latest/download/install.sh | sudo bash
+#   curl -fsSL https://github.com/adgsaas/adgrmm/releases/latest/download/install.sh | sudo bash
 #
 # Installs ADG RMM on this machine (Ubuntu 22.04/24.04 or Debian 12, x86_64) and walks you through the first setup:
 # where it runs, its web address and HTTPS, the database, your administrator account, company name, email sending,
@@ -23,7 +23,7 @@
 set -Eeuo pipefail
 
 ADG_REPO_GIVEN="${ADG_REPO:-}"
-ADG_REPO="${ADG_REPO:-adgrmm/adgrmm}"
+ADG_REPO="${ADG_REPO:-adgsaas/adgrmm}"
 ADG_RELEASE_BASE="${ADG_RELEASE_BASE:-}"
 ADG_HOME="${ADG_HOME:-/opt/adgrmm}"
 ASSET="adgrmm-linux-x64.tar.gz"

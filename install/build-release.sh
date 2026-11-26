@@ -34,7 +34,7 @@ OUT="$PWD/release-out"
 VERSION=""
 REF="HEAD"
 PUBLISH=0
-REPO_SLUG="${ADG_REPO:-adgrmm/adgrmm}"
+REPO_SLUG="${ADG_REPO:-adgsaas/adgrmm}"
 
 usage() { sed -n '2,22p' "$0" | sed 's/^# \{0,1\}//'; exit "${1:-0}"; }
 while [ $# -gt 0 ]; do

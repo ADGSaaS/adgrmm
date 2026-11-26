@@ -28,7 +28,7 @@ If a section needs something you don't have, mark it **Skipped** and say why.
 3. Run the installer. If the project's release page is private, the development team will give you a token first: run `export GITHUB_TOKEN=<token>` and use `sudo -E bash` instead of `sudo bash` below.
 
 ```bash
-curl -fsSL https://github.com/adgrmm/adgrmm/releases/latest/download/install.sh | sudo bash
+curl -fsSL https://github.com/adgsaas/adgrmm/releases/latest/download/install.sh | sudo bash
 ```
 
 4. Answer the questions. If you are unsure, take the first choice listed:

@@ -3,7 +3,7 @@
 One script installs ADG RMM on a server and walks you through the first setup.
 
 ```bash
-curl -fsSL https://github.com/adgrmm/adgrmm/releases/latest/download/install.sh | sudo bash
+curl -fsSL https://github.com/adgsaas/adgrmm/releases/latest/download/install.sh | sudo bash
 ```
 
 If the repository is private, set a token that can read it first: `export GITHUB_TOKEN=...` (use `sudo -E` so it
