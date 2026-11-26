@@ -10,12 +10,16 @@ export default function DemoTopBar() {
     const pathname = usePathname();
     const isDemo = !!info?.demo;
 
-    // After a page change the browser scrolls the new page into view from just below this bar, which hides the bar. Put it back.
-    // (Only when the page is within the bar's own height of the top, so a person who has scrolled further is left alone.)
+    // After a page change the browser scrolls the new page into view from just below this bar, which hides the bar, and it can do so a
+    // moment after the page appears. For a short while after each change, put the bar back whenever that happens. (Only when the page
+    // is within the bar's own height of the top, so a person who has scrolled further is left alone.)
     React.useEffect(() => {
         if (!isDemo) return;
-        const t = window.setTimeout(() => { if (window.scrollY > 0 && window.scrollY <= 40) window.scrollTo(0, 0); }, 60);
-        return () => window.clearTimeout(t);
+        const fix = () => { if (window.scrollY > 0 && window.scrollY <= 40) window.scrollTo(0, 0); };
+        window.addEventListener("scroll", fix, { passive: true });
+        const stop = window.setTimeout(() => window.removeEventListener("scroll", fix), 2000);
+        fix();
+        return () => { window.clearTimeout(stop); window.removeEventListener("scroll", fix); };
     }, [pathname, isDemo]);
 
     if (!isDemo) return null;
