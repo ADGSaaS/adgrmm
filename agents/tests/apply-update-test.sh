@@ -6,14 +6,14 @@
 set -u
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
-SCRIPT_SRC="$HERE/../linux/RemoteIQ.Agent.Linux/scripts/apply-update.sh"
+SCRIPT_SRC="$HERE/../linux/AdgRmm.Agent.Linux/scripts/apply-update.sh"
 FAILURES=0
 
 new_sandbox() {
     D="$(mktemp -d)"
     mkdir -p "$D/bin" "$D/agent" "$D/agent.update/new" "$D/state"
-    echo old > "$D/agent/remoteiq-agent"
-    echo new > "$D/agent.update/new/remoteiq-agent"
+    echo old > "$D/agent/adgrmm-agent"
+    echo new > "$D/agent.update/new/adgrmm-agent"
     echo identity > "$D/state/agent.json"
     echo 1.3.0 > "$D/state/pending.txt"
     tr -d '\r' < "$SCRIPT_SRC" > "$D/apply-update.sh"
@@ -23,7 +23,7 @@ STATE_DIR='$D/state'
 TARGET_VERSION='1.3.0'
 SERVICE_NAME='fake'
 UPDATE_UNIT='fake-update.service'
-EXE_NAME='remoteiq-agent'
+EXE_NAME='adgrmm-agent'
 HEALTH_SECONDS=4
 EOF
     if [ "${INIT_MODE:-systemd}" = openrc ]; then echo "INIT='openrc'" >> "$D/params.env"; fi
@@ -31,7 +31,7 @@ EOF
 #!/bin/bash
 D="$SANDBOX"
 echo "$*" >> "$D/calls.txt"
-exe="$(head -n 1 "$D/agent/remoteiq-agent" 2>/dev/null)"
+exe="$(head -n 1 "$D/agent/adgrmm-agent" 2>/dev/null)"
 case "$1" in
   stop) rm -f "$D/running" ;;
   start)
@@ -67,7 +67,7 @@ EOF
 }
 
 run() { SANDBOX="$D" SCENARIO="$1" PATH="$D/bin:$PATH" bash "$D/apply-update.sh" "$D/params.env"; }
-installed() { head -n 1 "$D/agent/remoteiq-agent" 2>/dev/null; }
+installed() { head -n 1 "$D/agent/adgrmm-agent" 2>/dev/null; }
 outcome() { sed -n 's/.*"outcome":"\([^"]*\)".*/\1/p' "$D/state/result.json" 2>/dev/null; }
 check() { if eval "$2"; then echo "pass  $1"; else echo "FAIL  $1"; FAILURES=$((FAILURES + 1)); fi; }
 done_with() { rm -rf "$D"; }

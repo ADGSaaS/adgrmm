@@ -1,4 +1,4 @@
-// remoteiq-frontend/components/ui/toaster.tsx
+// adgrmm-frontend/components/ui/toaster.tsx
 "use client";
 
 import * as React from "react";

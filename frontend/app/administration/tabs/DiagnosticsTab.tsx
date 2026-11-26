@@ -61,7 +61,7 @@ export default function DiagnosticsTab({ push }: { push: ToastFn }) {
             if (!res.ok) throw new Error(`Download failed (${res.status})`);
             const blob = await res.blob();
             // Named here, since a browser hides response headers from another origin.
-            const name = `remoteiq-diagnostics-${new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-")}.json`;
+            const name = `adgrmm-diagnostics-${new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-")}.json`;
             const url = URL.createObjectURL(blob);
             const a = document.createElement("a");
             a.href = url;

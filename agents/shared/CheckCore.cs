@@ -8,7 +8,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
 
-namespace RemoteIQ.Agent.Shared;
+namespace AdgRmm.Agent.Shared;
 
 public sealed class CheckDefinition
 {

@@ -222,7 +222,7 @@ export default function BackupsTab({ push }: { push?: (opts: ToastOptions) => vo
         schedule: "daily",
         cronExpr: "0 3 * * *",
         retentionDays: 30,
-        destination: { kind: "local", path: "/var/remoteiq/backups" } as LocalDest,
+        destination: { kind: "local", path: "/var/adgrmm/backups" } as LocalDest,
         extraDestinations: [],
         notifications: { email: false, webhook: false, slack: false },
         minSuccess: 1,
@@ -273,11 +273,11 @@ export default function BackupsTab({ push }: { push?: (opts: ToastOptions) => vo
             function mapIn(d: any): FanoutDest {
                 switch (d?.kind) {
                     case "s3": return { kind: "s3", connectionId: d.connectionId ?? "", bucket: d.bucket ?? "", prefix: d.prefix ?? "" };
-                    case "nextcloud": return { kind: "nextcloud", connectionId: d.connectionId ?? "", path: d.path ?? "/Backups/RemoteIQ" };
+                    case "nextcloud": return { kind: "nextcloud", connectionId: d.connectionId ?? "", path: d.path ?? "/Backups/AdgRmm" };
                     case "gdrive": return { kind: "gdrive", connectionId: d.connectionId ?? "", subfolder: d.subfolder ?? "" };
-                    case "remote": return { kind: "remote", connectionId: d.connectionId ?? "", path: d.path ?? "/srv/remoteiq/backups" };
+                    case "remote": return { kind: "remote", connectionId: d.connectionId ?? "", path: d.path ?? "/srv/adgrmm/backups" };
                     case "local":
-                    default: return { kind: "local", path: d?.path ?? "/var/remoteiq/backups" };
+                    default: return { kind: "local", path: d?.path ?? "/var/adgrmm/backups" };
                 }
             }
 
@@ -932,15 +932,15 @@ export default function BackupsTab({ push }: { push?: (opts: ToastOptions) => vo
                                         value={backups.destination.kind}
                                         onValueChange={(v: Dest["kind"]) => {
                                             if (v === "local") {
-                                                setBackups({ ...backups, destination: { kind: "local", path: "/var/remoteiq/backups" } as LocalDest });
+                                                setBackups({ ...backups, destination: { kind: "local", path: "/var/adgrmm/backups" } as LocalDest });
                                             } else if (v === "s3") {
                                                 setBackups({ ...backups, destination: { kind: "s3", connectionId: "", bucket: "", prefix: "" } as S3Dest });
                                             } else if (v === "nextcloud") {
-                                                setBackups({ ...backups, destination: { kind: "nextcloud", connectionId: "", path: "/Backups/RemoteIQ" } as NextcloudDest });
+                                                setBackups({ ...backups, destination: { kind: "nextcloud", connectionId: "", path: "/Backups/AdgRmm" } as NextcloudDest });
                                             } else if (v === "gdrive") {
                                                 setBackups({ ...backups, destination: { kind: "gdrive", connectionId: "", subfolder: "" } as GDriveDest });
                                             } else {
-                                                setBackups({ ...backups, destination: { kind: "remote", connectionId: "", path: "/srv/remoteiq/backups" } as RemoteSFTPDest });
+                                                setBackups({ ...backups, destination: { kind: "remote", connectionId: "", path: "/srv/adgrmm/backups" } as RemoteSFTPDest });
                                             }
                                             setErrors([]);
                                         }}
@@ -992,7 +992,7 @@ export default function BackupsTab({ push }: { push?: (opts: ToastOptions) => vo
                                             label="Directory (server path)"
                                             value={(backups.destination as LocalDest).path}
                                             onChange={(v) => setBackups({ ...backups, destination: { kind: "local", path: v } as LocalDest })}
-                                            placeholder="/var/remoteiq/backups"
+                                            placeholder="/var/adgrmm/backups"
                                         />
                                     </div>
                                 )}
@@ -1020,7 +1020,7 @@ export default function BackupsTab({ push }: { push?: (opts: ToastOptions) => vo
                                             label="Folder path"
                                             value={(backups.destination as NextcloudDest).path}
                                             onChange={(v) => setBackups({ ...backups, destination: { ...(backups.destination as NextcloudDest), kind: "nextcloud", path: v } as NextcloudDest })}
-                                            placeholder="/Backups/RemoteIQ"
+                                            placeholder="/Backups/AdgRmm"
                                         />
                                     </div>
                                 )}
@@ -1040,7 +1040,7 @@ export default function BackupsTab({ push }: { push?: (opts: ToastOptions) => vo
                                             label="Directory (remote absolute path)"
                                             value={(backups.destination as RemoteSFTPDest).path}
                                             onChange={(v) => setBackups({ ...backups, destination: { ...(backups.destination as RemoteSFTPDest), kind: "remote", path: v } as RemoteSFTPDest })}
-                                            placeholder="/srv/remoteiq/backups"
+                                            placeholder="/srv/adgrmm/backups"
                                         />
                                     </div>
                                 )}
@@ -1098,11 +1098,11 @@ export default function BackupsTab({ push }: { push?: (opts: ToastOptions) => vo
                                                     <Select
                                                         value={d.kind}
                                                         onValueChange={(v: FanoutDest["kind"]) => {
-                                                            if (v === "local") update({ kind: "local", path: "/var/remoteiq/backups" });
+                                                            if (v === "local") update({ kind: "local", path: "/var/adgrmm/backups" });
                                                             else if (v === "s3") update({ kind: "s3", connectionId: "", bucket: "", prefix: "" });
-                                                            else if (v === "nextcloud") update({ kind: "nextcloud", connectionId: "", path: "/Backups/RemoteIQ" });
+                                                            else if (v === "nextcloud") update({ kind: "nextcloud", connectionId: "", path: "/Backups/AdgRmm" });
                                                             else if (v === "gdrive") update({ kind: "gdrive", connectionId: "", subfolder: "" });
-                                                            else update({ kind: "remote", connectionId: "", path: "/srv/remoteiq/backups" });
+                                                            else update({ kind: "remote", connectionId: "", path: "/srv/adgrmm/backups" });
                                                         }}
                                                     >
                                                         <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
@@ -1144,7 +1144,7 @@ export default function BackupsTab({ push }: { push?: (opts: ToastOptions) => vo
                                                             label="Directory"
                                                             value={(d as any).path ?? ""}
                                                             onChange={(v) => update({ ...(d as any), path: v } as any)}
-                                                            placeholder="/var/remoteiq/backups"
+                                                            placeholder="/var/adgrmm/backups"
                                                         />
                                                     </div>
                                                 )}
@@ -1170,9 +1170,9 @@ export default function BackupsTab({ push }: { push?: (opts: ToastOptions) => vo
                                                     <div className="grid gap-1 md:col-span-4">
                                                         <LabeledInput
                                                             label="Folder path"
-                                                            value={(d as any).path ?? "/Backups/RemoteIQ"}
+                                                            value={(d as any).path ?? "/Backups/AdgRmm"}
                                                             onChange={(v) => update({ ...(d as any), path: v } as any)}
-                                                            placeholder="/Backups/RemoteIQ"
+                                                            placeholder="/Backups/AdgRmm"
                                                         />
                                                     </div>
                                                 )}
@@ -1190,9 +1190,9 @@ export default function BackupsTab({ push }: { push?: (opts: ToastOptions) => vo
                                                     <div className="grid gap-1 md:col-span-4">
                                                         <LabeledInput
                                                             label="Directory"
-                                                            value={(d as any).path ?? "/srv/remoteiq/backups"}
+                                                            value={(d as any).path ?? "/srv/adgrmm/backups"}
                                                             onChange={(v) => update({ ...(d as any), path: v } as any)}
-                                                            placeholder="/srv/remoteiq/backups"
+                                                            placeholder="/srv/adgrmm/backups"
                                                         />
                                                     </div>
                                                 )}

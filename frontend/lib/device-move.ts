@@ -1,11 +1,11 @@
 import { apiUrl } from "@/lib/api";
-// remoteiq-frontend/lib/device-move.ts
+// adgrmm-frontend/lib/device-move.ts
 // Small, self-contained helper to move a device to another site via API.
 // - Uses credentials cookies (credentials: "include")
 // - Tries a few endpoint variants
 // - Emits a browser event on success so other parts of the UI can refetch if desired
 
-export const DEVICES_CHANGED_EVENT = "remoteiq:devices-changed";
+export const DEVICES_CHANGED_EVENT = "adgrmm:devices-changed";
 
 function emitDevicesChanged(detail?: any) {
     if (typeof window === "undefined") return;

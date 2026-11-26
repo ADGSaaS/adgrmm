@@ -29,7 +29,7 @@ export function signedText(timestamp: string, body: string): string {
     return `${timestamp}.${body}`;
 }
 
-/** The value of the X-RemoteIQ-Signature header. */
+/** The value of the X-ADG-Signature header. */
 export function sign(secret: string, timestamp: string, body: string): string {
     return `sha256=${createHmac("sha256", secret).update(signedText(timestamp, body)).digest("hex")}`;
 }
@@ -63,11 +63,11 @@ export function cleanEvents(v: unknown): string[] {
 }
 
 /** The message format: "auto" (decided from the address) or one of the services. */
-export const FORMAT_CHOICES = ["auto", "remoteiq", "slack", "discord", "teams"] as const;
+export const FORMAT_CHOICES = ["auto", "adgrmm", "slack", "discord", "teams"] as const;
 export function cleanFormat(v: unknown): string {
     if (v === undefined || v === null || v === "") return "auto";
     const s = String(v);
-    if (!(FORMAT_CHOICES as readonly string[]).includes(s)) throw new BadRequestException("The message format must be auto, remoteiq, slack, discord or teams.");
+    if (!(FORMAT_CHOICES as readonly string[]).includes(s)) throw new BadRequestException("The message format must be auto, adgrmm, slack, discord or teams.");
     return s;
 }
 

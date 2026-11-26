@@ -4,7 +4,7 @@
 // a SET.
 //   - Linux uses the standard net-snmp tools (snmpget, snmpwalk) and says which package to install when they are missing.
 //   - Windows has no SNMP client in PowerShell, so the script carries a small SNMPv2c GET/GETNEXT client in C# (Add-Type).
-//   - Targets reach the script through RIQ_SNMP_TARGETS: space separated "ip,port,community", checked on the server and in the script
+//   - Targets reach the script through ADG_SNMP_TARGETS: space separated "ip,port,community", checked on the server and in the script
 //     (private IPv4 address, port 1-65535, community of letters, digits and . _ ~ @ # % ^ * + = - only).
 //   - Output, one fact per line:  "T <ip> ok" or "T <ip> fail <reason>";  "S <ip> descr|name|location|uptime <value>" (uptime in 1/100 s);
 //     "SUP <ip> <index> <level> <max> <description>" a printer supply;  "PR <ip> status|errors|pages <value>";
@@ -98,7 +98,7 @@ poll() {
 }
 export -f poll val nosuch
 
-printf '%s\n' $RIQ_SNMP_TARGETS | head -20 | xargs -P 8 -I{} bash -c 'set -f; poll "$1"' _ {}
+printf '%s\n' $ADG_SNMP_TARGETS | head -20 | xargs -P 8 -I{} bash -c 'set -f; poll "$1"' _ {}
 set +f
 cat "$W"/t.* 2>/dev/null
 echo "E $(( $(date +%s) - T0 ))"
@@ -113,8 +113,8 @@ using System.Collections.Generic;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
-public class RiqSnmpResult { public string Oid; public string Text; public string Hex; public bool Missing; }
-public static class RiqSnmp {
+public class AdgSnmpResult { public string Oid; public string Text; public string Hex; public bool Missing; }
+public static class AdgSnmp {
   static void Len(List<byte> b, int n) { if (n < 128) b.Add((byte)n); else if (n < 256) { b.Add(0x81); b.Add((byte)n); } else { b.Add(0x82); b.Add((byte)(n >> 8)); b.Add((byte)(n & 255)); } }
   static List<byte> Tlv(byte t, List<byte> v) { var r = new List<byte>(); r.Add(t); Len(r, v.Count); r.AddRange(v); return r; }
   static List<byte> Int(int n) { var v = new List<byte>(); if (n == 0) v.Add(0); else { while (n > 0) { v.Insert(0, (byte)(n & 255)); n >>= 8; } if ((v[0] & 0x80) != 0) v.Insert(0, 0); } return Tlv(0x02, v); }
@@ -130,7 +130,7 @@ public static class RiqSnmp {
     return sb.ToString();
   }
   // pdu: 0xA0 GET, 0xA1 GETNEXT. Returns null when nothing answered in time.
-  public static RiqSnmpResult Query(string host, int port, string community, byte pdu, string oid, int timeoutMs) {
+  public static AdgSnmpResult Query(string host, int port, string community, byte pdu, string oid, int timeoutMs) {
     var vb = Tlv(0x30, Tlv(0x30, Oid(oid).Concat2(new List<byte> { 0x05, 0x00 })));
     var body = Int(new Random().Next(1, 2000000000)); body.AddRange(Int(0)); body.AddRange(Int(0)); body.AddRange(vb);
     var msg = Int(1); msg.AddRange(Tlv(0x04, new List<byte>(Encoding.ASCII.GetBytes(community)))); msg.AddRange(Tlv(pdu, body));
@@ -149,7 +149,7 @@ public static class RiqSnmp {
         p++; l = ReadLen(d, ref p); p += l;                     // error index
         if (err != 0) return null;
         p++; ReadLen(d, ref p); p++; ReadLen(d, ref p);         // varbind list, first varbind
-        p++; l = ReadLen(d, ref p); var r = new RiqSnmpResult(); r.Oid = OidText(d, p, l); p += l;
+        p++; l = ReadLen(d, ref p); var r = new AdgSnmpResult(); r.Oid = OidText(d, p, l); p += l;
         byte tag = d[p++]; l = ReadLen(d, ref p);
         if (tag == 0x80 || tag == 0x81 || tag == 0x82 || tag == 0x05) { r.Missing = true; return r; }
         if (tag == 0x02) { long n = (d[p] & 0x80) != 0 ? -1 : 0; for (int i = 0; i < l; i++) n = (n << 8) | d[p + i]; r.Text = n.ToString(); }
@@ -168,11 +168,11 @@ public static class RiqSnmp {
   static List<byte> Concat2(this List<byte> a, List<byte> b) { var r = new List<byte>(a); r.AddRange(b); return r; }
 }
 '@ -ErrorAction Stop
-function Get1([string]$h, [int]$port, [string]$c, [string]$oid) { $r = [RiqSnmp]::Query($h, $port, $c, 0xA0, $oid, 2000); if ($r -and -not $r.Missing) { $r } else { $null } }
+function Get1([string]$h, [int]$port, [string]$c, [string]$oid) { $r = [AdgSnmp]::Query($h, $port, $c, 0xA0, $oid, 2000); if ($r -and -not $r.Missing) { $r } else { $null } }
 function Walk([string]$h, [int]$port, [string]$c, [string]$prefix, [int]$max) {
   $out = @(); $cur = $prefix
   for ($i = 0; $i -lt $max; $i++) {
-    $r = [RiqSnmp]::Query($h, $port, $c, 0xA1, $cur, 2000)
+    $r = [AdgSnmp]::Query($h, $port, $c, 0xA1, $cur, 2000)
     if (-not $r -or $r.Missing -or -not $r.Oid.StartsWith($prefix + '.')) { break }
     $out += ,$r; $cur = $r.Oid
   }
@@ -181,7 +181,7 @@ function Walk([string]$h, [int]$port, [string]$c, [string]$prefix, [int]$max) {
 function N($x) { if ($x) { [int64]$x } else { [int64]0 } }
 function Clean([string]$s, [int]$n) { $t = ($s -replace '[\x00-\x1f\x7f]', '').Trim(); if ($t.Length -gt $n) { $t.Substring(0, $n) } else { $t } }
 function IsPrivate([string]$ip) { $o = $ip.Split('.'); if ($o.Count -ne 4) { return $false }; ([int]$o[0] -eq 10) -or ([int]$o[0] -eq 192 -and [int]$o[1] -eq 168) -or ([int]$o[0] -eq 172 -and [int]$o[1] -ge 16 -and [int]$o[1] -le 31) }
-foreach ($t in @(([string]$env:RIQ_SNMP_TARGETS) -split '\s+' | Where-Object { $_ } | Select-Object -First 20)) {
+foreach ($t in @(([string]$env:ADG_SNMP_TARGETS) -split '\s+' | Where-Object { $_ } | Select-Object -First 20)) {
   $p = $t.Split(',', 3)
   if ($p.Count -ne 3 -or -not (IsPrivate $p[0]) -or $p[1] -notmatch '^\d{1,5}$' -or $p[2] -notmatch '^[A-Za-z0-9._~@#%^*+=-]{1,64}$') { continue }
   $ip = $p[0]; $port = [int]$p[1]; $c = $p[2]

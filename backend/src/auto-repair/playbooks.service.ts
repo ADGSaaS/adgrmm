@@ -120,7 +120,7 @@ export class PlaybooksService {
 
     /**
      * Runs the detection (read only) or the repair in dry-run mode on one computer, exactly as the repair loop would run it (inside the same fixed script).
-     * A dry run sets RIQ_DRYRUN=1: a repair script that is written to honour it changes nothing. Returns the job to follow.
+     * A dry run sets ADG_DRYRUN=1: a repair script that is written to honour it changes nothing. Returns the job to follow.
      */
     async startTest(orgId: string, id: string, deviceId: string, mode: "detect" | "dryrun") {
         const row = await this.row(orgId, id);
@@ -129,8 +129,8 @@ export class PlaybooksService {
         if (!dev[0] || !/windows/i.test(`${dev[0].os ?? ""} ${dev[0].name ?? ""}`)) throw new BadRequestException("Choose a Windows computer that has an agent.");
         const item = { key: row.key, detectScript: row.detect_script, fixScript: row.fix_script };
         const job = mode === "detect"
-            ? await this.jobs.createRunScriptJob({ agentId: dev[0].agent_id, language: "powershell", scriptText: composeDiagnose(DIAGNOSE_SCRIPT, [item]), env: { RIQ_TOOL: TEST_KIND, RIQ_CHECKS: "", RIQ_APP: "" }, timeoutSec: 180 })
-            : await this.jobs.createRunScriptJob({ agentId: dev[0].agent_id, language: "powershell", scriptText: composeRepair(REPAIR_SCRIPT, [item]), env: { RIQ_TOOL: TEST_KIND, RIQ_FIX: row.key, RIQ_DRYRUN: "1" }, timeoutSec: 300 });
+            ? await this.jobs.createRunScriptJob({ agentId: dev[0].agent_id, language: "powershell", scriptText: composeDiagnose(DIAGNOSE_SCRIPT, [item]), env: { ADG_TOOL: TEST_KIND, ADG_CHECKS: "", ADG_APP: "" }, timeoutSec: 180 })
+            : await this.jobs.createRunScriptJob({ agentId: dev[0].agent_id, language: "powershell", scriptText: composeRepair(REPAIR_SCRIPT, [item]), env: { ADG_TOOL: TEST_KIND, ADG_FIX: row.key, ADG_DRYRUN: "1" }, timeoutSec: 300 });
         return { jobId: job.id, mode, hash: liveHash(row) };
     }
 
@@ -138,7 +138,7 @@ export class PlaybooksService {
     async testResult(orgId: string, id: string, jobId: string, mode: "detect" | "dryrun") {
         const row = await this.row(orgId, id);
         const j = await this.jobs.getJobWithResult(jobId).catch(() => null);
-        if (!j || (j.parsed_payload as any)?.env?.RIQ_TOOL !== TEST_KIND) throw new NotFoundException("That test does not exist.");
+        if (!j || (j.parsed_payload as any)?.env?.ADG_TOOL !== TEST_KIND) throw new NotFoundException("That test does not exist.");
         if (!["succeeded", "failed", "timeout"].includes(j.status)) return { state: "running" as const };
         const out = String(j.stdout ?? ""), err = String(j.stderr ?? "");
         // a draft is not known to the loop yet: make its own problem readable for this one check of what it printed

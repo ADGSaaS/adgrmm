@@ -6,7 +6,7 @@
 //  - <Pager {...paged} />        draws "Rows per page", the range, and Previous / Next.
 //  - usePageSize + <PageSizeSelect>  for lists the server pages (the limit goes in the request).
 //
-// The choice is remembered per list under `riq.rows.<key>`, in this browser only.
+// The choice is remembered per list under `adg.rows.<key>`, in this browser only.
 import * as React from "react";
 import { cn } from "@/lib/utils";
 
@@ -30,7 +30,7 @@ export function useAutoLoadMore(nextCursor: string | null | undefined, loading: 
 
 function readSize(key: string, fallback: number): number {
     try {
-        const saved = Number(window.localStorage.getItem(`riq.rows.${key}`));
+        const saved = Number(window.localStorage.getItem(`adg.rows.${key}`));
         return (PAGE_SIZE_OPTIONS as readonly number[]).includes(saved) ? saved : fallback;
     } catch {
         return fallback;
@@ -44,7 +44,7 @@ export function usePageSize(key: string, fallback = 25): [number, (n: number) =>
     const setSize = React.useCallback(
         (n: number) => {
             setSizeState(n);
-            try { window.localStorage.setItem(`riq.rows.${key}`, String(n)); } catch { /* ignore */ }
+            try { window.localStorage.setItem(`adg.rows.${key}`, String(n)); } catch { /* ignore */ }
         },
         [key],
     );

@@ -1,7 +1,7 @@
 using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
 
-namespace RemoteIQ.Agent.Shared;
+namespace AdgRmm.Agent.Shared;
 
 /// <summary>One installed program as reported to the server.</summary>
 public sealed class SoftwareItem

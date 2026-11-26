@@ -19,13 +19,13 @@ export class DeviceRegistryService {
     }
 
     async key(t: Target, path: string, view: RegistryView): Promise<{ jobId: string; pending: boolean } & Partial<RegistryKeyResult>> {
-        const env = { RIQ_REG_PATH: path, RIQ_REG_VIEW: view };
+        const env = { ADG_REG_PATH: path, ADG_REG_VIEW: view };
         const { jobId, answer } = await this.tools.run(t, "registry.key", REGISTRY_SCRIPTS.key, env, this.tools.reader("registry.key", t.family, env));
         return { jobId, ...answer };
     }
 
     async search(t: Target, path: string, text: string, where: SearchIn, view: RegistryView): Promise<{ jobId: string; pending: boolean } & Partial<RegistrySearchResult>> {
-        const env = { RIQ_REG_PATH: path, RIQ_REG_VIEW: view, RIQ_REG_TEXT: text, RIQ_REG_IN: where };
+        const env = { ADG_REG_PATH: path, ADG_REG_VIEW: view, ADG_REG_TEXT: text, ADG_REG_IN: where };
         const { jobId, answer } = await this.tools.run(t, "registry.search", REGISTRY_SCRIPTS.search, env, this.tools.reader("registry.search", t.family, env));
         return { jobId, ...answer };
     }

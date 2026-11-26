@@ -275,7 +275,7 @@ export async function sftpProbe(opts: {
             passphrase: opts.passphrase,
         });
         const dir = normalizeDirPath(opts.testPath).replace(/\/$/, "");
-        const file = dir + "/remoteiq_probe_" + crypto.randomBytes(8).toString("hex") + ".txt";
+        const file = dir + "/adgrmm_probe_" + crypto.randomBytes(8).toString("hex") + ".txt";
         const data = Buffer.from("probe");
         await client.put(data, file);
         const read = (await client.get(file)) as Buffer;
@@ -291,7 +291,7 @@ export async function sftpProbe(opts: {
 export async function webdavProbe(opts: { url: string; username: string; password: string; path: string; }) {
     const client = createWebdavClient(opts.url, { username: opts.username, password: opts.password });
     const baseDir = normalizeDirPath(opts.path).replace(/\/$/, "");
-    const name = "remoteiq_probe_" + crypto.randomBytes(8).toString("hex") + ".txt";
+    const name = "adgrmm_probe_" + crypto.randomBytes(8).toString("hex") + ".txt";
     const p = normalizeFilePath(`${baseDir}/${name}`);
     const data = "probe";
     await client.putFileContents(p, data, { overwrite: true });
@@ -406,7 +406,7 @@ export async function gdriveProbe(opts: { credentialsJson: any; folderId?: strin
         throw new Error("Google Drive folderId is required");
     }
     const drive = makeDriveClient(opts.credentialsJson);
-    const name = "remoteiq_probe_" + crypto.randomBytes(8).toString("hex") + ".txt";
+    const name = "adgrmm_probe_" + crypto.randomBytes(8).toString("hex") + ".txt";
     const createRes = await drive.files.create({
         requestBody: { name, parents: [opts.folderId] },
         media: { mimeType: "text/plain", body: "probe" as any },

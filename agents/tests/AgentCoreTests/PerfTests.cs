@@ -1,6 +1,6 @@
 using System.Net.NetworkInformation;
-using RemoteIQ.Agent.Linux;
-using RemoteIQ.Agent.Shared;
+using AdgRmm.Agent.Linux;
+using AdgRmm.Agent.Shared;
 
 /// <summary>
 /// Network traffic and disk activity: the /proc parsers against realistic samples (samples/proc-*.txt), the adapter and disk

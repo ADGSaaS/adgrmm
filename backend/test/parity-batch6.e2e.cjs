@@ -6,7 +6,7 @@
 //   node test/parity-batch6.e2e.cjs seed     (before the backends start)
 //   node test/parity-batch6.e2e.cjs run      (once both are up)
 //
-// Required env: RIQ_E2E_ALLOW=1, JWT_SECRET, BASE_A, BASE_B, DB_A, DB_B, TEST_PASSWORD,
+// Required env: ADG_E2E_ALLOW=1, JWT_SECRET, BASE_A, BASE_B, DB_A, DB_B, TEST_PASSWORD,
 // ENROLLMENT_SECRET. Optional: DIST_B enables direct calls, SECRETS_FILE collects every
 // secret seen so the caller can search the new build's log for them.
 // It writes test rows, so it refuses any database whose name lacks "e2e".
@@ -30,8 +30,8 @@ const safe = (url) => {
         return false;
     }
 };
-if (process.env.RIQ_E2E_ALLOW !== "1" || !SECRET || !PW || !ENROLLMENT_SECRET || !safe(DB_A) || !safe(DB_B)) {
-    console.error("Refusing to run: set RIQ_E2E_ALLOW=1, JWT_SECRET, TEST_PASSWORD, ENROLLMENT_SECRET and e2e-named DB_A and DB_B.");
+if (process.env.ADG_E2E_ALLOW !== "1" || !SECRET || !PW || !ENROLLMENT_SECRET || !safe(DB_A) || !safe(DB_B)) {
+    console.error("Refusing to run: set ADG_E2E_ALLOW=1, JWT_SECRET, TEST_PASSWORD, ENROLLMENT_SECRET and e2e-named DB_A and DB_B.");
     process.exit(2);
 }
 

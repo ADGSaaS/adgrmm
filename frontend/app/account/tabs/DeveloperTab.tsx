@@ -26,7 +26,7 @@ export default function DeveloperTab({ onDirtyChange, saveHandleRef }: Props) {
     { id: "pat_live_ab12cd34", label: "CLI on MacBook", createdAt: new Date(Date.now() - 864e5).toISOString(), lastUsed: "2 hours ago" },
   ]);
   const [label, setLabel] = React.useState("");
-  const [webhookUrl, setWebhookUrl] = React.useState("https://example.com/webhooks/remoteiq");
+  const [webhookUrl, setWebhookUrl] = React.useState("https://example.com/webhooks/adgrmm");
   const [deliveries, setDeliveries] = React.useState(
     Array.from({ length: 3 }).map((_, i) => ({
       id: `evt_${100 + i}`,
@@ -134,7 +134,7 @@ export default function DeveloperTab({ onDirtyChange, saveHandleRef }: Props) {
             </div>
             <div className="mt-2 text-xs">
               <div className="rounded bg-muted p-2 font-mono">
-                remoteiq login --token &lt;PAT&gt;
+                adgrmm login --token &lt;PAT&gt;
               </div>
               <div className="mt-1 text-muted-foreground">Use a PAT above for non-interactive usage.</div>
             </div>
@@ -156,7 +156,7 @@ export default function DeveloperTab({ onDirtyChange, saveHandleRef }: Props) {
               value={webhookUrl}
               onChange={(e) => setWebhookUrl(e.target.value)}
               aria-label="Webhook URL"
-              placeholder="https://example.com/webhooks/remoteiq"
+              placeholder="https://example.com/webhooks/adgrmm"
             />
             <Button variant="outline" onClick={() => push({ title: "Endpoint updated", kind: "success" })}>
               <RefreshCcw className="mr-2 h-4 w-4" /> Update
@@ -198,8 +198,8 @@ export default function DeveloperTab({ onDirtyChange, saveHandleRef }: Props) {
             </div>
             <div className="mt-2 text-xs">
               <div className="rounded bg-muted p-2 font-mono">
-                {`import RemoteIQ from "@remoteiq/sdk"
-const client = new RemoteIQ({ apiKey: process.env.REMOTEIQ_API_KEY })`}
+                {`import ADG RMM from "@adgrmm/sdk"
+const client = new ADG RMM({ apiKey: process.env.ADG_API_KEY })`}
               </div>
             </div>
           </div>

@@ -2,7 +2,7 @@
 // One verifier handles every vector in order, as one running agent would.
 
 using System.Text.Json;
-using RemoteIQ.Agent.Shared;
+using AdgRmm.Agent.Shared;
 
 using var doc = JsonDocument.Parse(File.ReadAllBytes(args[0]));
 var verifier = new SessionStartVerifier();

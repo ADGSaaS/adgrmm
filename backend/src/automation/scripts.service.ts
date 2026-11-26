@@ -252,7 +252,7 @@ export class ScriptsService {
         }
     }
 
-    /** A built-in script put back to what RemoteIQ ships: its name, text, settings and category. */
+    /** A built-in script put back to what ADG RMM ships: its name, text, settings and category. */
     async reset(id: string) {
         const row = await this.prisma.automations.findUnique({ where: { id } });
         if (!row || row.type !== "script") throw new NotFoundException("Script not found");
@@ -350,7 +350,7 @@ export class ScriptsService {
         for (const parameter of config.parameters) {
             const value = supplied[parameter.name] ?? parameter.defaultValue ?? "";
             if (parameter.required && !value) throw new BadRequestException(`"${parameter.label || parameter.name}" is required.`);
-            env[`RIQ_${parameter.name.toUpperCase()}`] = value;
+            env[`ADG_${parameter.name.toUpperCase()}`] = value;
         }
         return env;
     }

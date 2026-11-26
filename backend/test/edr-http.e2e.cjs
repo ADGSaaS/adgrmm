@@ -6,7 +6,7 @@
 // The backend under test has to be started with (one stand-in, different paths):
 //   EDR_MDE_LOGIN_BASE=http://127.0.0.1:4891/mdelogin EDR_MDE_API_BASE=http://127.0.0.1:4891/mde EDR_S1_BASE=http://127.0.0.1:4891/s1
 //   EDR_HUNTRESS_BASE=http://127.0.0.1:4891/hn EDR_CS_BASE=http://127.0.0.1:4891/cs EDR_SYNC=false
-//   RIQ_E2E_ALLOW=1 BASE_URL=http://127.0.0.1:3977 DATABASE_URL=postgres://.../riq_edr_e2e JWT_SECRET=... node test/edr-http.e2e.cjs
+//   ADG_E2E_ALLOW=1 BASE_URL=http://127.0.0.1:3977 DATABASE_URL=postgres://.../adg_edr_e2e JWT_SECRET=... node test/edr-http.e2e.cjs
 "use strict";
 const http = require("node:http");
 const { assert, call, runner, setup, uuid } = require("./groupc-helpers.cjs");

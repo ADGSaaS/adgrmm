@@ -324,7 +324,7 @@ export default function NotificationsTab({ onDirtyChange, saveHandleRef }: Props
             <DialogTitle>Example email</DialogTitle>
           </DialogHeader>
           <div className="rounded border p-3 text-sm">
-            <div><strong>Subject:</strong> RemoteIQ — Example alert</div>
+            <div><strong>Subject:</strong> ADG RMM — Example alert</div>
             <div className="mt-2">Hello! This is how your alerts will look. Digest: {form.watch("digest")}.</div>
           </div>
         </DialogContent>

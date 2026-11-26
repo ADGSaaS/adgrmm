@@ -2,8 +2,8 @@
 // Customer limits on the device paths that used to check only sign-in and a permission: the remote shell socket, desktop tunnels,
 // device tags, live device subscriptions on the dashboard socket and reading a job by id. A person limited to customer A must not
 // reach customer B's device through any of them; a person with no limits keeps reaching both.
-// It starts its own backend (RIQ_DIST, default ./dist, main.js) on PORT (default 3931). Throwaway database only:
-//   RIQ_E2E_ALLOW=1 DATABASE_URL=postgres://.../riq_scope_e2e JWT_SECRET=... DATA_ENCRYPTION_KEY=... ADMIN_API_KEY=... node test/scope-gaps.e2e.cjs
+// It starts its own backend (ADG_DIST, default ./dist, main.js) on PORT (default 3931). Throwaway database only:
+//   ADG_E2E_ALLOW=1 DATABASE_URL=postgres://.../adg_scope_e2e JWT_SECRET=... DATA_ENCRYPTION_KEY=... ADMIN_API_KEY=... node test/scope-gaps.e2e.cjs
 "use strict";
 
 const path = require("node:path");
@@ -17,7 +17,7 @@ const COOKIE = process.env.AUTH_COOKIE_NAME || "auth_token";
 const WS_BASE = BASE.replace(/^http/, "ws");
 
 async function startBackend() {
-    const dist = path.resolve(process.env.RIQ_DIST || path.join(process.cwd(), "dist"));
+    const dist = path.resolve(process.env.ADG_DIST || path.join(process.cwd(), "dist"));
     // This test never uses the admin key, and the backend refuses to start with a placeholder one.
     const { ADMIN_API_KEY: _unused, ...env } = process.env;
     const child = spawn(process.execPath, [path.join(dist, "main.js")], {

@@ -1,4 +1,4 @@
-// remoteiq-minimal-e2e/backend/src/remote-shell/remote-shell.gateway.ts
+// adgrmm-minimal-e2e/backend/src/remote-shell/remote-shell.gateway.ts
 import { Logger, OnModuleDestroy } from "@nestjs/common";
 import { WebSocketGateway, WebSocketServer } from "@nestjs/websockets";
 import { randomUUID } from "node:crypto";

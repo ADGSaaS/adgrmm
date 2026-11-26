@@ -1,4 +1,4 @@
-# Builds the RemoteIQ release bundle that install.sh downloads, and publishes it as a GitHub release.
+# Builds the ADG RMM release bundle that install.sh downloads, and publishes it as a GitHub release.
 #
 # To make a release: push a tag named after the version.
 #     git tag v0.2.0 && git push origin v0.2.0
@@ -64,10 +64,10 @@ jobs:
           for tag in $(gh release list --limit 10 --json tagName --jq '.[].tagName'); do
             [ "$tag" = "v$VERSION" ] && continue
             mkdir -p prev && rm -rf prev/*
-            gh release download "$tag" --pattern remoteiq-linux-x64.tar.gz --dir prev || continue
-            if tar -tzf prev/remoteiq-linux-x64.tar.gz | grep -q '^remoteiq/agent-packages/windows/'; then
-              tar -xzf prev/remoteiq-linux-x64.tar.gz -C prev remoteiq/agent-packages
-              mv prev/remoteiq/agent-packages agent-packages
+            gh release download "$tag" --pattern adgrmm-linux-x64.tar.gz --dir prev || continue
+            if tar -tzf prev/adgrmm-linux-x64.tar.gz | grep -q '^adgrmm/agent-packages/windows/'; then
+              tar -xzf prev/adgrmm-linux-x64.tar.gz -C prev adgrmm/agent-packages
+              mv prev/adgrmm/agent-packages agent-packages
               echo "Agents taken from $tag"
               break
             fi
@@ -86,5 +86,5 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release create "v$VERSION" \
-            --title "RemoteIQ $VERSION" --generate-notes \
-            out/remoteiq-linux-x64.tar.gz out/SHA256SUMS out/version.txt out/install.sh
+            --title "ADG RMM $VERSION" --generate-notes \
+            out/adgrmm-linux-x64.tar.gz out/SHA256SUMS out/version.txt out/install.sh

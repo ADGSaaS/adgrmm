@@ -28,8 +28,8 @@ const DETECT_EXAMPLE = `# Print DETECTED| followed by what you found, when the p
 # This script only reads: it must not change anything.
 $svc = Get-Service -Name 'Fax' -ErrorAction SilentlyContinue
 if ($svc -and $svc.Status -ne 'Running') { Write-Output ('DETECTED|The Fax service is ' + $svc.Status) }`;
-const FIX_EXAMPLE = `# Print FIXED| and what you did, or FAILED| and why. When RIQ_DRYRUN is 1 (a trial), change nothing and say what you would do.
-if ($env:RIQ_DRYRUN -eq '1') { Write-Output 'FIXED|DRY RUN: would start the Fax service'; return }
+const FIX_EXAMPLE = `# Print FIXED| and what you did, or FAILED| and why. When ADG_DRYRUN is 1 (a trial), change nothing and say what you would do.
+if ($env:ADG_DRYRUN -eq '1') { Write-Output 'FIXED|DRY RUN: would start the Fax service'; return }
 Start-Service -Name 'Fax'
 if ((Get-Service -Name 'Fax').Status -eq 'Running') { Write-Output 'FIXED|Started the Fax service' } else { Write-Output 'FAILED|The Fax service would not start' }`;
 
@@ -113,7 +113,7 @@ function TestDialog({ pb, onClose, onDone }: { pb: Playbook; onClose: () => void
     return (
         <Dialog open onOpenChange={(v) => { if (!v && run.state !== "running") onClose(); }}>
             <DialogContent className="max-h-[85vh] max-w-2xl overflow-y-auto">
-                <DialogHeader><DialogTitle>Try it on a computer: {pb.title}</DialogTitle><DialogDescription>The detection only reads. The dry run runs the repair with RIQ_DRYRUN=1: a repair written to honour it changes nothing. Pick a Windows computer that is online.</DialogDescription></DialogHeader>
+                <DialogHeader><DialogTitle>Try it on a computer: {pb.title}</DialogTitle><DialogDescription>The detection only reads. The dry run runs the repair with ADG_DRYRUN=1: a repair written to honour it changes nothing. Pick a Windows computer that is online.</DialogDescription></DialogHeader>
                 <div className="space-y-3">
                     <div className="grid gap-1"><Label htmlFor="t-q">Find a computer</Label><Input id="t-q" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Name" /></div>
                     <select aria-label="Computer" className={selectClass} value={deviceId} onChange={(e) => setDeviceId(e.target.value)}><option value="">Choose a computer…</option>{found.map((d) => <option key={d.id} value={d.id}>{(d as { alias?: string; hostname?: string }).alias || (d as { hostname?: string }).hostname}</option>)}</select>

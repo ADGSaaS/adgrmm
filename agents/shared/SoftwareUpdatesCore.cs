@@ -2,7 +2,7 @@ using System.Text;
 using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
 
-namespace RemoteIQ.Agent.Shared;
+namespace AdgRmm.Agent.Shared;
 
 /// <summary>One program with a newer version available, as reported to the server.</summary>
 public sealed class OutdatedApp

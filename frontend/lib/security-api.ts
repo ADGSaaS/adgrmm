@@ -75,7 +75,7 @@ export type DeviceSecurity = {
     reason: string | null;
     scannedAt: string | null; attemptedAt: string | null; lastAttemptFailed: boolean; message: string | null; pending: boolean; stale: boolean;
     scan: ScanView | null;
-    /** Linux only: what RemoteIQ last learned about ClamAV (installed or not, and the last malware scan). */
+    /** Linux only: what ADG RMM last learned about ClamAV (installed or not, and the last malware scan). */
     clamav?: ClamavState | null;
 };
 

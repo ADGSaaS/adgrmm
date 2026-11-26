@@ -50,7 +50,7 @@ export function ScriptPropertiesHint() {
             <div className="mt-2 grid gap-2 text-muted-foreground">
                 <p>
                     Each <span className="font-mono">{"{{agent.name}}"}</span> is replaced with that device&apos;s value just before the script is sent. If a name is not known, or the device has no value for it, the script is <strong>not run</strong> and its output says which property was the problem.
-                    Values holding quotes, <span className="font-mono">$</span>, brackets or similar are never pasted into script text; read those from the environment variable instead, such as <span className="font-mono">$env:RIQ_AGENT_CUSTOMER</span> or <span className="font-mono">$RIQ_AGENT_CUSTOMER</span>.
+                    Values holding quotes, <span className="font-mono">$</span>, brackets or similar are never pasted into script text; read those from the environment variable instead, such as <span className="font-mono">$env:ADG_AGENT_CUSTOMER</span> or <span className="font-mono">$ADG_AGENT_CUSTOMER</span>.
                 </p>
                 <ul className="flex flex-wrap gap-1.5">
                     {PROPERTIES.map(([name, what]) => (
@@ -64,7 +64,7 @@ export function ScriptPropertiesHint() {
                 {fields.length > 0 ? (
                     <>
                         <p>
-                            The device&apos;s customer&apos;s own fields work the same way, as <span className="font-mono">{"{{customer.<field>}}"}</span>. Read a value with characters a shell could act on from <span className="font-mono">$env:RIQ_CUSTOMER_&lt;FIELD&gt;</span> or <span className="font-mono">$RIQ_CUSTOMER_&lt;FIELD&gt;</span>.
+                            The device&apos;s customer&apos;s own fields work the same way, as <span className="font-mono">{"{{customer.<field>}}"}</span>. Read a value with characters a shell could act on from <span className="font-mono">$env:ADG_CUSTOMER_&lt;FIELD&gt;</span> or <span className="font-mono">$ADG_CUSTOMER_&lt;FIELD&gt;</span>.
                         </p>
                         <ul className="flex flex-wrap gap-1.5">
                             {fields.map((f) => (

@@ -3,7 +3,7 @@
 // required fields, search and filters, history, the audit log, the client portal (only fields marked visible), the
 // Tickets report and that customer custom fields are untouched.
 //
-//   RIQ_E2E_ALLOW=1 BASE_URL=http://127.0.0.1:3901 DATABASE_URL=postgres://.../riq_x_e2e JWT_SECRET=... node test/ticket-custom-fields-http.e2e.cjs
+//   ADG_E2E_ALLOW=1 BASE_URL=http://127.0.0.1:3901 DATABASE_URL=postgres://.../adg_x_e2e JWT_SECRET=... node test/ticket-custom-fields-http.e2e.cjs
 "use strict";
 const bcrypt = require("bcryptjs");
 const { assert, call, json, runner, setup } = require("./groupc-helpers.cjs");

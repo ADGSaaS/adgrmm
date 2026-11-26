@@ -4,7 +4,7 @@
 // changing a category on a script, deleting a category only when it is empty, and editing, resetting and deleting built-in scripts.
 // The server must run with built-in seeding ON (the default).
 //
-//   RIQ_E2E_ALLOW=1 BASE_URL=http://127.0.0.1:3983 DATABASE_URL=postgres://.../riq_cat_e2e JWT_SECRET=... node test/script-categories-http.e2e.cjs
+//   ADG_E2E_ALLOW=1 BASE_URL=http://127.0.0.1:3983 DATABASE_URL=postgres://.../adg_cat_e2e JWT_SECRET=... node test/script-categories-http.e2e.cjs
 "use strict";
 const { assert, call, runner, setup } = require("./groupc-helpers.cjs");
 

@@ -40,7 +40,7 @@ async function check(name, fn) {
         for (const k of ["app", "database", "disk", "agents", "tasks", "email", "mailbox", "sso", "imports", "audit", "environment", "findings"]) assert.ok(k in report, k);
         for (const k of ["app", "database", "disk", "agents", "tasks", "email", "audit"]) assert.ok(!("error" in report[k]) || Array.isArray(report[k]), `${k} collected: ${JSON.stringify(report[k]).slice(0, 120)}`);
         assert.equal(report.requestedBy, "tester@example.test");
-        assert.equal(report.app.name, "remoteiq-backend");
+        assert.equal(report.app.name, "adgrmm-backend");
         assert.match(report.app.node, /^v\d+/);
         assert.ok(report.database.migrations.applied > 20);
         assert.deepEqual(report.database.migrations.unfinished, []);
@@ -66,7 +66,7 @@ async function check(name, fn) {
         try {
             const r = await svc.report(org, null);
             const text = JSON.stringify(r);
-            for (const secret of [process.env.JWT_SECRET, process.env.DATA_ENCRYPTION_KEY, process.env.ADMIN_API_KEY, "CLIENTSECRET-" + stamp, "REFRESHTOKEN-" + stamp, "SSOSECRET-" + stamp, "TENANT-" + stamp, "riq:riq@"].filter(Boolean)) {
+            for (const secret of [process.env.JWT_SECRET, process.env.DATA_ENCRYPTION_KEY, process.env.ADMIN_API_KEY, "CLIENTSECRET-" + stamp, "REFRESHTOKEN-" + stamp, "SSOSECRET-" + stamp, "TENANT-" + stamp, "adg:adg@"].filter(Boolean)) {
                 assert.ok(!text.includes(secret), `leaked: ${String(secret).slice(0, 12)}…`);
             }
             // What is shown is a yes or no, and the host of the provider.

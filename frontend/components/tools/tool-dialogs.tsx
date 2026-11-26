@@ -414,7 +414,7 @@ function RecoverDialog({ onClose }: { onClose: () => void }) {
     const [sure, setSure] = React.useState(false);
     const ok = s.reachable && (s.reach < CONFIRM_FROM || sure);
     return (
-        <Shell open onClose={onClose} title="Recover all agents" description="Asks every online device in the choice to restart its own RemoteIQ agent. Use it when agents have stopped answering jobs or look stuck. Devices that are offline cannot be reached from here: they are listed with that reason."
+        <Shell open onClose={onClose} title="Recover all agents" description="Asks every online device in the choice to restart its own ADG RMM agent. Use it when agents have stopped answering jobs or look stuck. Devices that are offline cannot be reached from here: they are listed with that reason."
             footer={r.run ? <Button onClick={onClose}>Close</Button> : (
                 <>
                     <Button variant="outline" onClick={onClose} disabled={r.busy}>Cancel</Button>

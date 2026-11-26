@@ -7,26 +7,26 @@
   Output file path (UTF-8). Default: db-inspect.txt
 
 .PARAMETER Container
-  Optional explicit container name (e.g. "remoteiq-minimal-e2e-postgres-1" or just "postgres").
+  Optional explicit container name (e.g. "adgrmm-minimal-e2e-postgres-1" or just "postgres").
   If omitted, the script tries to auto-detect a running Postgres container.
 
 .PARAMETER DbUser
-  Database user. Default: remoteiq
+  Database user. Default: adgrmm
 
 .PARAMETER DbPass
-  Database password. Default: remoteiqpass
+  Database password. Default: adgrmmpass
 
 .PARAMETER DbName
-  Database name. Default: remoteiq
+  Database name. Default: adgrmm
 #>
 
 [CmdletBinding()]
 param(
     [string]$Output = "db-inspect.txt",
     [string]$Container = "",
-    [string]$DbUser = "remoteiq",
-    [string]$DbPass = "remoteiqpass",
-    [string]$DbName = "remoteiq"
+    [string]$DbUser = "adgrmm",
+    [string]$DbPass = "adgrmmpass",
+    [string]$DbName = "adgrmm"
 )
 
 function Test-CommandExists {

@@ -4,7 +4,7 @@
 //   - Plain bash and only common tools; a missing tool is reported in words, never a crash.
 //   - Read-only, unless its name says "changes the device": those only act when the Confirm parameter is YES, and the clean-up has a dry run
 //     that is on by default.
-//   - A parameter is read from the environment (RIQ_<NAME>), checked against a strict pattern, and passed as an ARGUMENT, never built into code.
+//   - A parameter is read from the environment (ADG_<NAME>), checked against a strict pattern, and passed as an ARGUMENT, never built into code.
 //   - Plain output, and a non-zero exit code only for a real problem.
 // The text lives in String.raw templates: it must contain no dollar-brace sequence and no backtick (so no ${VAR} and no old-style command
 // substitution: use $VAR and $(command)).
@@ -47,7 +47,7 @@ if have ip; then ip -4 -o addr show scope global 2>/dev/null | awk '{print "  " 
         parameters: [{ name: "count", label: "How many processes to list (1 to 50)", defaultValue: "10" }],
         script: HEAD + String.raw`if ! have ps; then echo "The ps command is not installed (package: procps), so processes cannot be listed."; exit 0; fi
 N=10
-case "$RIQ_COUNT" in ''|*[!0-9]*) ;; *) if [ "$RIQ_COUNT" -ge 1 ] && [ "$RIQ_COUNT" -le 50 ]; then N="$RIQ_COUNT"; fi;; esac
+case "$ADG_COUNT" in ''|*[!0-9]*) ;; *) if [ "$ADG_COUNT" -ge 1 ] && [ "$ADG_COUNT" -le 50 ]; then N="$ADG_COUNT"; fi;; esac
 echo "Top $N processes by CPU:"
 ps -eo pid,user,pcpu,pmem,etime,comm --sort=-pcpu 2>/dev/null | head -n $((N + 1)) | sed 's/^/  /'
 echo
@@ -64,7 +64,7 @@ echo "Load average: $(cut -d' ' -f1-3 /proc/loadavg)"
         language: "bash", category: "Diagnostics", timeoutSec: 180,
         parameters: [{ name: "hours", label: "How many hours back (1 to 720)", defaultValue: "24" }],
         script: HEAD + String.raw`H=24
-case "$RIQ_HOURS" in ''|*[!0-9]*) ;; *) if [ "$RIQ_HOURS" -ge 1 ] && [ "$RIQ_HOURS" -le 720 ]; then H="$RIQ_HOURS"; fi;; esac
+case "$ADG_HOURS" in ''|*[!0-9]*) ;; *) if [ "$ADG_HOURS" -ge 1 ] && [ "$ADG_HOURS" -le 720 ]; then H="$ADG_HOURS"; fi;; esac
 if have journalctl; then
   OUT=$(journalctl -p err --since "$H hours ago" --no-pager -o short 2>/dev/null | grep -v '^-- ')
   if [ -z "$OUT" ]; then echo "No errors in the journal in the last $H hours."; exit 0; fi
@@ -142,12 +142,12 @@ exit 1
         description: "Restarts one named systemd or OpenRC service and shows its state. Does nothing unless Confirm is YES. Give the service name, for example nginx.",
         language: "bash", category: "Services and processes", timeoutSec: 180,
         parameters: [{ name: "service", label: "Service name (for example nginx)", required: true }, CONFIRM_PARAM],
-        script: HEAD + String.raw`S="$RIQ_SERVICE"
+        script: HEAD + String.raw`S="$ADG_SERVICE"
 if ! printf '%s' "$S" | grep -Eq '^[A-Za-z0-9][A-Za-z0-9_.@-]{0,79}$'; then echo "Give a valid service name in the Service parameter."; exit 2; fi
 if have systemctl && [ -d /run/systemd/system ]; then
   if ! systemctl cat "$S" >/dev/null 2>&1; then echo "There is no service named $S."; exit 2; fi
   echo "Service $S is $(systemctl is-active "$S" 2>/dev/null)."
-  if [ "$RIQ_CONFIRM" != "YES" ]; then echo "Nothing was changed. Run again with Confirm set to YES to restart it."; exit 0; fi
+  if [ "$ADG_CONFIRM" != "YES" ]; then echo "Nothing was changed. Run again with Confirm set to YES to restart it."; exit 0; fi
   systemctl restart "$S" || { echo "The restart failed."; systemctl status "$S" --no-pager -n 8 2>&1 | tail -n 10; exit 1; }
   sleep 2
   echo "Restarted. It is now $(systemctl is-active "$S" 2>/dev/null)."
@@ -155,7 +155,7 @@ if have systemctl && [ -d /run/systemd/system ]; then
 elif have rc-service; then
   if [ ! -x "/etc/init.d/$S" ]; then echo "There is no service named $S."; exit 2; fi
   rc-service "$S" status 2>&1
-  if [ "$RIQ_CONFIRM" != "YES" ]; then echo "Nothing was changed. Run again with Confirm set to YES to restart it."; exit 0; fi
+  if [ "$ADG_CONFIRM" != "YES" ]; then echo "Nothing was changed. Run again with Confirm set to YES to restart it."; exit 0; fi
   rc-service "$S" restart && echo "Restarted." || { echo "The restart failed."; exit 1; }
 else
   echo "This system has neither systemd nor OpenRC."
@@ -201,7 +201,7 @@ df -hT -x tmpfs -x devtmpfs -x squashfs -x overlay 2>/dev/null | sed 's/^/  /'
 echo
 echo "Inodes:"
 df -i -x tmpfs -x devtmpfs -x squashfs -x overlay 2>/dev/null | sed 's/^/  /'
-P="$RIQ_PATH"
+P="$ADG_PATH"
 [ -n "$P" ] || P=/
 if [ ! -d "$P" ] || printf '%s' "$P" | grep -q '^-'; then echo; echo "The Path parameter is not a folder on this system: $P"; exit 2; fi
 echo
@@ -249,9 +249,9 @@ exit $BAD
         ],
         script: HEAD + String.raw`if [ "$(id -u)" != "0" ]; then echo "This needs to run as root."; exit 1; fi
 DAYS=14
-case "$RIQ_DAYS" in ''|*[!0-9]*) ;; *) if [ "$RIQ_DAYS" -ge 1 ] && [ "$RIQ_DAYS" -le 365 ]; then DAYS="$RIQ_DAYS"; fi;; esac
+case "$ADG_DAYS" in ''|*[!0-9]*) ;; *) if [ "$ADG_DAYS" -ge 1 ] && [ "$ADG_DAYS" -le 365 ]; then DAYS="$ADG_DAYS"; fi;; esac
 ACT=0
-if [ "$RIQ_DRY_RUN" = "no" ] && [ "$RIQ_CONFIRM" = "YES" ]; then ACT=1; fi
+if [ "$ADG_DRY_RUN" = "no" ] && [ "$ADG_CONFIRM" = "YES" ]; then ACT=1; fi
 echo "Space on / before: $(df -h / | awk 'NR==2 {print $4 " free of " $2}')"
 echo
 if have journalctl; then
@@ -318,9 +318,9 @@ if timeout 5 bash -c 'exec 3<>/dev/tcp/1.1.1.1/443' 2>/dev/null; then echo "  re
             { name: "host", label: "Host name or IP address", required: true },
             { name: "port", label: "TCP port to test (optional)", defaultValue: "" },
         ],
-        script: HEAD + String.raw`H="$RIQ_HOST"
+        script: HEAD + String.raw`H="$ADG_HOST"
 if ! printf '%s' "$H" | grep -Eq '^[A-Za-z0-9][A-Za-z0-9._:-]{0,252}$'; then echo "Give a valid host name or address in the Host parameter."; exit 2; fi
-PORT="$RIQ_PORT"
+PORT="$ADG_PORT"
 if [ -n "$PORT" ]; then
   case "$PORT" in *[!0-9]*) echo "The Port parameter must be a number from 1 to 65535."; exit 2;; esac
   if [ "$PORT" -lt 1 ] || [ "$PORT" -gt 65535 ]; then echo "The Port parameter must be a number from 1 to 65535."; exit 2; fi

@@ -1,6 +1,6 @@
 // backend/src/assets/asset-provider.ts
 //
-// The seam between RemoteIQ and whatever owns assets. Everything in RemoteIQ that touches assets goes through AssetsService, which asks the
+// The seam between ADG RMM and whatever owns assets. Everything in ADG RMM that touches assets goes through AssetsService, which asks the
 // provider that is switched on: the built-in asset manager (the `assets` table) or an external one (the owner's Killian software, an adapter
 // that is written when Killian's API exists). See docs/design/asset-provider.md.
 

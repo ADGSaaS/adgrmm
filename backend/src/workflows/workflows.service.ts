@@ -192,7 +192,7 @@ export class WorkflowsService implements OnModuleInit, OnModuleDestroy {
     }
 
     private async act(a: Action, f: Subject, orgId: string, ctx: Ctx): Promise<string> {
-        const req = { user: { organizationId: orgId, name: "RemoteIQ Workflows" } };
+        const req = { user: { organizationId: orgId, name: "ADG RMM Workflows" } };
         if (a.type === "set_priority" || a.type === "assign") {
             if (!ctx.ticketId) throw new Error("There is no ticket to change (the step that makes it did not work).");
             await this.tickets.update(ctx.ticketId, (a.type === "set_priority" ? { priority: a.priority } : { assigneeUserId: a.userId }) as any, req);
@@ -201,7 +201,7 @@ export class WorkflowsService implements OnModuleInit, OnModuleDestroy {
         if (a.type === "create_ticket") {
             const id = await this.tickets.create(
                 { subject: fill(a.subject, f.facts, 300), description: [fill(a.description, f.facts), "Made by a workflow rule."].filter(Boolean).join("\n\n"), priority: a.priority, deviceId: f.deviceId ?? undefined } as any,
-                { user: { organizationId: orgId, name: "RemoteIQ Workflows" } },
+                { user: { organizationId: orgId, name: "ADG RMM Workflows" } },
                 { source: "workflow" },
             );
             ctx.ticketId = id;

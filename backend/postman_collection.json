@@ -1,7 +1,7 @@
 {
   "info": {
-    "name": "RemoteIQ Backend Quick Test",
-    "_postman_id": "remoteiq-quick",
+    "name": "ADG RMM Backend Quick Test",
+    "_postman_id": "adgrmm-quick",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "item": [

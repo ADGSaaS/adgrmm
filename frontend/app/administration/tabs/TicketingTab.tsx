@@ -1,4 +1,4 @@
-// remoteiq-frontend/app/administration/tabs/TicketingTab.tsx
+// adgrmm-frontend/app/administration/tabs/TicketingTab.tsx
 "use client";
 
 import * as React from "react";
@@ -250,7 +250,7 @@ function normalizeCannedVariable(x: any): AdminCannedVariable {
 export default function TicketingTab({ push }: TicketingTabProps) {
     // Existing stub settings (we’ll wire these later if desired)
     const [emailToTicketEnabled, setEmailToTicketEnabled] = React.useState(true);
-    const [ingestionEmail, setIngestionEmail] = React.useState("support@your-msp.remoteiq.com");
+    const [ingestionEmail, setIngestionEmail] = React.useState("support@your-msp.adgrmm.com");
     const [categories, setCategories] = React.useState("Incidents, Service Requests, Networking, Hardware");
     const [priorities, setPriorities] = React.useState("Low, Medium, High, Critical");
 

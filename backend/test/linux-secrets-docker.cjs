@@ -18,20 +18,20 @@ const run = (cmd, args, o = {}) => spawnSync(cmd, args, { encoding: "utf8", maxB
 const dk = (...a) => run("docker", a);
 
 if (dk("info", "--format", "{{.ServerVersion}}").status !== 0) { console.log("(Docker is not running, skipped)"); process.exit(0); }
-const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "riq-linsec-"));
+const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "adg-linsec-"));
 const names = [];
 const stamp = Date.now();
 // device-mapper names and loop devices belong to the host kernel and outlive a container, so each volume is closed before its container goes
 const cleanup = () => {
     for (const n of names) {
-        dk("exec", n, "bash", "-c", `for d in /mnt/a /mnt/b /mnt/c; do umount $d 2>/dev/null; done; for m in $(ls /dev/mapper 2>/dev/null | grep '^riq${stamp}'); do cryptsetup close $m 2>/dev/null; done; for f in /root/*.dev; do [ -f "$f" ] && losetup -d $(cat $f) 2>/dev/null; done; true`);
+        dk("exec", n, "bash", "-c", `for d in /mnt/a /mnt/b /mnt/c; do umount $d 2>/dev/null; done; for m in $(ls /dev/mapper 2>/dev/null | grep '^adg${stamp}'); do cryptsetup close $m 2>/dev/null; done; for f in /root/*.dev; do [ -f "$f" ] && losetup -d $(cat $f) 2>/dev/null; done; true`);
         dk("rm", "-f", n);
     }
 };
-const MAP = (id) => `riq${stamp}${id}`;
+const MAP = (id) => `adg${stamp}${id}`;
 
 function container(tag, image, setup) {
-    const n = `riq-${tag}-${stamp}`; names.push(n);
+    const n = `adg-${tag}-${stamp}`; names.push(n);
     assert.equal(dk("run", "-d", "--name", n, "--privileged", image, "sleep", "1200").status, 0);
     const r = dk("exec", n, "bash", "-c", setup);
     return { n, setup: r };
@@ -73,25 +73,25 @@ try {
     const deb = container("laps-deb", "debian:12", "apt-get update -qq >/dev/null 2>&1; DEBIAN_FRONTEND=noninteractive apt-get install -y -qq sudo python3 openssl >/dev/null 2>&1; echo done");
     put(deb.n, "laps.sh", S.LINUX_LAPS_ROTATE_SCRIPT); put(deb.n, "login.py", LOGIN_PY);
     exec(deb.n, "chmod 755 /tmp/login.py");
-    const laps = (n, acct, len, extra = {}, user) => script(n, "laps.sh", { RIQ_LAPS_ACCOUNT: acct, RIQ_LAPS_LENGTH: String(len), ...extra }, user);
+    const laps = (n, acct, len, extra = {}, user) => script(n, "laps.sh", { ADG_LAPS_ACCOUNT: acct, ADG_LAPS_LENGTH: String(len), ...extra }, user);
     const answer = (r, acct, len) => P.parseLapsResult(r.stdout, { account: acct, length: len });
     let first, second;
     check("a new account is created, made an administrator, given a password that the server's parser accepts and that PAM confirms", () => {
-        const r = laps(deb.n, "riq-admin", 20); first = answer(r, "riq-admin", 20);
+        const r = laps(deb.n, "adg-admin", 20); first = answer(r, "adg-admin", 20);
         assert.equal(first.created, true); assert.equal(first.verified, true, "the stored hash matches (python3 crypt)");
-        assert.match(exec(deb.n, "id riq-admin; getent passwd riq-admin").stdout, /uid=\d{4,}.*groups=.*sudo/s);
-        assert.equal(canLogin(deb.n, "riq-admin", first.password), true, "a real login with the password works");
-        assert.equal(canLogin(deb.n, "riq-admin", first.password + "x"), false, "and a wrong password does not");
+        assert.match(exec(deb.n, "id adg-admin; getent passwd adg-admin").stdout, /uid=\d{4,}.*groups=.*sudo/s);
+        assert.equal(canLogin(deb.n, "adg-admin", first.password), true, "a real login with the password works");
+        assert.equal(canLogin(deb.n, "adg-admin", first.password + "x"), false, "and a wrong password does not");
     });
     check("nothing but the answer is printed: no password on stderr, none in the process list afterwards", () => {
-        const r = laps(deb.n, "riq-admin", 20); const a = answer(r, "riq-admin", 20);
+        const r = laps(deb.n, "adg-admin", 20); const a = answer(r, "adg-admin", 20);
         assert.ok(!r.stderr.includes(a.password), "stderr");
         assert.ok(!exec(deb.n, "ps aux; cat /var/log/*.log 2>/dev/null; true").stdout.includes(a.password));
         second = a;
     });
     check("a second rotation gives another password; the old one stops working, the new one works, and it is not 'created' again", () => {
         assert.notEqual(second.password, first.password); assert.equal(second.created, false);
-        assert.equal(canLogin(deb.n, "riq-admin", first.password), false); assert.equal(canLogin(deb.n, "riq-admin", second.password), true);
+        assert.equal(canLogin(deb.n, "adg-admin", first.password), false); assert.equal(canLogin(deb.n, "adg-admin", second.password), true);
     });
     check("an ordinary existing account is taken over (not created), and a system account is refused without being touched", () => {
         exec(deb.n, "useradd -m ordinaryjoe");
@@ -101,31 +101,31 @@ try {
         assert.equal(exec(deb.n, "getent shadow games").stdout, before, "the system account was not changed");
     });
     check("bad input is refused before anything happens (reserved, odd characters, upper case, bad length)", () => {
-        for (const [acct, len, reason] of [["root", 20, "reserved_account"], ["admin", 20, "reserved_account"], ["Bad", 20, "invalid_account"], ["a;b", 20, "invalid_account"], ["-x", 20, "invalid_account"], ["riq2", 13, "invalid_length"], ["riq2", 65, "invalid_length"], ["riq2", "ab", "invalid_length"]]) {
+        for (const [acct, len, reason] of [["root", 20, "reserved_account"], ["admin", 20, "reserved_account"], ["Bad", 20, "invalid_account"], ["a;b", 20, "invalid_account"], ["-x", 20, "invalid_account"], ["adg2", 13, "invalid_length"], ["adg2", 65, "invalid_length"], ["adg2", "ab", "invalid_length"]]) {
             assert.throws(() => answer(laps(deb.n, acct, len), acct, 20), (e) => e.code === "device_error" && e.reason === reason, `${acct}/${len} should be ${reason}`);
         }
-        assert.notEqual(exec(deb.n, "id riq2").status, 0, "nothing was created");
+        assert.notEqual(exec(deb.n, "id adg2").status, 0, "nothing was created");
     });
     check("a dry run changes nothing and says so (the parser refuses it as dry_run)", () => {
-        const r = laps(deb.n, "riq-dry", 20, { RIQ_DRY_RUN: "1" });
-        assert.throws(() => answer(r, "riq-dry", 20), (e) => e.code === "dry_run"); assert.notEqual(exec(deb.n, "id riq-dry").status, 0);
+        const r = laps(deb.n, "adg-dry", 20, { ADG_DRY_RUN: "1" });
+        assert.throws(() => answer(r, "adg-dry", 20), (e) => e.code === "dry_run"); assert.notEqual(exec(deb.n, "id adg-dry").status, 0);
     });
     check("not root: refused with a clear reason, nothing changed", () => {
-        assert.throws(() => answer(laps(deb.n, "riq-nr", 20, {}, "games"), "riq-nr", 20), (e) => e.code === "device_error" && e.reason === "not_root");
+        assert.throws(() => answer(laps(deb.n, "adg-nr", 20, {}, "games"), "adg-nr", 20), (e) => e.code === "device_error" && e.reason === "not_root");
     });
     check("30 dry-run passwords: right length, only the alphabet, one of every class, none repeated", () => {
         const seen = new Set();
         for (let i = 0; i < 30; i++) {
-            const j = JSON.parse(laps(deb.n, "riq-dry", 24, { RIQ_DRY_RUN: "1" }).stdout);
+            const j = JSON.parse(laps(deb.n, "adg-dry", 24, { ADG_DRY_RUN: "1" }).stdout);
             assert.equal(P.isValidLapsPassword(j.password, 24), true, j.password); assert.ok(!seen.has(j.password)); seen.add(j.password);
         }
     });
     check("without python3 or a usable hash tool the password is still set, and reported as unconfirmed (never as confirmed)", () => {
         exec(deb.n, "mv /usr/bin/python3 /usr/bin/python3.off; mv /usr/bin/python3.11 /usr/bin/python3.11.off 2>/dev/null; true");
-        const a = answer(laps(deb.n, "riq-admin", 20), "riq-admin", 20);
+        const a = answer(laps(deb.n, "adg-admin", 20), "adg-admin", 20);
         assert.equal(a.verified, false, "yescrypt cannot be checked with openssl");
         exec(deb.n, "mv /usr/bin/python3.off /usr/bin/python3; mv /usr/bin/python3.11.off /usr/bin/python3.11 2>/dev/null; true");
-        assert.equal(canLogin(deb.n, "riq-admin", a.password), true, "but it does work");
+        assert.equal(canLogin(deb.n, "adg-admin", a.password), true, "but it does work");
     });
 
     console.log("local administrator password, Rocky 9 (sha512 hashes, no python3: checked with openssl)");
@@ -133,11 +133,11 @@ try {
     put(rocky.n, "laps.sh", S.LINUX_LAPS_ROTATE_SCRIPT); put(rocky.n, "login.py", LOGIN_PY);
     check("the account is created in the wheel group, the sha512 hash is confirmed with openssl, and a real login works", () => {
         exec(rocky.n, "mv /usr/bin/python3 /usr/bin/python3.off 2>/dev/null; true");
-        const a = answer(laps(rocky.n, "riq-admin", 20), "riq-admin", 20);
+        const a = answer(laps(rocky.n, "adg-admin", 20), "adg-admin", 20);
         assert.equal(a.created, true); assert.equal(a.verified, true, "openssl branch");
-        assert.match(exec(rocky.n, "id riq-admin").stdout, /wheel/);
+        assert.match(exec(rocky.n, "id adg-admin").stdout, /wheel/);
         exec(rocky.n, "mv /usr/bin/python3.off /usr/bin/python3 2>/dev/null; chmod 755 /tmp/login.py; true");
-        assert.equal(canLogin(rocky.n, "riq-admin", a.password), true);
+        assert.equal(canLogin(rocky.n, "adg-admin", a.password), true);
     });
 
     console.log("LUKS recovery keys, Debian 12 (real LUKS2 volumes on loop devices, real systemd-cryptenroll)");
@@ -152,11 +152,11 @@ try {
         return { dev: sh(`cat /root/${id}.dev`), uuid: sh(`cryptsetup luksUUID $(cat /root/${id}.dev)`) };
     };
     const A = mk("a", "luks2", "/mnt/a"), B = mk("b", "luks2", "/mnt/b"), C = mk("c", "luks1", "/mnt/c"), D = mk("d", "luks2", "");
-    sh(`printf 'riqa UUID=${A.uuid} /root/a.kf luks\\nriqd UUID=${D.uuid} /root/d.kf luks\\nriqb UUID=${B.uuid} none luks\\n' > /etc/crypttab`);
+    sh(`printf 'adga UUID=${A.uuid} /root/a.kf luks\\nadgd UUID=${D.uuid} /root/d.kf luks\\nadgb UUID=${B.uuid} none luks\\n' > /etc/crypttab`);
     const slots = (v) => Number(sh(`cryptsetup luksDump ${v.dev} | awk '/^Keyslots:/{f=1;next} /^[A-Z]/{f=0} f && /^ *[0-9]+: luks2/{n++} END{print n+0}'`));
     const before = { a: slots(A), b: slots(B), c: slots(C), d: slots(D) };
     let res1;
-    const go = (have) => P.parseLuksResult(script(lk.n, "luks.sh", { RIQ_LUKS_HAVE: have }).stdout);
+    const go = (have) => P.parseLuksResult(script(lk.n, "luks.sh", { ADG_LUKS_HAVE: have }).stdout);
     const state = (r, v) => r.volumes.find((x) => x.id === v.uuid)?.state;
     check("keys are added only where a volume unlocks without a passphrase: A and D enrolled, B has no way to unlock, C is LUKS1", () => {
         res1 = go("");
@@ -176,17 +176,17 @@ try {
         }
     });
     check("untouched volumes keep their slots (B and C)", () => { assert.equal(slots(B), before.b); assert.equal(slots(C), before.c); });
-    check("a second run with the stored volumes listed adds nothing (one slot per volume from RemoteIQ)", () => {
+    check("a second run with the stored volumes listed adds nothing (one slot per volume from ADG RMM)", () => {
         const r = go(`${A.uuid},${D.uuid}`);
         assert.equal(r.keys.length, 0); assert.equal(state(r, A), "have"); assert.equal(state(r, D), "have");
         assert.equal(slots(A), before.a + 1); assert.equal(slots(D), before.d + 1);
     });
     check("not root is refused, and a machine with no encrypted disk says so", () => {
-        const r = script(lk.n, "luks.sh", { RIQ_LUKS_HAVE: "" }, "games");
+        const r = script(lk.n, "luks.sh", { ADG_LUKS_HAVE: "" }, "games");
         assert.throws(() => P.parseLuksResult(r.stdout), (e) => e.code === "device_error" && e.reason === "not_root");
         const plain = container("nolux", "rockylinux:9", "dnf install -y -q cryptsetup util-linux >/dev/null 2>&1; echo done");
         put(plain.n, "luks.sh", S.LINUX_LUKS_ESCROW_SCRIPT);
-        const r2 = script(plain.n, "luks.sh", { RIQ_LUKS_HAVE: "" });
+        const r2 = script(plain.n, "luks.sh", { ADG_LUKS_HAVE: "" });
         assert.throws(() => P.parseLuksResult(r2.stdout), (e) => e.code === "device_error" && e.reason === "no_luks");
     });
     check("the parser refuses a garbled or hostile answer", () => {

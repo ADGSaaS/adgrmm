@@ -5,7 +5,7 @@
 const crypto = require("node:crypto");
 const path = require("node:path");
 
-if (process.env.RIQ_E2E_ALLOW !== "1" || !/e2e/.test(process.env.DATABASE_URL || "")) { console.error("Refusing to run: set RIQ_E2E_ALLOW=1 and an e2e-named DATABASE_URL."); process.exit(2); }
+if (process.env.ADG_E2E_ALLOW !== "1" || !/e2e/.test(process.env.DATABASE_URL || "")) { console.error("Refusing to run: set ADG_E2E_ALLOW=1 and an e2e-named DATABASE_URL."); process.exit(2); }
 process.env.JWT_SECRET ||= "e2e-only-not-a-real-secret-e2e-only-not-a-real-secret";
 process.env.DATA_ENCRYPTION_KEY ||= "e2e-only-data-key";
 process.env.IMAP_POLL_ENABLED = "false"; process.env.NODE_ENV = "development";
@@ -24,7 +24,7 @@ const fails = async (fn, re) => { try { await fn(); return false; } catch (e) { 
     const { AutoRepairService } = require(path.join(dist, "auto-repair/auto-repair.service.js"));
     const C = require(path.join(dist, "auto-repair/auto-repair.core.js"));
     const S = require(path.join(dist, "auto-repair/auto-repair.scripts.js"));
-    const app = await NestFactory.createApplicationContext(AppModule, { logger: process.env.RIQ_TEST_WARN ? ["error", "warn"] : ["error"] });
+    const app = await NestFactory.createApplicationContext(AppModule, { logger: process.env.ADG_TEST_WARN ? ["error", "warn"] : ["error"] });
     const prisma = app.get(PrismaService, { strict: false });
     const tray = app.get(DeviceTrayService, { strict: false });
     const repair = app.get(AutoRepairService, { strict: false });
@@ -47,7 +47,7 @@ const fails = async (fn, re) => { try { await fn(); return false; } catch (e) { 
         const a = await prisma.agents.create({ data: { device_id: d.id, agent_uuid: crypto.randomUUID(), version: "1.3.46", last_check_in_at: new Date(), facts: { os } } });
         return { d, a };
     }
-    const jobOf = async (dev, tool) => (await prisma.jobs.findMany({ where: { agent_id: dev.a.id }, orderBy: { created_at: "desc" } })).find((j) => j.payload?.env?.RIQ_TOOL === tool);
+    const jobOf = async (dev, tool) => (await prisma.jobs.findMany({ where: { agent_id: dev.a.id }, orderBy: { created_at: "desc" } })).find((j) => j.payload?.env?.ADG_TOOL === tool);
     async function answer(dev, tool, stdout, status = "succeeded", stderr = "") {
         const j = await jobOf(dev, tool);
         await prisma.jobs.update({ where: { id: j.id }, data: { status, finished_at: new Date() } });
@@ -67,7 +67,7 @@ const fails = async (fn, re) => { try { await fn(); return false; } catch (e) { 
     check("only Software Issue looks at a program: the program adds the crash check, and Teams the Teams check", C.checksFor("Software Issue", { name: "Microsoft Teams", publisher: null, version: null }).join() === "disk,reboot,crash,teams" && !C.checksFor("Printing", { name: "Microsoft Teams", publisher: null, version: null }).includes("crash"));
     check("a diagnosis keeps only known problems and known line shapes", (() => { const d = C.parseDiagnosis("INFO a_b|1\nISSUE nonsense|x\nISSUE low-disk|Only 3 GB\nnoise\nISSUE low-disk|again\nDONE"); return d.complete && d.issues.length === 1 && d.issues[0].id === "low-disk" && d.info.a_b === "1"; })());
     check("every problem names its kind and the ones with a repair have text for the KB", Object.values(C.ISSUES).every((i) => ["repair", "advice", "escalate"].includes(i.kind) && i.title && i.signs && i.ifItReturns && (i.kind !== "repair" || i.fix) && (i.kind !== "advice" || i.advice)));
-    check("the scripts take their input from environment variables only (no program name pasted in)", !/\$\{/.test(S.DIAGNOSE_SCRIPT + S.REPAIR_SCRIPT) && /RIQ_APP/.test(S.DIAGNOSE_SCRIPT) && /RIQ_FIX/.test(S.REPAIR_SCRIPT));
+    check("the scripts take their input from environment variables only (no program name pasted in)", !/\$\{/.test(S.DIAGNOSE_SCRIPT + S.REPAIR_SCRIPT) && /ADG_APP/.test(S.DIAGNOSE_SCRIPT) && /ADG_FIX/.test(S.REPAIR_SCRIPT));
 
     // ------------------------------------------------------------ what is asked for
     console.log("what a ticket asks for");
@@ -79,7 +79,7 @@ const fails = async (fn, re) => { try { await fn(); return false; } catch (e) { 
     const row = (await prisma.$queryRaw`SELECT category, app_name, app_publisher FROM public.tray_help_requests WHERE ticket_id = ${t.id}::uuid`)[0];
     check("the category and the program are kept and shown on the ticket", row.category === "Software Issue" && row.app_name === "Microsoft Teams" && /Category: Software Issue/.test(t.description) && /Program: Microsoft Teams \(Microsoft Corporation, 24\.1\)/.test(t.description));
     const j0 = await jobOf(d0, S.DIAGNOSE_KIND);
-    check("the checks are queued as a signed script job with the checks and the program in its environment", j0 && j0.payload.env.RIQ_CHECKS === "disk,reboot,crash,teams" && j0.payload.env.RIQ_APP === "Microsoft Teams" && j0.payload.language === "powershell", j0?.payload);
+    check("the checks are queued as a signed script job with the checks and the program in its environment", j0 && j0.payload.env.ADG_CHECKS === "disk,reboot,crash,teams" && j0.payload.env.ADG_APP === "Microsoft Teams" && j0.payload.language === "powershell", j0?.payload);
     const pr = await ask(await device("printing-ignored"), { category: "Printing", appName: "Microsoft Teams" });
     check("another category ignores a program (it is not stored)", (await prisma.$queryRaw`SELECT app_name FROM public.tray_help_requests h JOIN public.tickets t ON t.id = h.ticket_id WHERE t.ticket_number = ${BigInt(pr.ticket.number)}`)[0].app_name === null);
 
@@ -98,16 +98,16 @@ const fails = async (fn, re) => { try { await fn(); return false; } catch (e) { 
     const dp = await device("print");
     const p1 = await ask(dp, { category: "Printing" });
     t = await ticketOf(p1.ticket.number);
-    check("a run starts for the category", (await run(t.id)).state === "diagnosing" && (await jobOf(dp, S.DIAGNOSE_KIND)).payload.env.RIQ_CHECKS === "printing,disk");
+    check("a run starts for the category", (await run(t.id)).state === "diagnosing" && (await jobOf(dp, S.DIAGNOSE_KIND)).payload.env.ADG_CHECKS === "printing,disk");
     await answer(dp, S.DIAGNOSE_KIND, "INFO host|X\nISSUE spooler-stopped|The Print Spooler service is Stopped\nDONE");
     await repair.tick();
     let r = await run(t.id);
     const rj = await jobOf(dp, S.REPAIR_KIND);
-    check("a known problem with a repair gets the repair job, naming only that problem", r.state === "repairing" && rj && rj.payload.env.RIQ_FIX === "spooler-stopped" && r.repair_issues.join() === "spooler-stopped", { s: r.state, env: rj?.payload?.env });
+    check("a known problem with a repair gets the repair job, naming only that problem", r.state === "repairing" && rj && rj.payload.env.ADG_FIX === "spooler-stopped" && r.repair_issues.join() === "spooler-stopped", { s: r.state, env: rj?.payload?.env });
     await answer(dp, S.REPAIR_KIND, "FIXED spooler-stopped|The Print Spooler is running again.\nDONE");
     await repair.tick();
     check("then the checks run again to verify", (await run(t.id)).state === "verifying");
-    check("the confirming checks only count crashes after the repair (the event log keeps the old ones for ever)", (await jobOf(dp, S.DIAGNOSE_KIND)).payload.env.RIQ_SINCE && !Number.isNaN(Date.parse((await jobOf(dp, S.DIAGNOSE_KIND)).payload.env.RIQ_SINCE)) && /RIQ_SINCE/.test(S.DIAGNOSE_SCRIPT));
+    check("the confirming checks only count crashes after the repair (the event log keeps the old ones for ever)", (await jobOf(dp, S.DIAGNOSE_KIND)).payload.env.ADG_SINCE && !Number.isNaN(Date.parse((await jobOf(dp, S.DIAGNOSE_KIND)).payload.env.ADG_SINCE)) && /ADG_SINCE/.test(S.DIAGNOSE_SCRIPT));
     await answer(dp, S.DIAGNOSE_KIND, "INFO host|X\nINFO spooler|Running\nDONE");
     await repair.tick();
     r = await run(t.id); t = await ticketOf(p1.ticket.number);
@@ -126,10 +126,10 @@ const fails = async (fn, re) => { try { await fn(); return false; } catch (e) { 
     const internalLog = log.filter((a) => a.is_internal).map((a) => a.body);
     const has = (re) => internalLog.some((x) => re.test(x));
     check("the log starts with what the person picked, the checks chosen and what happens next", has(/Automatic repair started for this ticket/) && has(/They picked: Printing/) && has(/Checks chosen for that category: printing, disk/) && has(/Every step is written here/));
-    check("it shows the first script in full: its purpose, job, how it runs, what it was given and its text", has(/Script sent to the computer: 1\. Checks \(read only\)[\s\S]*Purpose:[\s\S]*job [0-9a-f-]{36}[\s\S]*Given: RIQ_CHECKS=printing,disk; RIQ_APP=\(empty\)[\s\S]*\$ErrorActionPreference[\s\S]*ISSUE/));
+    check("it shows the first script in full: its purpose, job, how it runs, what it was given and its text", has(/Script sent to the computer: 1\. Checks \(read only\)[\s\S]*Purpose:[\s\S]*job [0-9a-f-]{36}[\s\S]*Given: ADG_CHECKS=printing,disk; ADG_APP=\(empty\)[\s\S]*\$ErrorActionPreference[\s\S]*ISSUE/));
     check("it shows what the first script returned: status, exit code, time and the full output", has(/Script result: 1\. Checks \(read only\)\nJob [0-9a-f-]{36}: succeeded, exit code 0, took [\d.]+ s[\s\S]*Output:\nINFO host\|X\nISSUE spooler-stopped\|The Print Spooler service is Stopped\nDONE/));
     check("it explains the decision: what was found, its kind, and what will be repaired", has(/Decision after the checks:[\s\S]*spooler-stopped \(repair\)[\s\S]*Repairing automatically: spooler-stopped: Started the Print Spooler/));
-    check("it shows the repair script in full with what it was told to repair, and what it returned", has(/Script sent to the computer: 2\. Repair[\s\S]*Given: RIQ_FIX=spooler-stopped[\s\S]*Set-Service/) && has(/Script result: 2\. Repair[\s\S]*FIXED spooler-stopped\|The Print Spooler is running again\./));
+    check("it shows the repair script in full with what it was told to repair, and what it returned", has(/Script sent to the computer: 2\. Repair[\s\S]*Given: ADG_FIX=spooler-stopped[\s\S]*Set-Service/) && has(/Script result: 2\. Repair[\s\S]*FIXED spooler-stopped\|The Print Spooler is running again\./));
     check("it records the decision after the repair and the confirming run (the script is referred to, not repeated)", has(/Decision after the repair:[\s\S]*spooler-stopped: the repair says it worked/) && has(/Script sent to the computer: 3\. Checks again[\s\S]*the same as the first check above/) && has(/Script result: 3\. Checks again/));
     check("it records the confirmation, the reply sent to the person, the ticket status and the knowledge base", has(/Decision after the confirming checks:[\s\S]*is gone\. The repair is confirmed/) && has(/Reply sent to the person in the tray window/) && has(/Ticket status: set to pending, waiting for the person to test/) && has(/Knowledge base: a new article was written for spooler-stopped/));
     check("every line of that log is internal (technicians only) except the reply the person is meant to read", log.filter((a) => !a.is_internal).length === 1);
@@ -210,17 +210,17 @@ const fails = async (fn, re) => { try { await fn(); return false; } catch (e) { 
         return { rr, tt, dev, tk, notes: await acts(tk.id) };
     }
     let k = await category("Internet or network", "ISSUE dns-failing|lookups fail\nDONE");
-    check("network: name lookups failing gets the DNS repair", k.rr.state === "repairing" && (await jobOf(k.dev, S.REPAIR_KIND)).payload.env.RIQ_FIX === "dns-failing");
+    check("network: name lookups failing gets the DNS repair", k.rr.state === "repairing" && (await jobOf(k.dev, S.REPAIR_KIND)).payload.env.ADG_FIX === "dns-failing");
     k = await category("Internet or network", "ISSUE gateway-unreachable|The router does not answer\nDONE");
     check("network: an unreachable router asks the person to check the cable (advice) and waits for them", k.rr.state === "awaiting_user" && !(await jobOf(k.dev, S.REPAIR_KIND)) && k.tt.status === "pending" && k.notes.some((a) => !a.is_internal && /network cable/.test(a.body)));
     k = await category("Internet or network", "ISSUE no-internet|down\nDONE");
     check("network: no internet at all goes to a technician", k.rr.state === "needs_technician" && !(await jobOf(k.dev, S.REPAIR_KIND)));
     k = await category("Sign-in or password", "ISSUE time-not-synced|stopped\nDONE");
-    check("sign-in: a clock that is not synchronised gets the time repair", k.rr.state === "repairing" && (await jobOf(k.dev, S.REPAIR_KIND)).payload.env.RIQ_FIX === "time-not-synced");
+    check("sign-in: a clock that is not synchronised gets the time repair", k.rr.state === "repairing" && (await jobOf(k.dev, S.REPAIR_KIND)).payload.env.ADG_FIX === "time-not-synced");
     k = await category("Sign-in or password", "ISSUE secure-channel-broken|broken\nDONE");
     check("sign-in: a broken domain trust goes to a technician at high priority", k.rr.state === "needs_technician" && k.tt.priority === "high");
     k = await category("Security concern", "ISSUE defender-realtime-off|off\nDONE");
-    check("security: switched-off virus protection gets repaired", k.rr.state === "repairing" && (await jobOf(k.dev, S.REPAIR_KIND)).payload.env.RIQ_FIX === "defender-realtime-off");
+    check("security: switched-off virus protection gets repaired", k.rr.state === "repairing" && (await jobOf(k.dev, S.REPAIR_KIND)).payload.env.ADG_FIX === "defender-realtime-off");
     await answer(k.dev, S.REPAIR_KIND, "FIXED defender-realtime-off|on\nDONE"); await repair.tick(); await answer(k.dev, S.DIAGNOSE_KIND, "DONE"); await repair.tick();
     const tsec = await ticketOf(k.tk.ticket_number);
     check("security: even when fixed, the ticket stays open for a technician and its priority is raised", (await run(k.tk.id)).state === "awaiting_user" && tsec.status === "open" && tsec.priority === "high");
@@ -237,7 +237,7 @@ const fails = async (fn, re) => { try { await fn(); return false; } catch (e) { 
     k = await category("Software Issue", "ISSUE app-crashing|Notepad closed 3 times\nDONE", { appName: "Notepad" });
     check("software: a program that keeps crashing with no repair goes to a technician", k.rr.state === "needs_technician" && /Software Issue, Notepad/.test(k.notes.find((a) => a.is_internal && /Automatic checks and repair/.test(a.body)).body));
     k = await category("Software Issue", "ISSUE teams-crashing|3 times\nDONE", { appName: "Microsoft Teams" });
-    check("software: Teams crashing gets the Teams repair", k.rr.state === "repairing" && (await jobOf(k.dev, S.REPAIR_KIND)).payload.env.RIQ_FIX === "teams-crashing");
+    check("software: Teams crashing gets the Teams repair", k.rr.state === "repairing" && (await jobOf(k.dev, S.REPAIR_KIND)).payload.env.ADG_FIX === "teams-crashing");
 
     console.log("switches and limits");
     await setRepair(true, false);
@@ -282,9 +282,9 @@ const fails = async (fn, re) => { try { await fn(); return false; } catch (e) { 
     const f1 = await failingCheck(dh, "service", { service: "Spooler" }, { ticket: true });
     await repair.healAlerts(); await repair.healAlerts();
     let ar = await alertRun(f1.al.id);
-    check("a failed Spooler check starts a run for the alert (once, even if looked at twice), with the printing checks", ar && ar.source === "alert" && ar.state === "diagnosing" && ar.checks.join() === "printing" && ar.ticket_id === f1.ticketId && (await jobOf(dh, S.DIAGNOSE_KIND)).payload.env.RIQ_CHECKS === "printing", ar);
+    check("a failed Spooler check starts a run for the alert (once, even if looked at twice), with the printing checks", ar && ar.source === "alert" && ar.state === "diagnosing" && ar.checks.join() === "printing" && ar.ticket_id === f1.ticketId && (await jobOf(dh, S.DIAGNOSE_KIND)).payload.env.ADG_CHECKS === "printing", ar);
     await answer(dh, S.DIAGNOSE_KIND, "INFO spooler|Stopped\nISSUE spooler-stopped|The Print Spooler service is Stopped\nDONE"); await repair.tick();
-    check("the problem found gets its repair, as for a ticket", (await alertRun(f1.al.id)).state === "repairing" && (await jobOf(dh, S.REPAIR_KIND)).payload.env.RIQ_FIX === "spooler-stopped");
+    check("the problem found gets its repair, as for a ticket", (await alertRun(f1.al.id)).state === "repairing" && (await jobOf(dh, S.REPAIR_KIND)).payload.env.ADG_FIX === "spooler-stopped");
     await answer(dh, S.REPAIR_KIND, "FIXED spooler-stopped|The Print Spooler is running again.\nDONE"); await repair.tick();
     await answer(dh, S.DIAGNOSE_KIND, "INFO spooler|Running\nDONE"); await repair.tick();
     ar = await alertRun(f1.al.id);
@@ -396,7 +396,7 @@ const fails = async (fn, re) => { try { await fn(); return false; } catch (e) { 
     console.log("your own repairs");
     {
         const good = { title: "Fax service stuck", plain: "the fax service was stuck", signs: "Faxes never leave.", fixText: "Restarted the fax service.", ifItReturns: "Look at the modem.", categories: ["Printing"], appWords: [], checkService: null, checkMetric: null,
-            detectScript: "if ((Get-Service Fax).Status -ne 'Running') { Write-Output 'DETECTED|The Fax service is stopped' }", fixScript: "if ($env:RIQ_DRYRUN -eq '1') { Write-Output 'FIXED|DRY RUN would start Fax'; return }\nStart-Service Fax\nWrite-Output 'FIXED|Started the Fax service'", risk: "low" };
+            detectScript: "if ((Get-Service Fax).Status -ne 'Running') { Write-Output 'DETECTED|The Fax service is stopped' }", fixScript: "if ($env:ADG_DRYRUN -eq '1') { Write-Output 'FIXED|DRY RUN would start Fax'; return }\nStart-Service Fax\nWrite-Output 'FIXED|Started the Fax service'", risk: "low" };
         const refused = async (o, re) => fails(() => Promise.resolve().then(() => P.cleanPlaybook({ ...good, ...o })), re);
         check("what a person types is checked: a detection that never prints DETECTED|, a repair that never says FIXED| or FAILED|, a restart or a disk wipe, an unknown category, no scope, program words without Software Issue", await refused({ detectScript: "Write-Output 'hello'" }, /DETECTED\|/) && await refused({ fixScript: "Start-Service Fax" }, /FIXED\|/) && await refused({ fixScript: "Restart-Computer -Force\nWrite-Output 'FIXED|x'" }, /restarting or shutting down/) && await refused({ fixScript: "Format-Volume -DriveLetter D\nWrite-Output 'FIXED|x'" }, /formatting, wiping/) && await refused({ categories: ["Gardening"] }, /not one of the categories/) && await refused({ categories: [], checkService: "", checkMetric: null }, /when it applies/) && await refused({ appWords: ["teams"] }, /Software Issue/) && await refused({ risk: "yolo" }, /how risky/) && await refused({ title: "" }, /title is needed/));
         check("things that are allowed but worth a look are listed for the Owner", P.scriptWarnings("Invoke-WebRequest http://x; Remove-Item C:\\x -Recurse -Force; Stop-Process -Name y").length === 3 && P.scriptWarnings("Start-Service Fax").length === 0);
@@ -415,14 +415,14 @@ const fails = async (fn, re) => { try { await fn(); return false; } catch (e) { 
         check("a repair cannot be approved before it has been tried on a computer", await fails(() => playbooks.approve(org.id, created.id, null), /Try the detection script/));
         const t1 = await playbooks.startTest(org.id, created.id, dpb.d.id, "detect");
         const tj = await jobOf(dpb, "auto-repair.playbook-test");
-        check("a test runs exactly what the loop would run: the fixed script with this playbook inside, and no built-in checks", tj && /RunCustom '/.test(tj.payload.scriptText) && tj.payload.env.RIQ_CHECKS === "" && /Get-Service Fax/.test(tj.payload.scriptText));
+        check("a test runs exactly what the loop would run: the fixed script with this playbook inside, and no built-in checks", tj && /RunCustom '/.test(tj.payload.scriptText) && tj.payload.env.ADG_CHECKS === "" && /Get-Service Fax/.test(tj.payload.scriptText));
         await answer(dpb, "auto-repair.playbook-test", `INFO c-zzzzzzzz_output|x\nINFO ${created.key}_output|DETECTED|The Fax service is stopped\nISSUE ${created.key}|The Fax service is stopped\nDONE`);
         const tr = await playbooks.testResult(org.id, created.id, t1.jobId, "detect");
         check("a finished detection test is remembered with what it printed", tr.state === "passed" && /found the problem/.test(tr.summary) && (await playbooks.get(org.id, created.id)).tests.detect.state === "passed");
         check("with a repair script, the dry run has to pass too", await fails(() => playbooks.approve(org.id, created.id, null), /dry run/));
         const t2 = await playbooks.startTest(org.id, created.id, dpb.d.id, "dryrun");
         const dj = await jobOf(dpb, "auto-repair.playbook-test");
-        check("the dry run asks the script to change nothing (RIQ_DRYRUN=1) and names the problem to repair", dj.payload.env.RIQ_DRYRUN === "1" && dj.payload.env.RIQ_FIX === created.key && new RegExp(`\\$custom\\['${created.key}'\\]`).test(dj.payload.scriptText));
+        check("the dry run asks the script to change nothing (ADG_DRYRUN=1) and names the problem to repair", dj.payload.env.ADG_DRYRUN === "1" && dj.payload.env.ADG_FIX === created.key && new RegExp(`\\$custom\\['${created.key}'\\]`).test(dj.payload.scriptText));
         await answer(dpb, "auto-repair.playbook-test", `FIXED ${created.key}|DRY RUN would start Fax\nDONE`);
         check("a dry run that says it would work passes", (await playbooks.testResult(org.id, created.id, t2.jobId, "dryrun")).state === "passed");
         const ap = await playbooks.approve(org.id, created.id, null);
@@ -437,9 +437,9 @@ const fails = async (fn, re) => { try { await fn(); return false; } catch (e) { 
         check("a ticket in its category includes the approved playbook: recorded on the run, in the script, and said in the log", rr.custom_ids.join() === created.key && new RegExp(`RunCustom '${created.key}'`).test(dscript) && (await acts(tq.id)).some((a) => a.is_internal && /Your own repairs included[\s\S]*Fax service stuck[\s\S]*approved/.test(a.body)));
         await answer(dpt, S.DIAGNOSE_KIND, `INFO host|X\nISSUE ${created.key}|The Fax service is stopped\nDONE`); await repair.tick();
         const rscript = (await jobOf(dpt, S.REPAIR_KIND)).payload;
-        check("its problem gets its repair: the repair script holds the playbook's repair, and only that problem is named", (await run(tq.id)).state === "repairing" && rscript.env.RIQ_FIX === created.key && new RegExp(`\\$custom\\['${created.key}'\\] = \\{`).test(rscript.scriptText) && /Start-Service Fax/.test(rscript.scriptText));
+        check("its problem gets its repair: the repair script holds the playbook's repair, and only that problem is named", (await run(tq.id)).state === "repairing" && rscript.env.ADG_FIX === created.key && new RegExp(`\\$custom\\['${created.key}'\\] = \\{`).test(rscript.scriptText) && /Start-Service Fax/.test(rscript.scriptText));
         await answer(dpt, S.REPAIR_KIND, `FIXED ${created.key}|Started the Fax service\nDONE`); await repair.tick();
-        check("the confirming checks use the same playbook", new RegExp(`RunCustom '${created.key}'`).test((await jobOf(dpt, S.DIAGNOSE_KIND)).payload.scriptText) && (await jobOf(dpt, S.DIAGNOSE_KIND)).payload.env.RIQ_SINCE);
+        check("the confirming checks use the same playbook", new RegExp(`RunCustom '${created.key}'`).test((await jobOf(dpt, S.DIAGNOSE_KIND)).payload.scriptText) && (await jobOf(dpt, S.DIAGNOSE_KIND)).payload.env.ADG_SINCE);
         await answer(dpt, S.DIAGNOSE_KIND, "INFO host|X\nDONE"); await repair.tick();
         const done = (await acts(tq.id));
         const reply = done.find((a) => !a.is_internal && a.author === C.AUTO_AUTHOR);
@@ -464,7 +464,7 @@ const fails = async (fn, re) => { try { await fn(); return false; } catch (e) { 
         const fm = await failingCheck(dm, "service", { service: "Modem" });
         await repair.healAlerts();
         const arm = await alertRun(fm.al.id);
-        check("a failed check can start the loop for a playbook that watches that service, even with no built-in plan", arm && arm.source === "alert" && arm.custom_ids.join() === detectOnly.key && (await jobOf(dm, S.DIAGNOSE_KIND)).payload.env.RIQ_CHECKS === "");
+        check("a failed check can start the loop for a playbook that watches that service, even with no built-in plan", arm && arm.source === "alert" && arm.custom_ids.join() === detectOnly.key && (await jobOf(dm, S.DIAGNOSE_KIND)).payload.env.ADG_CHECKS === "");
         await answer(dm, S.DIAGNOSE_KIND, `ISSUE ${detectOnly.key}|Modem fault light\nDONE`); await repair.tick();
         check("a playbook with no repair script only detects: the alert stays open for a technician and no repair job is made", (await alertRun(fm.al.id)).state === "needs_technician" && !(await jobOf(dm, S.REPAIR_KIND)) && (await alertState(fm.al.id)).state === "OPEN");
 
@@ -491,7 +491,7 @@ const fails = async (fn, re) => { try { await fn(); return false; } catch (e) { 
     // ------------------------------------------------------------ Linux computers and tickets that are not from the tray
     console.log("linux and ticket text");
     const L = require(path.join(dist, "auto-repair/auto-repair.linux.js"));
-    check("the Linux scripts take input from environment variables only", /RIQ_CHECKS/.test(L.LINUX_DIAGNOSE_SCRIPT) && /RIQ_FIX/.test(L.LINUX_REPAIR_SCRIPT) && !/\$\{RIQ_APP\}/.test(L.LINUX_REPAIR_SCRIPT) && /RIQ_DRYRUN/.test(L.LINUX_REPAIR_SCRIPT));
+    check("the Linux scripts take input from environment variables only", /ADG_CHECKS/.test(L.LINUX_DIAGNOSE_SCRIPT) && /ADG_FIX/.test(L.LINUX_REPAIR_SCRIPT) && !/\$\{ADG_APP\}/.test(L.LINUX_REPAIR_SCRIPT) && /ADG_DRYRUN/.test(L.LINUX_REPAIR_SCRIPT));
     check("only checks that mean something on Linux are chosen (and failed services for most categories)", C.checksForLinux("Printing", null).join() === "disk,services" && C.checksForLinux("Hardware", null).join() === "disk" && C.checksForLinux("Sign-in or password", null).join() === "time,network" && C.checksForLinux("Internet or network", null).join() === "network");
     check("the kind of computer is told from what the agent and the device say", C.platformOf("windows", null) === "windows" && C.platformOf(null, "Windows 11 Pro") === "windows" && C.platformOf("linux", null) === "linux" && C.platformOf(null, "Ubuntu 24.04") === "linux" && C.platformOf(null, "Debian GNU/Linux 12") === "linux" && C.platformOf("macos", "macOS 14") === null);
     check("every Linux problem is in the catalog with its text", ["linux-low-disk", "linux-pending-reboot", "linux-time-not-synced", "linux-dns-broken", "linux-service-failed"].every((id) => C.ISSUES[id] && C.ISSUES[id].title && C.ISSUES[id].signs && C.ISSUES[id].ifItReturns && (C.ISSUES[id].kind !== "repair" || C.ISSUES[id].fix)));
@@ -501,11 +501,11 @@ const fails = async (fn, re) => { try { await fn(); return false; } catch (e) { 
     const lx = await ask(dlx, { category: "Slow computer" });
     const lt = await ticketOf(lx.ticket.number);
     const lj = await jobOf(dlx, L.LINUX_DIAGNOSE_KIND);
-    check("a Linux computer is checked with the bash script and the Linux checks", (await run(lt.id)).state === "diagnosing" && lj && lj.payload.language === "bash" && lj.payload.env.RIQ_CHECKS === "disk,reboot,services" && lj.payload.script_text?.startsWith?.("#!/bin/bash") !== false, lj && lj.payload);
+    check("a Linux computer is checked with the bash script and the Linux checks", (await run(lt.id)).state === "diagnosing" && lj && lj.payload.language === "bash" && lj.payload.env.ADG_CHECKS === "disk,reboot,services" && lj.payload.script_text?.startsWith?.("#!/bin/bash") !== false, lj && lj.payload);
     await answer(dlx, L.LINUX_DIAGNOSE_KIND, "INFO host|x\nISSUE linux-low-disk|/ has 2.0 GB free (4%)\nDONE");
     await repair.tick();
     const lrj = await jobOf(dlx, L.LINUX_REPAIR_KIND);
-    check("the repair is the Linux repair for just that problem", lrj && lrj.payload.language === "bash" && lrj.payload.env.RIQ_FIX === "linux-low-disk");
+    check("the repair is the Linux repair for just that problem", lrj && lrj.payload.language === "bash" && lrj.payload.env.ADG_FIX === "linux-low-disk");
     await answer(dlx, L.LINUX_REPAIR_KIND, "FIXED linux-low-disk|Old temporary files were cleared: 900 MB freed.\nDONE");
     await repair.tick();
     check("then the Linux checks run again to confirm", (await run(lt.id)).state === "verifying" && !!(await jobOf(dlx, L.LINUX_DIAGNOSE_KIND)));
@@ -527,7 +527,7 @@ const fails = async (fn, re) => { try { await fn(); return false; } catch (e) { 
     await setText(true);
     const x1 = await mkTicket(dtx, "The printer will not print", "Nothing comes out of the printer");
     const rid = await repair.startFromText(x1);
-    check("with it on, the wording picks the category and the checks start (Windows computer)", !!rid && (await run(x1)).category === "Printing" && (await jobOf(dtx, S.DIAGNOSE_KIND)).payload.env.RIQ_CHECKS === "printing,disk");
+    check("with it on, the wording picks the category and the checks start (Windows computer)", !!rid && (await run(x1)).category === "Printing" && (await jobOf(dtx, S.DIAGNOSE_KIND)).payload.env.ADG_CHECKS === "printing,disk");
     check("and the ticket says how the category was chosen", (await acts(x1)).some((a) => a.is_internal && /chose the category "Printing" from the wording/.test(a.body)));
     check("the same ticket is not started twice", (await repair.startFromText(x1)) === null);
     const x2 = await mkTicket(null, "My outlook is not opening mail");

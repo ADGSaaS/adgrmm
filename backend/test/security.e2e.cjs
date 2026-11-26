@@ -7,8 +7,8 @@
 const crypto = require("node:crypto");
 const path = require("node:path");
 
-if (process.env.RIQ_E2E_ALLOW !== "1" || !/e2e/.test(process.env.DATABASE_URL || "")) {
-    console.error("Refusing to run: set RIQ_E2E_ALLOW=1 and an e2e-named DATABASE_URL.");
+if (process.env.ADG_E2E_ALLOW !== "1" || !/e2e/.test(process.env.DATABASE_URL || "")) {
+    console.error("Refusing to run: set ADG_E2E_ALLOW=1 and an e2e-named DATABASE_URL.");
     process.exit(2);
 }
 process.env.JWT_SECRET ||= "e2e-only-not-a-real-secret-e2e-only-not-a-real-secret";
@@ -64,7 +64,7 @@ const { healthy, text } = require("./security-fixtures.cjs");
         return { dev, agent: a, c };
     }
     const jobsOf = (d) => prisma.jobs.findMany({ where: { agent_id: d.agent.id }, orderBy: { created_at: "asc" } });
-    const scanJobs = async (d) => (await jobsOf(d)).filter((j) => j.payload?.env?.RIQ_TOOL === "security.scan");
+    const scanJobs = async (d) => (await jobsOf(d)).filter((j) => j.payload?.env?.ADG_TOOL === "security.scan");
     const row = async (d) => (await prisma.$queryRaw`SELECT * FROM public.device_security_scans WHERE device_id = ${d.dev.id}::uuid`)[0] ?? null;
     async function answer(d, out, status = "succeeded") {
         const j = (await scanJobs(d)).pop();
@@ -105,7 +105,7 @@ const { healthy, text } = require("./security-fixtures.cjs");
     let r = await runAt(T0);
     check("schedule: a Windows device that is online and was never scanned gets a scan (the default is 24 hours)", (await scanJobs(a1)).length === 1 && r.scans >= 1, r);
     const j1 = (await scanJobs(a1))[0];
-    check("schedule: it is a signed script job, fixed script, only RIQ_TOOL in its environment", j1.payload.language === "powershell" && j1.payload.env.RIQ_TOOL === "security.scan" && Object.keys(j1.payload.env).length === 1 && j1.payload.timeoutSec === 90 && j1.payload.scriptText.includes("Probe 'defender'"));
+    check("schedule: it is a signed script job, fixed script, only ADG_TOOL in its environment", j1.payload.language === "powershell" && j1.payload.env.ADG_TOOL === "security.scan" && Object.keys(j1.payload.env).length === 1 && j1.payload.timeoutSec === 90 && j1.payload.scriptText.includes("Probe 'defender'"));
     check("schedule: a device that is offline and one with no agent are never scanned, but an online Linux device is (with the Linux script)", (await scanJobs(aOffline)).length === 0 && !(await row(aNoAgent)) && (await scanJobs(aLinux)).length === 1 && (await scanJobs(aLinux))[0].payload.language === "bash");
     r = await runAt(T0 + 60_000);
     check("schedule: a device with a scan already waiting is left alone", (await scanJobs(a1)).length === 1);
@@ -168,7 +168,7 @@ const { healthy, text } = require("./security-fixtures.cjs");
     check("readback: the page says it was never scanned, and that the last try failed", view.state === "not_scanned" && view.lastAttemptFailed === true && view.scan === null);
     check("readback: a new scan can be asked for after that", !(await security.queueScan(rb.dev.id, rb.agent.id)).alreadyWaiting);
     // a job that is not a security scan, planted in pending_job_id, is never ingested
-    const other = await prisma.jobs.create({ data: { agent_id: rb.agent.id, type: "RUN_SCRIPT", payload: { env: { RIQ_TOOL: "services.list" }, language: "powershell", scriptText: "x" }, status: "succeeded", finished_at: new Date() } });
+    const other = await prisma.jobs.create({ data: { agent_id: rb.agent.id, type: "RUN_SCRIPT", payload: { env: { ADG_TOOL: "services.list" }, language: "powershell", scriptText: "x" }, status: "succeeded", finished_at: new Date() } });
     await prisma.job_results.create({ data: { job_id: other.id, exit_code: 0, stdout: text(healthy()), stderr: "", duration_ms: 1n } });
     await prisma.$executeRaw`UPDATE public.device_security_scans SET pending_job_id = ${other.id}::uuid, pending_at = now() WHERE device_id = ${rb.dev.id}::uuid`;
     await security.poll();

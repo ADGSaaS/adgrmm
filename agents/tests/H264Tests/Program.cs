@@ -1,5 +1,5 @@
 using System.Diagnostics;
-using RemoteIQ.Agent.Services;
+using AdgRmm.Agent.Services;
 
 if (args.Length > 0 && args[0] == "probe") return Probe.Run(args);
 if (args.Length > 1 && args[0] == "selftest") { var one = MfH264Encoder.Enumerate()[int.Parse(args[1])]; Console.WriteLine(one + ": " + (H264SelfTest.TestOne(one) ?? "passed")); return 0; }

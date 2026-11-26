@@ -713,7 +713,7 @@ export default function BrandingTab({ push }: BrandingTabProps) {
                                                 className="h-7 w-auto object-contain"
                                             />
                                         </picture>
-                                        <span className="text-sm opacity-90">RemoteIQ</span>
+                                        <span className="text-sm opacity-90">ADG RMM</span>
                                     </div>
                                     <div className="flex items-center gap-2">
                                         <button
@@ -948,7 +948,7 @@ export default function BrandingTab({ push }: BrandingTabProps) {
                                                         className="h-6 w-auto object-contain"
                                                     />
                                                 </picture>
-                                                <span className="text-sm opacity-80">RemoteIQ</span>
+                                                <span className="text-sm opacity-80">ADG RMM</span>
                                             </div>
                                             <div className="space-y-2">
                                                 <div className="h-9 rounded bg-muted" />

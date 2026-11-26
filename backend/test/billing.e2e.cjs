@@ -1,11 +1,11 @@
 // Money paths against a real database: totals, recurring invoices, payments and Stripe webhooks.
-// Usage, from backend/ after building: RIQ_E2E_ALLOW=1 DATABASE_URL=postgres://.../riq_e2e node test/billing.e2e.cjs
+// Usage, from backend/ after building: ADG_E2E_ALLOW=1 DATABASE_URL=postgres://.../adg_e2e node test/billing.e2e.cjs
 const crypto = require("node:crypto");
 const http = require("node:http");
 const path = require("node:path");
 
-if (process.env.RIQ_E2E_ALLOW !== "1" || !/e2e/.test(process.env.DATABASE_URL || "")) {
-    console.error("Refusing to run: set RIQ_E2E_ALLOW=1 and an e2e-named DATABASE_URL.");
+if (process.env.ADG_E2E_ALLOW !== "1" || !/e2e/.test(process.env.DATABASE_URL || "")) {
+    console.error("Refusing to run: set ADG_E2E_ALLOW=1 and an e2e-named DATABASE_URL.");
     process.exit(2);
 }
 

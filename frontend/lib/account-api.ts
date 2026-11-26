@@ -81,7 +81,7 @@ export async function previewSignature(body: string, secret: string) {
   await sleep(200);
   // mock HMAC preview (NOT real crypto)
   const mock = btoa(`${secret}:${body}`).slice(0, 24);
-  return { header: `X-RemoteIQ-Signature: v1=${mock}` };
+  return { header: `X-ADG-Signature: v1=${mock}` };
 }
 
 /* ===== Billing ===== */

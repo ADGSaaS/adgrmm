@@ -1,7 +1,7 @@
 using System.Net.NetworkInformation;
 using System.Text.RegularExpressions;
 
-namespace RemoteIQ.Agent.Shared;
+namespace AdgRmm.Agent.Shared;
 
 // Network traffic and disk activity: informational measurements that feed the device performance graphs.
 //

@@ -15,7 +15,7 @@ const path = require("node:path");
 
 require("reflect-metadata");
 
-const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "riq-session-sig-"));
+const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "adg-session-sig-"));
 process.env.JOB_SIGNING_KEY_FILE = path.join(tmp, "job-signing.pem");
 process.env.NODE_ENV = "development";
 // No relay is needed, and the session must not depend on one.

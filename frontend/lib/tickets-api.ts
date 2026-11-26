@@ -1,4 +1,4 @@
-// remoteiq-frontend/lib/tickets-api.ts
+// adgrmm-frontend/lib/tickets-api.ts
 import { jfetch } from "./api";
 
 export type TicketAttachment = {

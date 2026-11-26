@@ -3,7 +3,7 @@ import * as React from "react";
 import AdminGate from "./AdminGate";
 
 export const metadata = {
-    title: "Administration • RemoteIQ",
+    title: "Administration • ADG RMM",
 };
 
 export default function AdministrationLayout({

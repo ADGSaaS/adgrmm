@@ -110,8 +110,8 @@ const STR = {
     to: "To",
     subject: "Subject",
     body: "Body",
-    testSubject: "Test from RemoteIQ",
-    testBody: "This is a test email from RemoteIQ.",
+    testSubject: "Test from ADG RMM",
+    testBody: "This is a test email from ADG RMM.",
     pwdNeverShown:
         "Password is never shown. Leave unchanged to keep existing secret.",
     setChangePwd: "Set/Change password",

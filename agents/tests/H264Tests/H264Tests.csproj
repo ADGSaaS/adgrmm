@@ -16,14 +16,14 @@
   <ItemGroup>
     <PackageReference Include="SIPSorcery" Version="10.0.17" />
     <PackageReference Include="SIPSorceryMedia.Abstractions" Version="10.0.17" />
-    <Compile Include="..\..\windows\RemoteIQ.Agent\Services\MfInterop.cs" Link="MfInterop.cs" />
-    <Compile Include="..\..\windows\RemoteIQ.Agent\Services\MfD3d.cs" Link="MfD3d.cs" />
-    <Compile Include="..\..\windows\RemoteIQ.Agent\Services\MfH264Encoder.cs" Link="MfH264Encoder.cs" />
-    <Compile Include="..\..\windows\RemoteIQ.Agent\Services\H264Packetizer.cs" Link="H264Packetizer.cs" />
-    <Compile Include="..\..\windows\RemoteIQ.Agent\Services\H264Sps.cs" Link="H264Sps.cs" />
-    <Compile Include="..\..\windows\RemoteIQ.Agent\Services\H264SelfTest.cs" Link="H264SelfTest.cs" />
-    <Compile Include="..\..\windows\RemoteIQ.Agent\Services\ConsoleVideoCodecs.cs" Link="ConsoleVideoCodecs.cs" />
-    <Compile Include="..\..\windows\RemoteIQ.Agent\Services\ConsoleVideoSender.cs" Link="ConsoleVideoSender.cs" />
+    <Compile Include="..\..\windows\AdgRmm.Agent\Services\MfInterop.cs" Link="MfInterop.cs" />
+    <Compile Include="..\..\windows\AdgRmm.Agent\Services\MfD3d.cs" Link="MfD3d.cs" />
+    <Compile Include="..\..\windows\AdgRmm.Agent\Services\MfH264Encoder.cs" Link="MfH264Encoder.cs" />
+    <Compile Include="..\..\windows\AdgRmm.Agent\Services\H264Packetizer.cs" Link="H264Packetizer.cs" />
+    <Compile Include="..\..\windows\AdgRmm.Agent\Services\H264Sps.cs" Link="H264Sps.cs" />
+    <Compile Include="..\..\windows\AdgRmm.Agent\Services\H264SelfTest.cs" Link="H264SelfTest.cs" />
+    <Compile Include="..\..\windows\AdgRmm.Agent\Services\ConsoleVideoCodecs.cs" Link="ConsoleVideoCodecs.cs" />
+    <Compile Include="..\..\windows\AdgRmm.Agent\Services\ConsoleVideoSender.cs" Link="ConsoleVideoSender.cs" />
   </ItemGroup>
 
 </Project>

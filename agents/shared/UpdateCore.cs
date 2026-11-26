@@ -7,7 +7,7 @@ using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 
-namespace RemoteIQ.Agent.Shared;
+namespace AdgRmm.Agent.Shared;
 
 public sealed class UpdateManifest
 {

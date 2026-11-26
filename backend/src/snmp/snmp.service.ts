@@ -241,7 +241,7 @@ export class SnmpService {
         const targets = checkTargets(rows.map((r) => ({ ip: r.ip, port: r.port, community: decryptSecret(r.community_enc) })));
         const job = await this.jobs.createRunScriptJob({
             agentId: agent.id, language: poller.windows ? "powershell" : "bash", scriptText: poller.windows ? WINDOWS_SNMP_SCRIPT : LINUX_SNMP_SCRIPT,
-            env: { RIQ_TOOL: SNMP_KIND, RIQ_SNMP_TARGETS: targets }, timeoutSec: SNMP_TIMEOUT_SEC,
+            env: { ADG_TOOL: SNMP_KIND, ADG_SNMP_TARGETS: targets }, timeoutSec: SNMP_TIMEOUT_SEC,
         });
         const poll = (await this.prisma.$queryRaw<Array<{ id: string }>>`
             INSERT INTO public.snmp_polls (site_id, job_id, poller_device_id, poller_name, device_ids)
@@ -292,7 +292,7 @@ export class SnmpService {
         if (!job) return fail("The poll job is gone.");
         if (!FINISHED.includes(String(job.status))) return Date.now() - poll.requested_at.getTime() > GIVE_UP_MS ? fail("The poller did not answer in time.") : "waiting";
         // the community strings are not needed in the job any more
-        await this.prisma.$executeRaw`UPDATE public.jobs SET payload = jsonb_set(payload, '{env,RIQ_SNMP_TARGETS}', '"(removed)"'::jsonb) WHERE id = ${poll.job_id}::uuid AND payload #> '{env,RIQ_SNMP_TARGETS}' IS NOT NULL`;
+        await this.prisma.$executeRaw`UPDATE public.jobs SET payload = jsonb_set(payload, '{env,ADG_SNMP_TARGETS}', '"(removed)"'::jsonb) WHERE id = ${poll.job_id}::uuid AND payload #> '{env,ADG_SNMP_TARGETS}' IS NOT NULL`;
         if (job.status === "timeout") return fail("The poll took too long on the polling device.");
         const devs = await this.prisma.$queryRaw<Array<{ id: string; ip: string }>>`SELECT id::text AS id, ip FROM public.snmp_devices WHERE id = ANY(${poll.device_ids}::uuid[])`;
         let parsed: ReturnType<typeof parseSnmp>;

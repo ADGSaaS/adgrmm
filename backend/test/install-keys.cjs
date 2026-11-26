@@ -47,7 +47,7 @@ async function check(name, fn) {
         assert.ok(odd.includes("a$&b$'c$`d"));
     });
     await check("both scripts are valid syntax", () => {
-        const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "riq-scripts-"));
+        const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "adg-scripts-"));
         try {
             const sh = path.join(tmp, "i.sh");
             fs.writeFileSync(sh, scripts.linuxInstallerScript({ ...values, onlyIfMissing: true }));

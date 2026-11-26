@@ -3,7 +3,7 @@
 // partial results with a reason per device, the batch kept with one row per device, one audit event per batch, the
 // matching-ids endpoint behind "select all N matching", and a full 500-device batch.
 //
-//   RIQ_E2E_ALLOW=1 BASE_URL=http://127.0.0.1:3951 DATABASE_URL=postgres://.../riq_g1_e2e JWT_SECRET=... node test/bulk-http.e2e.cjs
+//   ADG_E2E_ALLOW=1 BASE_URL=http://127.0.0.1:3951 DATABASE_URL=postgres://.../adg_g1_e2e JWT_SECRET=... node test/bulk-http.e2e.cjs
 "use strict";
 const { assert, call, json, runner, setup, uuid } = require("./groupc-helpers.cjs");
 

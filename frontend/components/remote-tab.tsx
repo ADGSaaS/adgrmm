@@ -87,7 +87,7 @@ export default function RemoteTab({ deviceId, os }: RemoteTabProps) {
         const url = `/devices/${encodeURIComponent(deviceId)}?tool=${encodeURIComponent(tool)}&popout=1`;
         if (tool === "remote-console") {
             // The same window the console panel opens, so the two never run side by side.
-            window.open(`${url}&autoconnect=1`, `remoteiq_console_${deviceId.replace(/[^a-zA-Z0-9]/g, "_")}`, "popup,width=1400,height=900");
+            window.open(`${url}&autoconnect=1`, `adgrmm_console_${deviceId.replace(/[^a-zA-Z0-9]/g, "_")}`, "popup,width=1400,height=900");
             return;
         }
         window.open(url, "_blank", "noopener,noreferrer,width=1280,height=800");

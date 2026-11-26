@@ -1,4 +1,4 @@
-namespace RemoteIQ.Agent.Shared;
+namespace AdgRmm.Agent.Shared;
 
 /// <summary>Numeric version comparison, so 1.10.0 is newer than 1.9.0.</summary>
 public static class AgentVersion

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Security regression test. Run against a throwaway backend and database only:
 //
-//   RIQ_E2E_ALLOW=1 BASE_URL=http://127.0.0.1:3901 DATABASE_URL=postgres://.../riq_e2e \
+//   ADG_E2E_ALLOW=1 BASE_URL=http://127.0.0.1:3901 DATABASE_URL=postgres://.../adg_e2e \
 //   JWT_SECRET=... CONSOLE_ORIGIN=http://console.test node test/security-lockdown.e2e.cjs
 //
 // It writes test rows, so it refuses any database whose name lacks "e2e".
@@ -21,8 +21,8 @@ const SECRET = process.env.JWT_SECRET || "";
 const ORIGIN = process.env.CONSOLE_ORIGIN || "http://console.test";
 const COOKIE = process.env.AUTH_COOKIE_NAME || "auth_token";
 
-if (process.env.RIQ_E2E_ALLOW !== "1" || !/e2e/.test(new URL(DB_URL).pathname) || !SECRET) {
-    console.error("Refusing to run: set RIQ_E2E_ALLOW=1, JWT_SECRET, and a DATABASE_URL naming an e2e database.");
+if (process.env.ADG_E2E_ALLOW !== "1" || !/e2e/.test(new URL(DB_URL).pathname) || !SECRET) {
+    console.error("Refusing to run: set ADG_E2E_ALLOW=1, JWT_SECRET, and a DATABASE_URL naming an e2e database.");
     process.exit(2);
 }
 

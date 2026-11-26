@@ -4,8 +4,8 @@ The backend keeps two key files outside the database. Neither is in any backup i
 
 | File | Set by | Protects | Lost without a copy |
 | --- | --- | --- | --- |
-| `/opt/remoteiq/secrets/job-signing.pem` | `JOB_SIGNING_KEY_FILE` | Signs every script, file job, update and remote session start that agents accept | Every agent refuses the server until the installer is run on it again |
-| `/opt/remoteiq/secrets/data-encryption.key` | `DATA_ENCRYPTION_KEY_FILE` | Encrypts stored credentials and encrypted backup archives | Stored credentials must be entered again, and **encrypted backup archives can never be read** |
+| `/opt/adgrmm/secrets/job-signing.pem` | `JOB_SIGNING_KEY_FILE` | Signs every script, file job, update and remote session start that agents accept | Every agent refuses the server until the installer is run on it again |
+| `/opt/adgrmm/secrets/data-encryption.key` | `DATA_ENCRYPTION_KEY_FILE` | Encrypts stored credentials and encrypted backup archives | Stored credentials must be entered again, and **encrypted backup archives can never be read** |
 
 The data key encrypts SMTP, IMAP and POP passwords, storage connection secrets and DKIM private keys.
 
@@ -21,7 +21,7 @@ Keep them readable only by the backend's user (`chmod 600`). Check that a copy c
 - **An encrypted archive.** The restore worker decrypts it with the current data key. To decrypt one by hand, for example before the backend is running, use the same key:
 
   ```
-  DATA_ENCRYPTION_KEY_FILE=/opt/remoteiq/secrets/data-encryption.key \
+  DATA_ENCRYPTION_KEY_FILE=/opt/adgrmm/secrets/data-encryption.key \
     node backend/scripts/decrypt-backup.cjs backup.dump.enc backup.dump
   ```
 

@@ -2,7 +2,7 @@
 // The customer limit on assets, through the real HTTP API: a person limited to some customers sees, creates, changes, deletes and gets
 // expiry notices for the assets of their own customers only (and those of devices they can see); another customer's asset does not
 // exist for them. Throwaway backend and database only.
-//   RIQ_E2E_ALLOW=1 BASE_URL=http://127.0.0.1:3951 DATABASE_URL=postgres://.../riq_x_e2e JWT_SECRET=... DATA_ENCRYPTION_KEY=... node test/assets-scope-http.e2e.cjs
+//   ADG_E2E_ALLOW=1 BASE_URL=http://127.0.0.1:3951 DATABASE_URL=postgres://.../adg_x_e2e JWT_SECRET=... DATA_ENCRYPTION_KEY=... node test/assets-scope-http.e2e.cjs
 "use strict";
 const { assert, call, runner, setup, uuid } = require("./groupc-helpers.cjs");
 

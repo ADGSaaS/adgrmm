@@ -19,13 +19,13 @@ jobs:
       postgres:
         image: postgres:16
         env:
-          POSTGRES_USER: riq
-          POSTGRES_PASSWORD: riq
-          POSTGRES_DB: riq_e2e
+          POSTGRES_USER: adg
+          POSTGRES_PASSWORD: adg
+          POSTGRES_DB: adg_e2e
         ports:
           - 5432:5432
         options: >-
-          --health-cmd "pg_isready -U riq"
+          --health-cmd "pg_isready -U adg"
           --health-interval 5s
           --health-timeout 5s
           --health-retries 10
@@ -33,8 +33,8 @@ jobs:
       run:
         working-directory: backend
     env:
-      RIQ_E2E_ALLOW: "1"
-      DATABASE_URL: postgres://riq:riq@127.0.0.1:5432/riq_e2e
+      ADG_E2E_ALLOW: "1"
+      DATABASE_URL: postgres://adg:adg@127.0.0.1:5432/adg_e2e
       JWT_SECRET: e2e-only-not-a-real-secret-e2e-only-not-a-real-secret
       DATA_ENCRYPTION_KEY: e2e-only-data-key
       ADMIN_API_KEY: ci-only-admin-key-0123456789abcdef0123

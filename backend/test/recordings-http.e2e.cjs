@@ -5,7 +5,7 @@
 // what the device is told (read from the signed session start of a simulated agent).
 // Run against a throwaway backend and database only:
 //
-//   RIQ_E2E_ALLOW=1 ADMIN_API_KEY=e2e-admin BASE_URL=http://127.0.0.1:3931 DATABASE_URL=postgres://.../riq_g2_e2e \
+//   ADG_E2E_ALLOW=1 ADMIN_API_KEY=e2e-admin BASE_URL=http://127.0.0.1:3931 DATABASE_URL=postgres://.../adg_g2_e2e \
 //   JWT_SECRET=... ADMIN_DATA_DIR=<the backend's ADMIN_DATA_DIR> node test/recordings-http.e2e.cjs
 "use strict";
 
@@ -25,8 +25,8 @@ const COOKIE = process.env.AUTH_COOKIE_NAME || "auth_token";
 const DATA_DIR = process.env.ADMIN_DATA_DIR || path.join(process.cwd(), "var");
 const REC_ROOT = path.join(DATA_DIR, "recordings");
 
-if (process.env.RIQ_E2E_ALLOW !== "1" || !/e2e/.test(new URL(DB_URL).pathname) || !SECRET) {
-    console.error("Refusing to run: set RIQ_E2E_ALLOW=1, JWT_SECRET, and a DATABASE_URL naming an e2e database.");
+if (process.env.ADG_E2E_ALLOW !== "1" || !/e2e/.test(new URL(DB_URL).pathname) || !SECRET) {
+    console.error("Refusing to run: set ADG_E2E_ALLOW=1, JWT_SECRET, and a DATABASE_URL naming an e2e database.");
     process.exit(2);
 }
 

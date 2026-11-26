@@ -3,7 +3,7 @@
 // (permissions and what they can see), and the checks that stop an account being lost.
 // Run against a throwaway backend and database only:
 //
-//   RIQ_E2E_ALLOW=1 ADMIN_API_KEY=e2e-admin BASE_URL=http://127.0.0.1:3901 DATABASE_URL=postgres://.../riq_e2e JWT_SECRET=... node test/access-http.e2e.cjs
+//   ADG_E2E_ALLOW=1 ADMIN_API_KEY=e2e-admin BASE_URL=http://127.0.0.1:3901 DATABASE_URL=postgres://.../adg_e2e JWT_SECRET=... node test/access-http.e2e.cjs
 "use strict";
 
 const assert = require("node:assert/strict");
@@ -17,8 +17,8 @@ const SECRET = process.env.JWT_SECRET || "";
 const COOKIE = process.env.AUTH_COOKIE_NAME || "auth_token";
 const ADMIN_KEY = process.env.ADMIN_API_KEY || "e2e-admin";
 
-if (process.env.RIQ_E2E_ALLOW !== "1" || !/e2e/.test(new URL(DB_URL).pathname) || !SECRET) {
-    console.error("Refusing to run: set RIQ_E2E_ALLOW=1, JWT_SECRET, and a DATABASE_URL naming an e2e database.");
+if (process.env.ADG_E2E_ALLOW !== "1" || !/e2e/.test(new URL(DB_URL).pathname) || !SECRET) {
+    console.error("Refusing to run: set ADG_E2E_ALLOW=1, JWT_SECRET, and a DATABASE_URL naming an e2e database.");
     process.exit(2);
 }
 
@@ -798,8 +798,8 @@ async function main() {
         // Filled in, with the properties also available as environment variables.
         const ok = await send("Write-Output '{{agent.hostname}} {{agent.customer}}'");
         assert.equal(ok.scriptText, `Write-Output '${host.hostname} ${host.customer}'`);
-        assert.equal(ok.env.RIQ_AGENT_HOSTNAME, host.hostname);
-        assert.equal(ok.env.RIQ_AGENT_CUSTOMER, host.customer);
+        assert.equal(ok.env.ADG_AGENT_HOSTNAME, host.hostname);
+        assert.equal(ok.env.ADG_AGENT_CUSTOMER, host.customer);
 
         // A script that does not use them is untouched, with no extra environment.
         const plain = await send("Get-Date");
@@ -1512,7 +1512,7 @@ async function main() {
         assert.equal(body.requestedBy, admin.email);
         for (const secret of [SECRET, process.env.DATA_ENCRYPTION_KEY, process.env.ADMIN_API_KEY].filter(Boolean)) assert.ok(!text.includes(secret), "no secret in the report");
         const dl = await call("/api/admin/diagnostics?download=1", { token: admin.token });
-        assert.match(dl.headers.get("content-disposition") || "", /^attachment; filename="remoteiq-diagnostics-.+\.json"$/);
+        assert.match(dl.headers.get("content-disposition") || "", /^attachment; filename="adgrmm-diagnostics-.+\.json"$/);
     });
     await test("custom fields: defined with the settings right, filled in with the customers right, checked, kept when archived", async () => {
         const admin = await user("cfadmin", ["settings.write", "customers.read", "customers.write"]);

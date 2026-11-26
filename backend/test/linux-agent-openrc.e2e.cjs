@@ -1,9 +1,9 @@
 // The real Linux agent on ALPINE (musl, OpenRC, busybox), installed by the real installer script, enrolling against a local throwaway
 // server, then updating itself through the real update path (the OpenRC updater, the musl program swapped in) and being uninstalled.
-// Needs Docker, the built agent package in AGENT_PKG_DIR (linux/remoteiq-agent-linux-x64.tar.gz + version.json, the package that holds
+// Needs Docker, the built agent package in AGENT_PKG_DIR (linux/adgrmm-agent-linux-x64.tar.gz + version.json, the package that holds
 // BOTH the glibc and the musl program), and for the update step a newer build in AGENT_PKG_NEXT_DIR (same layout), and a server started
 // with AGENT_PKG_DIR set and listening on all interfaces (the container reaches it as host.docker.internal).
-//   RIQ_E2E_ALLOW=1 BASE_URL=http://127.0.0.1:3973 PUBLIC_URL=http://host.docker.internal:3973 AGENT_PKG_DIR=... AGENT_PKG_NEXT_DIR=... DATABASE_URL=postgres://.../riq_x_e2e JWT_SECRET=... node test/linux-agent-openrc.e2e.cjs
+//   ADG_E2E_ALLOW=1 BASE_URL=http://127.0.0.1:3973 PUBLIC_URL=http://host.docker.internal:3973 AGENT_PKG_DIR=... AGENT_PKG_NEXT_DIR=... DATABASE_URL=postgres://.../adg_x_e2e JWT_SECRET=... node test/linux-agent-openrc.e2e.cjs
 "use strict";
 const fs = require("node:fs");
 const os = require("node:os");
@@ -15,11 +15,11 @@ const { assert, call, runner, setup } = require("./groupc-helpers.cjs");
 const docker = (args, o = {}) => spawnSync("docker", args, { encoding: "utf8", maxBuffer: 1e8, timeout: 600_000, ...o });
 if (docker(["info", "--format", "{{.ServerVersion}}"]).status !== 0) { console.log("skipped: Docker is not running"); process.exit(0); }
 const PKG_DIR = process.env.AGENT_PKG_DIR;
-const tar = PKG_DIR && path.join(PKG_DIR, "linux", "remoteiq-agent-linux-x64.tar.gz");
+const tar = PKG_DIR && path.join(PKG_DIR, "linux", "adgrmm-agent-linux-x64.tar.gz");
 if (!tar || !fs.existsSync(tar)) { console.log("skipped: AGENT_PKG_DIR has no linux package"); process.exit(0); }
 
 const IMAGE = process.env.ALPINE_IMAGE || "alpine:3.20";
-const NAME = `riq-alp-${Date.now()}`;
+const NAME = `adg-alp-${Date.now()}`;
 const why = async (r) => (r.status < 400 ? "" : r.text());
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const sh = (cmd) => docker(["exec", NAME, "sh", "-c", cmd]);
@@ -61,17 +61,17 @@ async function main() {
             const r = sh("bash /install.sh 2>&1");
             installLog = (r.stdout || "") + (r.stderr || "");
             assert.match(installLog, /Done\. This device is now enrolled as agent /, installLog.slice(-800));
-            assert.match(sh("rc-service remoteiq-agent status 2>&1").stdout, /started/);
-            assert.match(sh("rc-update show default 2>&1").stdout, /remoteiq-agent/);
-            assert.ok(!sh("ls /opt/remoteiq-agent").stdout.includes("remoteiq-agent-musl"), "the spare program was moved into place, not left beside it");
-            assert.match(sh("ls -l /opt/remoteiq-agent/remoteiq-agent").stdout, /rwx/);
+            assert.match(sh("rc-service adgrmm-agent status 2>&1").stdout, /started/);
+            assert.match(sh("rc-update show default 2>&1").stdout, /adgrmm-agent/);
+            assert.ok(!sh("ls /opt/adgrmm-agent").stdout.includes("adgrmm-agent-musl"), "the spare program was moved into place, not left beside it");
+            assert.match(sh("ls -l /opt/adgrmm-agent/adgrmm-agent").stdout, /rwx/);
             const row = (await q(`SELECT d.id FROM devices d JOIN agents a ON a.device_id = d.id WHERE d.site_id = $1`, [siteId])).rows[0];
             assert.ok(row, "the device exists");
             deviceId = row.id;
         });
 
         await test("the service is supervised: killing the agent brings it back", async () => {
-            const pid = () => sh("cat /run/supervise-remoteiq-agent.pid 2>/dev/null; pidof remoteiq-agent").stdout.trim().split(/\s+/).pop();
+            const pid = () => sh("cat /run/supervise-adgrmm-agent.pid 2>/dev/null; pidof adgrmm-agent").stdout.trim().split(/\s+/).pop();
             const before = pid(); assert.ok(before, "running");
             sh("kill -9 " + before);
             await until("a new agent process", () => { const p = pid(); return p && p !== before ? p : null; }, 90_000);
@@ -94,7 +94,7 @@ async function main() {
         });
 
         await test("a script runs on the device through the real agent (bash from Alpine's package)", async () => {
-            const marker = `riq-alpine-${Date.now()}`;
+            const marker = `adg-alpine-${Date.now()}`;
             const r = await call("/api/bulk/devices/run-script", { method: "POST", token: admin.token, body: { deviceIds: [deviceId], script: `echo ${marker} $(uname -s) $(. /etc/os-release; echo $ID)`, shell: "bash", timeoutSec: 60 } });
             assert.equal(r.status, 200, await why(r));
             const out = await until("the script result", async () => {
@@ -131,33 +131,33 @@ async function main() {
 
         const nextDir = process.env.AGENT_PKG_NEXT_DIR;
         await test("the agent updates itself through the OpenRC updater: the new MUSL program is swapped in, the service comes back on the new version, the updater removes itself", async () => {
-            if (!nextDir || !fs.existsSync(path.join(nextDir, "linux", "remoteiq-agent-linux-x64.tar.gz"))) { console.log("       (no AGENT_PKG_NEXT_DIR, skipped)"); return; }
+            if (!nextDir || !fs.existsSync(path.join(nextDir, "linux", "adgrmm-agent-linux-x64.tar.gz"))) { console.log("       (no AGENT_PKG_NEXT_DIR, skipped)"); return; }
             const nextVersion = versionOf(nextDir);
             assert.notEqual(nextVersion, firstVersion);
             // the slot is put back afterwards, so the test can run again
-            for (const f of ["remoteiq-agent-linux-x64.tar.gz", "version.json"]) { saved.set(f, fs.readFileSync(path.join(PKG_DIR, "linux", f))); fs.copyFileSync(path.join(nextDir, "linux", f), path.join(PKG_DIR, "linux", f)); }
+            for (const f of ["adgrmm-agent-linux-x64.tar.gz", "version.json"]) { saved.set(f, fs.readFileSync(path.join(PKG_DIR, "linux", f))); fs.copyFileSync(path.join(nextDir, "linux", f), path.join(PKG_DIR, "linux", f)); }
             const r = await call(`/api/devices/${deviceId}/actions/update-agent`, { method: "POST", token: admin.token, body: {} });
             assert.equal(r.status, 202, await why(r));
             const j = await r.json(); assert.equal(j.status, "started", JSON.stringify(j));
             await until(`the agent to report ${nextVersion}`, async () => (await q(`SELECT version FROM agents WHERE device_id = $1`, [deviceId])).rows[0].version === nextVersion ? true : null, 420_000);
-            assert.match(sh("rc-service remoteiq-agent status 2>&1").stdout, /started/);
-            await until("the updater to clean up", () => !sh("ls /etc/init.d/remoteiq-agent-update 2>&1").stdout.includes("remoteiq-agent-update") || sh("ls /etc/init.d/remoteiq-agent-update 2>&1").stdout.includes("No such") ? true : null, 180_000);
-            assert.ok(sh("ls /etc/init.d/remoteiq-agent-update 2>&1").stdout.includes("No such"), "the updater service is gone");
-            assert.ok(!sh("rc-update show default 2>&1").stdout.includes("remoteiq-agent-update"), "and not enabled at boot");
-            assert.ok(sh("ls /opt/remoteiq-agent").stdout.includes("remoteiq-agent") && !sh("ls /opt/remoteiq-agent").stdout.includes("-musl"), "only the one program is installed");
-            assert.ok(!sh("ls -d /opt/remoteiq-agent.prev /opt/remoteiq-agent.update 2>&1").stdout.match(/^\/opt/m), "no leftovers");
-            const res = sh("cat /etc/remoteiq/update/result.json 2>/dev/null").stdout;
-            assert.match(res, /"outcome":"succeeded"/, res + sh("cat /etc/remoteiq/update/apply.log 2>&1 | tail -20").stdout);
+            assert.match(sh("rc-service adgrmm-agent status 2>&1").stdout, /started/);
+            await until("the updater to clean up", () => !sh("ls /etc/init.d/adgrmm-agent-update 2>&1").stdout.includes("adgrmm-agent-update") || sh("ls /etc/init.d/adgrmm-agent-update 2>&1").stdout.includes("No such") ? true : null, 180_000);
+            assert.ok(sh("ls /etc/init.d/adgrmm-agent-update 2>&1").stdout.includes("No such"), "the updater service is gone");
+            assert.ok(!sh("rc-update show default 2>&1").stdout.includes("adgrmm-agent-update"), "and not enabled at boot");
+            assert.ok(sh("ls /opt/adgrmm-agent").stdout.includes("adgrmm-agent") && !sh("ls /opt/adgrmm-agent").stdout.includes("-musl"), "only the one program is installed");
+            assert.ok(!sh("ls -d /opt/adgrmm-agent.prev /opt/adgrmm-agent.update 2>&1").stdout.match(/^\/opt/m), "no leftovers");
+            const res = sh("cat /etc/adgrmm/update/result.json 2>/dev/null").stdout;
+            assert.match(res, /"outcome":"succeeded"/, res + sh("cat /etc/adgrmm/update/apply.log 2>&1 | tail -20").stdout);
             // the agent is still the same device after the swap
             assert.equal((await q(`SELECT count(*)::int AS n FROM devices WHERE site_id = $1`, [siteId])).rows[0].n, 1);
         });
 
         await test("uninstalling the agent removes the OpenRC service, the log and the folders", async () => {
-            const r = sh("bash /opt/remoteiq-agent/uninstall.sh 2>&1; rc-service remoteiq-agent status 2>&1; ls /etc/init.d/remoteiq-agent /opt/remoteiq-agent /etc/remoteiq /var/log/remoteiq-agent.log 2>&1");
-            assert.match(r.stdout, /RemoteIQ agent removed/);
+            const r = sh("bash /opt/adgrmm-agent/uninstall.sh 2>&1; rc-service adgrmm-agent status 2>&1; ls /etc/init.d/adgrmm-agent /opt/adgrmm-agent /etc/adgrmm /var/log/adgrmm-agent.log 2>&1");
+            assert.match(r.stdout, /AdgRmm agent removed/);
             assert.doesNotMatch(r.stdout, /started/);
             assert.ok((r.stdout.match(/No such file/g) || []).length >= 3, r.stdout);
-            assert.equal(sh("pidof remoteiq-agent; echo done").stdout.trim(), "done", "the process is gone");
+            assert.equal(sh("pidof adgrmm-agent; echo done").stdout.trim(), "done", "the process is gone");
         });
     } finally {
         for (const [f, buf] of saved) fs.writeFileSync(path.join(PKG_DIR, "linux", f), buf);

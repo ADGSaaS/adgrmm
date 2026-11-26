@@ -124,8 +124,8 @@ export class SecurityService {
             if (state === "waiting") return { jobId: row.pending_job_id, alreadyWaiting: true };
         }
         const job = linux
-            ? await this.jobs.createRunScriptJob({ agentId, language: "bash", scriptText: LINUX_SECURITY_SCAN_SCRIPT, env: { RIQ_TOOL: SCAN_KIND, RIQ_PLATFORM: "linux" }, timeoutSec: JOB_TIMEOUT_SEC })
-            : await this.jobs.createRunScriptJob({ agentId, language: "powershell", scriptText: SECURITY_SCAN_SCRIPT, env: { RIQ_TOOL: SCAN_KIND }, timeoutSec: JOB_TIMEOUT_SEC });
+            ? await this.jobs.createRunScriptJob({ agentId, language: "bash", scriptText: LINUX_SECURITY_SCAN_SCRIPT, env: { ADG_TOOL: SCAN_KIND, ADG_PLATFORM: "linux" }, timeoutSec: JOB_TIMEOUT_SEC })
+            : await this.jobs.createRunScriptJob({ agentId, language: "powershell", scriptText: SECURITY_SCAN_SCRIPT, env: { ADG_TOOL: SCAN_KIND }, timeoutSec: JOB_TIMEOUT_SEC });
         const now = at;
         await this.prisma.$executeRaw`
             INSERT INTO public.device_security_scans (device_id, attempted_at, pending_job_id, pending_at)
@@ -150,7 +150,7 @@ export class SecurityService {
         if (!jobId) return "none";
         const job = await this.jobs.getJobWithResult(jobId).catch(() => null);
         const env = ((job?.parsed_payload as any)?.env ?? {}) as Record<string, string>;
-        if (!job || env.RIQ_TOOL !== SCAN_KIND) {
+        if (!job || env.ADG_TOOL !== SCAN_KIND) {
             await this.fail(row.device_id, jobId, "The scan job is gone.");
             return "failed";
         }
@@ -165,7 +165,7 @@ export class SecurityService {
             await this.fail(row.device_id, jobId, "The device took too long to finish the scan.");
             return "failed";
         }
-        const linux = env.RIQ_PLATFORM === "linux";
+        const linux = env.ADG_PLATFORM === "linux";
         let scan: AnyScan;
         try {
             scan = linux ? parseLinuxScan(job.stdout ?? "", job.stderr ?? "") : parseSecurityScan(job.stdout ?? "", job.stderr ?? "");
@@ -279,8 +279,8 @@ export class SecurityService {
     /** Runs one Defender action and waits for the answer for a while; `pending` when the device is slow (ask again with the job id). */
     async defender(d: SecurityDevice, action: DefenderAction): Promise<{ jobId: string } & ({ pending: true } | { pending: false; result: unknown })> {
         this.require(d, true);
-        const env: Record<string, string> = { RIQ_TOOL: DEFENDER_KIND[action] };
-        if (action !== "update") env.RIQ_SCAN_TYPE = SCAN_TYPES[action];
+        const env: Record<string, string> = { ADG_TOOL: DEFENDER_KIND[action] };
+        if (action !== "update") env.ADG_SCAN_TYPE = SCAN_TYPES[action];
         const job = await this.jobs.createRunScriptJob({
             agentId: d.agentId!, language: "powershell", scriptText: action === "update" ? DEFENDER_SCRIPTS.update : DEFENDER_SCRIPTS.scan, env, timeoutSec: JOB_TIMEOUT_SEC,
         });
@@ -310,7 +310,7 @@ export class SecurityService {
         this.require(d);
         const job = await this.jobs.createRunScriptJob({
             agentId: d.agentId!, language: "bash", scriptText: action === "firewall-enable" ? LINUX_FIREWALL_ENABLE_SCRIPT : action === "antivirus-install" ? LINUX_AV_INSTALL_SCRIPT : action === "antivirus-update" ? LINUX_AV_UPDATE_SCRIPT : LINUX_MALWARE_SCAN_SCRIPT,
-            env: { RIQ_TOOL: LINUX_ACTION_KIND[action] }, timeoutSec: LINUX_ACTION_TIMEOUT_SEC[action],
+            env: { ADG_TOOL: LINUX_ACTION_KIND[action] }, timeoutSec: LINUX_ACTION_TIMEOUT_SEC[action],
         });
         const until = Date.now() + WAIT_MS;
         for (;;) {
@@ -370,7 +370,7 @@ export class SecurityService {
     async defenderResult(d: SecurityDevice, jobId: string) {
         if (!isCanonicalUuid(jobId)) throw new NotFoundException("Job not found");
         const j = await this.jobs.getJobWithResult(jobId).catch(() => null);
-        const kind = String(((j?.parsed_payload as any)?.env ?? {}).RIQ_TOOL ?? "");
+        const kind = String(((j?.parsed_payload as any)?.env ?? {}).ADG_TOOL ?? "");
         const linux = LINUX_ACTIONS.find((a) => LINUX_ACTION_KIND[a] === kind);
         if (linux) {
             if (!j || j.agent_id !== d.agentId || j.type !== "RUN_SCRIPT") throw new NotFoundException("Job not found");

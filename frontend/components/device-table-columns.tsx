@@ -1,4 +1,4 @@
-// remoteiq-frontend/components/device-table-columns.tsx
+// adgrmm-frontend/components/device-table-columns.tsx
 
 "use client";
 

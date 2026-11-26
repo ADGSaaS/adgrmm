@@ -21,7 +21,7 @@ export default function BillingTab({ push }: BillingTabProps) {
         currency: "USD",
         taxMode: "exclusive",
         defaultTaxRate: 0,
-        statementDescriptor: "REMOTEIQ",
+        statementDescriptor: "ADG RMM",
         stripe: { enabled: false, publishableKey: "", secretKey: "", webhookSecret: "" },
         paypal: { enabled: false, clientId: "", clientSecret: "", mode: "sandbox" },
         square: { enabled: false, accessToken: "", locationId: "" },
@@ -95,7 +95,7 @@ export default function BillingTab({ push }: BillingTabProps) {
                                 <LabeledInput label="Publishable key" value={billing.stripe.publishableKey} onChange={(v) => setBilling({ ...billing, stripe: { ...billing.stripe, publishableKey: v } })} />
                                 <LabeledInput label="Secret key" type="password" value={billing.stripe.secretKey} onChange={(v) => setBilling({ ...billing, stripe: { ...billing.stripe, secretKey: v } })} />
                                 <LabeledInput label="Webhook secret" value={billing.stripe.webhookSecret} onChange={(v) => setBilling({ ...billing, stripe: { ...billing.stripe, webhookSecret: v } })} />
-                                <LabeledInput label="Webhook endpoint (read-only)" value="https://portal.remoteiq.local/api/billing/stripe/webhook" onChange={() => { }} />
+                                <LabeledInput label="Webhook endpoint (read-only)" value="https://portal.adgrmm.local/api/billing/stripe/webhook" onChange={() => { }} />
                             </div>
                         )}
                     </section>

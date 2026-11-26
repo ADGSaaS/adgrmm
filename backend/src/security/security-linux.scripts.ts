@@ -207,7 +207,7 @@ active sophos-spl && AVL="$AVL""Sophos,"
 active mdatp && AVL="$AVL""Microsoft Defender for Endpoint,"
 active falcon-sensor && AVL="$AVL""CrowdStrike Falcon,"
 active eset && AVL="$AVL""ESET,"
-# ClamAV without a daemon (the way RemoteIQ installs it): installed, with signatures that are not more than a week old
+# ClamAV without a daemon (the way ADG RMM installs it): installed, with signatures that are not more than a week old
 if have clamscan; then
   DBF=$(ls -t /var/lib/clamav/*.c[lv]d 2>/dev/null | head -n 1)
   if [ -n "$DBF" ]; then

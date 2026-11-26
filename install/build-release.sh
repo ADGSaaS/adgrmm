@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Builds the RemoteIQ release bundle that install.sh downloads.
+# Builds the ADG RMM release bundle that install.sh downloads.
 #
 # Run it on Linux x86_64 (a Linux machine, WSL, the Docker command below, or the GitHub Actions workflow), from a
 # checkout of this repository (the web app is in frontend/):
@@ -17,15 +17,15 @@
 #   agent-packages/ the Windows and Linux agents, if --agents is given (windows/, linux/, each with version.json)
 #   tools/ docker/  the installer's helpers
 #
-# Output (in --out): remoteiq-linux-x64.tar.gz, SHA256SUMS, version.txt, install.sh
+# Output (in --out): adgrmm-linux-x64.tar.gz, SHA256SUMS, version.txt, install.sh
 set -Eeuo pipefail
 
-RIQ_NODE_VERSION="${RIQ_NODE_VERSION:-22.19.0}"
-NODE_VERSION="$RIQ_NODE_VERSION"
+ADG_NODE_VERSION="${ADG_NODE_VERSION:-22.19.0}"
+NODE_VERSION="$ADG_NODE_VERSION"
 # Replaced with the real address when the bundle is installed. See install.sh (apply_placeholders).
-PUBLIC_PLACEHOLDER="riq-public-url.invalid"
-COOKIE_PLACEHOLDER="riq-cookie-placeholder"
-INTERNAL_BACKEND="http://riq-backend:3001"
+PUBLIC_PLACEHOLDER="adg-public-url.invalid"
+COOKIE_PLACEHOLDER="adg-cookie-placeholder"
+INTERNAL_BACKEND="http://adg-backend:3001"
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BACKEND_REPO="$(cd "$HERE/.." && pwd)"
@@ -34,7 +34,7 @@ OUT="$PWD/release-out"
 VERSION=""
 REF="HEAD"
 PUBLISH=0
-REPO_SLUG="${RIQ_REPO:-RemoteIQ-RMM/RemoteIQ-RMM}"
+REPO_SLUG="${ADG_REPO:-adgrmm/adgrmm}"
 
 usage() { sed -n '2,22p' "$0" | sed 's/^# \{0,1\}//'; exit "${1:-0}"; }
 while [ $# -gt 0 ]; do
@@ -66,7 +66,7 @@ FRONTEND_SHA="$BACKEND_SHA"
 
 WORK="$(mktemp -d)"
 trap 'rm -rf "$WORK"' EXIT
-STAGE="$WORK/remoteiq"
+STAGE="$WORK/adgrmm"
 mkdir -p "$STAGE"/{backend,frontend,runtime/bin,tools,docker,agent-packages}
 say() { printf '\n==> %s\n' "$*"; }
 
@@ -98,7 +98,7 @@ git -C "$BACKEND_REPO" archive "$REF" frontend | tar -x -C "$WORK/web-src"
 (
     cd "$WORK/web-src/frontend"
     npm ci --no-audit --no-fund
-    NEXT_TELEMETRY_DISABLED=1 NODE_ENV=production RIQ_STANDALONE=1 \
+    NEXT_TELEMETRY_DISABLED=1 NODE_ENV=production ADG_STANDALONE=1 \
         NEXT_PUBLIC_API_BASE="https://$PUBLIC_PLACEHOLDER" \
         NEXT_PUBLIC_WS_BASE="wss://$PUBLIC_PLACEHOLDER/ws" \
         NEXT_PUBLIC_AUTH_COOKIE_NAME="$COOKIE_PLACEHOLDER" \
@@ -151,16 +151,16 @@ EOF
 # ------------------------------------------------------------------ pack
 say "Packing"
 mkdir -p "$OUT"
-tar -C "$WORK" -czf "$OUT/remoteiq-linux-x64.tar.gz" remoteiq
+tar -C "$WORK" -czf "$OUT/adgrmm-linux-x64.tar.gz" adgrmm
 cp "$HERE/install.sh" "$OUT/install.sh"
 printf '%s\n' "$VERSION" > "$OUT/version.txt"
-(cd "$OUT" && sha256sum remoteiq-linux-x64.tar.gz install.sh version.txt > SHA256SUMS)
+(cd "$OUT" && sha256sum adgrmm-linux-x64.tar.gz install.sh version.txt > SHA256SUMS)
 ls -lh "$OUT"
 echo
-echo "Built RemoteIQ $VERSION (backend $BACKEND_SHA, web app $FRONTEND_SHA) in $OUT"
+echo "Built ADG RMM $VERSION (backend $BACKEND_SHA, web app $FRONTEND_SHA) in $OUT"
 
 if [ "$PUBLISH" = 1 ]; then
     command -v gh >/dev/null 2>&1 || { echo "--publish needs the GitHub CLI (gh)." >&2; exit 1; }
-    gh release create "v$VERSION" --repo "$REPO_SLUG" --title "RemoteIQ $VERSION" --generate-notes \
-        "$OUT/remoteiq-linux-x64.tar.gz" "$OUT/SHA256SUMS" "$OUT/version.txt" "$OUT/install.sh"
+    gh release create "v$VERSION" --repo "$REPO_SLUG" --title "ADG RMM $VERSION" --generate-notes \
+        "$OUT/adgrmm-linux-x64.tar.gz" "$OUT/SHA256SUMS" "$OUT/version.txt" "$OUT/install.sh"
 fi

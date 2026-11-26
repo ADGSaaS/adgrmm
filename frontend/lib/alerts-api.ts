@@ -46,13 +46,13 @@ export type NotificationChannel = {
     formatChosen?: WebhookFormat | null;
 };
 
-export type WebhookFormat = "remoteiq" | "slack" | "discord" | "teams";
+export type WebhookFormat = "adgrmm" | "slack" | "discord" | "teams";
 export type WebhookFormatChoice = WebhookFormat | "auto";
 export const WEBHOOK_FORMAT_LABEL: Record<WebhookFormat, string> = {
     slack: "Slack (also Mattermost and Rocket.Chat)",
     discord: "Discord",
     teams: "Microsoft Teams",
-    remoteiq: "RemoteIQ JSON (signed)",
+    adgrmm: "ADG RMM JSON (signed)",
 };
 /** What a channel is sent as a body of a create or update: the format may also be "auto". */
 export type ChannelWrite = Omit<Partial<NotificationChannel>, "format" | "formatChosen"> & { format?: WebhookFormatChoice };

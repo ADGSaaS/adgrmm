@@ -1,7 +1,7 @@
 "use client";
 
 // EDR and antivirus: which computers a security console (Defender for Endpoint, SentinelOne, Huntress, CrowdStrike) protects and how well, read from
-// the console (read-only) and matched to the computers RemoteIQ manages. The point is the gaps: a computer no console knows, a protection that is
+// the console (read-only) and matched to the computers ADG RMM manages. The point is the gaps: a computer no console knows, a protection that is
 // unhealthy, and a console endpoint that is not managed here.
 import * as React from "react";
 import Link from "next/link";
@@ -52,7 +52,7 @@ function ConnectionDialog({ vendors, clients, connection, onClose, onSaved }: { 
             <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-xl">
                 <DialogHeader>
                     <DialogTitle>{editing ? `Change ${connection?.name}` : "Connect a security console"}</DialogTitle>
-                    <DialogDescription>RemoteIQ only reads the list of protected computers. It never changes anything in the console. Credentials are stored encrypted and are not shown again.</DialogDescription>
+                    <DialogDescription>ADG RMM only reads the list of protected computers. It never changes anything in the console. Credentials are stored encrypted and are not shown again.</DialogDescription>
                 </DialogHeader>
                 <div className="grid gap-4">
                     {!editing ? (
@@ -201,7 +201,7 @@ function EdrBody() {
             {data && data.unmatched.length > 0 ? (
                 <details className="rounded-lg border p-3 text-sm">
                     <summary className="cursor-pointer font-medium">{data.unmatched.length}{data.unmatched.length >= 200 ? "+" : ""} endpoints in a console that are not computers managed here</summary>
-                    <p className="mt-2 text-xs text-muted-foreground">These may be computers that have no RemoteIQ agent, computers of customers you do not manage, or names that could not be matched (a name used by two customers).</p>
+                    <p className="mt-2 text-xs text-muted-foreground">These may be computers that have no ADG RMM agent, computers of customers you do not manage, or names that could not be matched (a name used by two customers).</p>
                     <ul className="mt-2 grid gap-0.5 text-xs sm:grid-cols-2">{data.unmatched.map((u, n) => <li key={`${u.hostname}-${n}`} className="truncate"><span className={`mr-1.5 inline-block h-2 w-2 rounded-full ${dot(u.health)}`} />{u.hostname} <span className="text-muted-foreground">({u.connection})</span></li>)}</ul>
                 </details>
             ) : null}

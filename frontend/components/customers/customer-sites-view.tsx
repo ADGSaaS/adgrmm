@@ -27,8 +27,8 @@ export function CustomerSitesView({ org, filtered, onSummary }: { org: string; /
     // A customer or site was added or renamed elsewhere.
     React.useEffect(() => {
         const again = () => setTick((n) => n + 1);
-        window.addEventListener("remoteiq:customers-changed", again);
-        return () => window.removeEventListener("remoteiq:customers-changed", again);
+        window.addEventListener("adgrmm:customers-changed", again);
+        return () => window.removeEventListener("adgrmm:customers-changed", again);
     }, []);
 
     React.useEffect(() => {

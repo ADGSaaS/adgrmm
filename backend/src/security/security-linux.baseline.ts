@@ -179,8 +179,8 @@ export const LINUX_RULES: LinuxRuleDef[] = [
     {
         id: "lx.updates.auto", group: "System", title: "Automatic security updates are on", severity: "low", weight: 2, uses: ["autoUpdates"],
         checks: "unattended-upgrades or dnf-automatic is enabled.",
-        why: "Security fixes that install themselves close the window between a fix being published and a person getting round to it. On servers that must not change unattended, a patch schedule in RemoteIQ does the same job.",
-        fix: "On Ubuntu and Debian: sudo apt install unattended-upgrades && sudo dpkg-reconfigure -plow unattended-upgrades. On the Red Hat family: sudo dnf install dnf-automatic and enable dnf-automatic-install.timer. Or use a patch policy in RemoteIQ.",
+        why: "Security fixes that install themselves close the window between a fix being published and a person getting round to it. On servers that must not change unattended, a patch schedule in ADG RMM does the same job.",
+        fix: "On Ubuntu and Debian: sudo apt install unattended-upgrades && sudo dpkg-reconfigure -plow unattended-upgrades. On the Red Hat family: sudo dnf install dnf-automatic and enable dnf-automatic-install.timer. Or use a patch policy in ADG RMM.",
         evaluate: ({ p }) => {
             if (p.autoUpdates.status !== "ok") return cannot(p, "autoUpdates", "Automatic updates");
             return p.autoUpdates.enabled ? pass(`Automatic updates are on (${p.autoUpdates.by}).`) : fail("Automatic security updates are not turned on.");
@@ -212,7 +212,7 @@ export const LINUX_RULES: LinuxRuleDef[] = [
     {
         id: "lx.time.sync", group: "System", title: "The clock is kept in sync", severity: "low", weight: 2, uses: ["time"],
         checks: "systemd reports the clock as synchronised with a time server.",
-        why: "A clock that drifts breaks logs, certificates, two-step login codes and the signatures RemoteIQ uses to trust jobs.",
+        why: "A clock that drifts breaks logs, certificates, two-step login codes and the signatures ADG RMM uses to trust jobs.",
         fix: "Turn on time sync: sudo timedatectl set-ntp true (and install systemd-timesyncd or chrony if neither is present).",
         evaluate: ({ p }) => {
             if (p.time.status !== "ok") return cannot(p, "time", "The clock state");

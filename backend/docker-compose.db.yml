@@ -1,16 +1,16 @@
-# REMOTEIQ_POSTGRES_LOCAL_DOCKER_V1
+# ADG_POSTGRES_LOCAL_DOCKER_V1
 services:
   postgres:
     image: postgres:16-alpine
     restart: unless-stopped
     environment:
-      POSTGRES_USER: "${POSTGRES_USER:-remoteiq}"
-      POSTGRES_DB: "${POSTGRES_DB:-remoteiq}"
+      POSTGRES_USER: "${POSTGRES_USER:-adgrmm}"
+      POSTGRES_DB: "${POSTGRES_DB:-adgrmm}"
       POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
     ports:
       - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
     volumes:
-      - remoteiq_postgres_data:/var/lib/postgresql/data
+      - adgrmm_postgres_data:/var/lib/postgresql/data
     secrets:
       - postgres_password
     healthcheck:
@@ -22,7 +22,7 @@ services:
     stop_grace_period: 30s
 
 volumes:
-  remoteiq_postgres_data:
+  adgrmm_postgres_data:
 
 secrets:
   postgres_password:

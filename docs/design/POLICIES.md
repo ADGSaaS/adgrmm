@@ -1,6 +1,6 @@
 # Policies: design proposal
 
-Status: phases 1 and 2 built (see roadmap 1.30, 1.9, 1.10). Phase 3 is partly built: tags and the new-customer baseline are; linked or detached templates and scripts as a policy section are not. Phase 2 needed no agent change: it drives the daily scan, the install task and a restart job from the server. Written after researching how other RMMs do it and looking at what RemoteIQ already has.
+Status: phases 1 and 2 built (see roadmap 1.30, 1.9, 1.10). Phase 3 is partly built: tags and the new-customer baseline are; linked or detached templates and scripts as a policy section are not. Phase 2 needed no agent change: it drives the daily scan, the install task and a restart job from the server. Written after researching how other RMMs do it and looking at what ADG RMM already has.
 
 ## What the others do (short)
 
@@ -22,7 +22,7 @@ I could not verify Level.io, Action1 or ConnectWise Automate's own model, and no
 - **Targeting gaps.** A template for "Workstation" silently skips "Laptop", and the device gets nothing.
 - **No answer to "why does this device have this setting?"** This is the biggest gap, and the thing worth building well.
 
-## What RemoteIQ has today (to build on, not duplicate)
+## What ADG RMM has today (to build on, not duplicate)
 
 | Setting | Where it lives now | Scope today |
 |---|---|---|

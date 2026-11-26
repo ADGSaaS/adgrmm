@@ -22,7 +22,7 @@ const B = require(path.join(dist, "security-linux.baseline.js"));
 let passed = 0, failed = 0;
 const check = (name, fn) => { try { fn(); passed++; console.log(`ok   ${name}`); } catch (e) { failed++; console.log(`FAIL ${name}: ${e.message}`); } };
 
-const dir = fs.mkdtempSync(path.join(os.tmpdir(), "riq-lxsec-"));
+const dir = fs.mkdtempSync(path.join(os.tmpdir(), "adg-lxsec-"));
 const scriptFile = path.join(dir, "scan.sh");
 fs.writeFileSync(scriptFile, S.LINUX_SECURITY_SCAN_SCRIPT, { mode: 0o755 });
 const mount = (p) => p.replace(/\\/g, "/");

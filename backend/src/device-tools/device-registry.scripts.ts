@@ -12,7 +12,7 @@
 // Phase 2 (writing) adds, in the same style: the WRITE blocklist (WRITE_BLOCKED_KEYS, next to BLOCKED_KEYS), checking of value
 // names / types / data, four fixed write scripts (set value, delete value, create key, delete key: .NET registry classes only,
 // never a recursive delete) and the parsing of their answers.
-// User input travels only in environment variables (RIQ_REG_*). Windows only.
+// User input travels only in environment variables (ADG_REG_*). Windows only.
 
 import { BadRequestException, ForbiddenException } from "@nestjs/common";
 import { ToolOutputError } from "./device-tools.scripts";
@@ -100,8 +100,8 @@ export const WRITE_BLOCKED_KEYS: { pattern: string; why: string; values?: string
     // uses a scheduled task or a script job, which are recorded and can be undone.
     { pattern: String.raw`^(HKLM|HKU\\[^\\]+)\\SOFTWARE\\(WOW6432Node\\)?(Microsoft\\Windows\\CurrentVersion\\(Run|RunOnce|RunServices|RunServicesOnce|RunOnceEx)|Microsoft\\Windows\\CurrentVersion\\Policies\\Explorer\\Run|Microsoft\\Windows NT\\CurrentVersion\\Winlogon\\(Notify|GPExtensions))(\\|$)`, why: "the Run keys start programs at every sign-in and restart, which is where malware most often hides to come back" },
     { pattern: String.raw`^HKLM\\SOFTWARE\\(WOW6432Node\\)?Microsoft\\Windows NT\\CurrentVersion\\Windows$`, values: String.raw`^(AppInit_DLLs|LoadAppInit_DLLs|RequireSignedAppInit_DLLs|Load|Run)$`, why: "AppInit_DLLs loads a program into every application that starts, a way for malware to run inside everything" },
-    { pattern: String.raw`^HKLM\\SOFTWARE\\.*RemoteIQ`, why: "RemoteIQ's own agent settings are not changed here, so a technician cannot cripple the agent" },
-    { pattern: String.raw`^HKLM\\SYSTEM\\(CurrentControlSet|ControlSet\d{3})\\Services\\RemoteIQ`, why: "the RemoteIQ agent's service is not changed here, so a technician cannot cripple the agent" },
+    { pattern: String.raw`^HKLM\\SOFTWARE\\.*AdgRmm`, why: "ADG RMM's own agent settings are not changed here, so a technician cannot cripple the agent" },
+    { pattern: String.raw`^HKLM\\SYSTEM\\(CurrentControlSet|ControlSet\d{3})\\Services\\AdgRmm`, why: "the ADG RMM agent's service is not changed here, so a technician cannot cripple the agent" },
 ];
 const WRITE_BLOCKED_RES = WRITE_BLOCKED_KEYS.map((b) => ({ key: new RegExp(b.pattern, "i"), values: b.values ? new RegExp(b.values, "i") : null, why: b.why }));
 
@@ -213,14 +213,14 @@ function ConvertTo-Ascii([string]$s) {
   $bs = [string][char]92
   return [regex]::Replace($s, '[^\x00-\x7F]', { param($m) $bs + 'u' + ('{0:x4}' -f [int][char]$m.Value) })
 }
-function Out-Riq($obj) { [Console]::Out.Write((ConvertTo-Ascii ($obj | ConvertTo-Json -Compress -Depth 6))) }
-function Fail($e) { Out-Riq @{ ok = $false; error = [string]$e.Exception.Message } }
+function Out-Adg($obj) { [Console]::Out.Write((ConvertTo-Ascii ($obj | ConvertTo-Json -Compress -Depth 6))) }
+function Fail($e) { Out-Adg @{ ok = $false; error = [string]$e.Exception.Message } }
 $blockRes = @(${BLOCKED_KEYS.map((b) => psq(b.pattern)).join(", ")})
 $maskRe = ${psq(MASK_NAME_SOURCE)}
 $BS = [char]92
 function Test-Blocked([string]$p) { foreach ($re in $blockRes) { if ([regex]::IsMatch($p, $re, 'IgnoreCase')) { return $true } }; return $false }
 function Test-Masked([string]$n) { return [regex]::IsMatch($n, $maskRe, 'IgnoreCase') }
-function Get-View { if ($env:RIQ_REG_VIEW -eq '32') { return [Microsoft.Win32.RegistryView]::Registry32 } else { return [Microsoft.Win32.RegistryView]::Registry64 } }
+function Get-View { if ($env:ADG_REG_VIEW -eq '32') { return [Microsoft.Win32.RegistryView]::Registry32 } else { return [Microsoft.Win32.RegistryView]::Registry64 } }
 function Open-Root([string]$root) {
   if ($root -eq 'HKLM') { return [Microsoft.Win32.RegistryKey]::OpenBaseKey([Microsoft.Win32.RegistryHive]::LocalMachine, (Get-View)) }
   if ($root -eq 'HKU') { return [Microsoft.Win32.RegistryKey]::OpenBaseKey([Microsoft.Win32.RegistryHive]::Users, [Microsoft.Win32.RegistryView]::Registry64) }
@@ -276,10 +276,10 @@ function Get-ValueRow($key, [string]$n) {
 const PS_LASTWRITE = String.raw`function Get-LastWrite($key) {
   try {
     $t = $null
-    foreach ($a in [AppDomain]::CurrentDomain.GetAssemblies()) { $t = $a.GetType('RiqRegNative', $false); if ($t) { break } }
+    foreach ($a in [AppDomain]::CurrentDomain.GetAssemblies()) { $t = $a.GetType('AdgRegNative', $false); if ($t) { break } }
     if (-not $t) {
-      $ab = [AppDomain]::CurrentDomain.DefineDynamicAssembly((New-Object System.Reflection.AssemblyName('RiqRegDyn')), [System.Reflection.Emit.AssemblyBuilderAccess]::Run)
-      $tb = $ab.DefineDynamicModule('RiqRegDyn').DefineType('RiqRegNative', 'Public,Class')
+      $ab = [AppDomain]::CurrentDomain.DefineDynamicAssembly((New-Object System.Reflection.AssemblyName('AdgRegDyn')), [System.Reflection.Emit.AssemblyBuilderAccess]::Run)
+      $tb = $ab.DefineDynamicModule('AdgRegDyn').DefineType('AdgRegNative', 'Public,Class')
       $p = @([IntPtr], [IntPtr], [IntPtr], [IntPtr], [IntPtr], [IntPtr], [IntPtr], [IntPtr], [IntPtr], [IntPtr], [IntPtr], [long].MakeByRefType())
       $m = $tb.DefinePInvokeMethod('RegQueryInfoKeyW', 'advapi32.dll', 'Public,Static,PinvokeImpl', [System.Reflection.CallingConventions]::Standard, [int], $p, [System.Runtime.InteropServices.CallingConvention]::Winapi, [System.Runtime.InteropServices.CharSet]::Unicode)
       $m.SetImplementationFlags($m.GetMethodImplementationFlags() -bor [System.Reflection.MethodImplAttributes]::PreserveSig)
@@ -296,8 +296,8 @@ const PS_LASTWRITE = String.raw`function Get-LastWrite($key) {
 const psr = (body: string) => `${PS_REG_HEAD}try {\n${body}\n} catch { Fail $_ }\n`;
 
 export const REGISTRY_SCRIPTS = {
-    // RIQ_REG_PATH (normalised, validated, never in the script text) and RIQ_REG_VIEW (64 or 32).
-    key: `${PS_REG_HEAD}${PS_LASTWRITE}try {\n${String.raw`$path = $env:RIQ_REG_PATH
+    // ADG_REG_PATH (normalised, validated, never in the script text) and ADG_REG_VIEW (64 or 32).
+    key: `${PS_REG_HEAD}${PS_LASTWRITE}try {\n${String.raw`$path = $env:ADG_REG_PATH
 if (Test-Blocked $path) { throw 'That key is blocked.' }
 $key = Open-Path $path
 if (-not $key) { throw 'That registry key does not exist on this device.' }
@@ -326,10 +326,10 @@ $lw = Get-LastWrite $key
 $lwj = if ($lw) { '"' + $lw + '"' } else { 'null' }
 [Console]::Out.Write('{"ok":true,"lastWrite":' + $lwj + ',"subKeyCount":' + $names.Count + ',"subKeysTruncated":' + $subCut.ToString().ToLower() + ',"valueCount":' + $vnames.Count + ',"valuesTruncated":' + $valCut.ToString().ToLower() + ',"subKeys":[' + ($subs -join ',') + '],"values":[' + ($vals -join ',') + ']}')`}\n} catch { Fail $_ }\n`,
 
-    // RIQ_REG_PATH, RIQ_REG_VIEW, RIQ_REG_TEXT (a plain substring), RIQ_REG_IN (keys, values or data). Bounded by depth, results and seconds.
-    search: psr(String.raw`$start = $env:RIQ_REG_PATH
-$text = $env:RIQ_REG_TEXT
-$in = $env:RIQ_REG_IN
+    // ADG_REG_PATH, ADG_REG_VIEW, ADG_REG_TEXT (a plain substring), ADG_REG_IN (keys, values or data). Bounded by depth, results and seconds.
+    search: psr(String.raw`$start = $env:ADG_REG_PATH
+$text = $env:ADG_REG_TEXT
+$in = $env:ADG_REG_IN
 if (Test-Blocked $start) { throw 'That key is blocked.' }
 $root = Open-Path $start
 if (-not $root) { throw 'That registry key does not exist on this device.' }
@@ -390,7 +390,7 @@ $rows = @(foreach ($sid in $u.GetSubKeyNames()) {
   }
   @{ sid = $sid; account = $(if ($name) { [string]$name } else { $null }) }
 })
-Out-Riq @{ ok = $true; users = $rows }`),
+Out-Adg @{ ok = $true; users = $rows }`),
 };
 
 /* ------------------------------ reading what a device printed ------------------------------ */
@@ -684,7 +684,7 @@ function Test-WriteBlocked([string]$p, [string]$op, [string]$n) {
 function Refuse([string]$reason, [string]$msg, $old) {
   $o = @{ ok = $true; status = 'refused'; reason = $reason; message = $msg }
   if ($old) { $o.old = $old }
-  Out-Riq $o
+  Out-Adg $o
   exit 0
 }
 function Refuse-Blocked([string]$p, [string]$op, [string]$n) {
@@ -794,20 +794,20 @@ const psw = (body: string) => `${PS_REG_HEAD}${PS_WRITE_HEAD}try {\n${body}\n} c
 const CHANGED_MSG = "The value was changed on the device since you looked at it, so nothing was changed. Refresh the key and look again.";
 
 /**
- * The four write scripts. Environment: RIQ_REG_PATH (normalised key path; for the key scripts the key itself), RIQ_REG_VIEW,
- * RIQ_REG_NAME (value name), RIQ_REG_TYPE, RIQ_REG_DATA ({"v":...} see dataArg), RIQ_REG_EXPECT (see expectArg), RIQ_REG_VALUES
+ * The four write scripts. Environment: ADG_REG_PATH (normalised key path; for the key scripts the key itself), ADG_REG_VIEW,
+ * ADG_REG_NAME (value name), ADG_REG_TYPE, ADG_REG_DATA ({"v":...} see dataArg), ADG_REG_EXPECT (see expectArg), ADG_REG_VALUES
  * (createKey, to put back the values of a deleted key). They print one JSON answer: { ok, status: done | refused, ... } with the old
  * and new state read back from the registry. There is no recursive delete anywhere in them: DeleteSubKey fails on a key with sub keys.
  */
 export const REGISTRY_WRITE_SCRIPTS = {
-    set: psw(String.raw`$path = $env:RIQ_REG_PATH
-$name = [string]$env:RIQ_REG_NAME
-$type = [string]$env:RIQ_REG_TYPE
+    set: psw(String.raw`$path = $env:ADG_REG_PATH
+$name = [string]$env:ADG_REG_NAME
+$type = [string]$env:ADG_REG_TYPE
 Refuse-Blocked $path 'value' $name
 Test-NameOk $name
-$data = Convert-Data $type (($env:RIQ_REG_DATA | ConvertFrom-Json).v)
+$data = Convert-Data $type (($env:ADG_REG_DATA | ConvertFrom-Json).v)
 $exp = $null
-if ($env:RIQ_REG_EXPECT) { $exp = $env:RIQ_REG_EXPECT | ConvertFrom-Json }
+if ($env:ADG_REG_EXPECT) { $exp = $env:ADG_REG_EXPECT | ConvertFrom-Json }
 $key = Open-Writable $path
 if (-not $key) { throw 'That registry key does not exist on this device.' }
 $old = Read-Full $key $name
@@ -816,14 +816,14 @@ if (-not (Test-Expect $old $exp)) { Refuse 'changed' ${psq(CHANGED_MSG)} $old }
 $key.SetValue($name, $data.val, $data.kind)
 $new = Read-Full $key $name
 $key.Close()
-Out-Riq @{ ok = $true; status = 'done'; old = $old; new = $new }`),
+Out-Adg @{ ok = $true; status = 'done'; old = $old; new = $new }`),
 
-    deleteValue: psw(String.raw`$path = $env:RIQ_REG_PATH
-$name = [string]$env:RIQ_REG_NAME
+    deleteValue: psw(String.raw`$path = $env:ADG_REG_PATH
+$name = [string]$env:ADG_REG_NAME
 Refuse-Blocked $path 'value' $name
 Test-NameOk $name
 $exp = $null
-if ($env:RIQ_REG_EXPECT) { $exp = $env:RIQ_REG_EXPECT | ConvertFrom-Json }
+if ($env:ADG_REG_EXPECT) { $exp = $env:ADG_REG_EXPECT | ConvertFrom-Json }
 $key = Open-Writable $path
 if (-not $key) { throw 'That registry key does not exist on this device.' }
 $old = Read-Full $key $name
@@ -832,15 +832,15 @@ if ($old.tooBig -or $old.unsupported) { Refuse 'unrecordable' 'This value is too
 if (-not (Test-Expect $old $exp)) { Refuse 'changed' ${psq(CHANGED_MSG)} $old }
 $key.DeleteValue($old.name, $true)
 $key.Close()
-Out-Riq @{ ok = $true; status = 'done'; old = $old; new = @{ exists = $false } }`),
+Out-Adg @{ ok = $true; status = 'done'; old = $old; new = @{ exists = $false } }`),
 
-    createKey: psw(String.raw`$path = $env:RIQ_REG_PATH
+    createKey: psw(String.raw`$path = $env:ADG_REG_PATH
 Refuse-Blocked $path 'createkey' ''
 $sp = Split-Key $path
 $parent = Open-Writable $sp.parent
 if (-not $parent) { Refuse 'missing' 'The key above it does not exist, so the key cannot be created.' $null }
 $vals = @()
-if ($env:RIQ_REG_VALUES) { $vals = @(@(($env:RIQ_REG_VALUES | ConvertFrom-Json).items)) }
+if ($env:ADG_REG_VALUES) { $vals = @(@(($env:ADG_REG_VALUES | ConvertFrom-Json).items)) }
 $todo = New-Object System.Collections.Generic.List[object]
 foreach ($it in $vals) {
   $n = Un-S $it.n
@@ -862,9 +862,9 @@ try {
   throw ('The key could not be filled, so it was removed again: ' + $why)
 }
 $k.Close(); $parent.Close()
-Out-Riq @{ ok = $true; status = 'done'; created = $true; valueCount = $made }`),
+Out-Adg @{ ok = $true; status = 'done'; created = $true; valueCount = $made }`),
 
-    deleteKey: psw(String.raw`$path = $env:RIQ_REG_PATH
+    deleteKey: psw(String.raw`$path = $env:ADG_REG_PATH
 Refuse-Blocked $path 'deletekey' ''
 $sp = Split-Key $path
 $parent = Open-Writable $sp.parent
@@ -886,14 +886,14 @@ foreach ($vn in $names) {
   $rows.Add($r)
 }
 if ($weight -gt ${KEY_DELETE_MAX_WEIGHT}) { Refuse 'toolarge' 'This key holds more data than can be recorded so that the deletion can be undone. Delete its values one at a time first. It was not deleted.' $null }
-if ($env:RIQ_REG_EXPECT) {
-  $exp = $env:RIQ_REG_EXPECT | ConvertFrom-Json
+if ($env:ADG_REG_EXPECT) {
+  $exp = $env:ADG_REG_EXPECT | ConvertFrom-Json
   if ($null -ne $exp.values -and [int]$exp.values -ne $names.Count) { Refuse 'changed' 'The key was changed on the device since you looked at it (its values are not the same any more), so nothing was deleted. Refresh and look again.' $null }
 }
 $k.Close()
 $parent.DeleteSubKey($sp.leaf, $true)
 $parent.Close()
-Out-Riq @{ ok = $true; status = 'done'; values = @($rows.ToArray()) }`),
+Out-Adg @{ ok = $true; status = 'done'; values = @($rows.ToArray()) }`),
 };
 
 /* ------------------------------ writing: reading what a device printed ------------------------------ */

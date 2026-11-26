@@ -45,7 +45,7 @@ const DEVICE_ID = "22222222-2222-4222-8222-222222222222";
 const OTHER_DEVICE_ASSIGNMENT = "33333333-3333-4333-8333-333333333333";
 const TOKEN = "agent-token";
 
-const work = fs.mkdtempSync(path.join(os.tmpdir(), "riq-protocol-"));
+const work = fs.mkdtempSync(path.join(os.tmpdir(), "adg-protocol-"));
 process.env.JOB_SIGNING_KEY_FILE = path.join(work, "job-signing.pem");
 
 // Package folders this test can break without touching the real output.
@@ -131,7 +131,7 @@ async function main() {
     fs.writeFileSync(pemFile, pem);
 
     const versionFile = path.join(pkgCopy, "windows", "version.json");
-    const zip = path.join(pkgCopy, "windows", "remoteiq-agent-windows.zip");
+    const zip = path.join(pkgCopy, "windows", "adgrmm-agent-windows.zip");
     const original = JSON.parse(fs.readFileSync(versionFile, "utf8"));
 
     // ── Routes and auth ──
@@ -237,7 +237,7 @@ async function main() {
     const agents = path.join(__dirname, "..", "..", "agents", "tests", "AgentCoreTests");
     // Asynchronous, because this same process has to keep answering the agent's requests.
     const code = await new Promise((resolve, reject) => {
-        const child = spawn("dotnet", ["run", "--project", agents, "--", base, pemFile, "RemoteIQ.Agent.exe", AGENT_ID, DEVICE_ID, original.version], { stdio: "inherit" });
+        const child = spawn("dotnet", ["run", "--project", agents, "--", base, pemFile, "AdgRmm.Agent.exe", AGENT_ID, DEVICE_ID, original.version], { stdio: "inherit" });
         child.on("error", reject);
         child.on("exit", resolve);
     });

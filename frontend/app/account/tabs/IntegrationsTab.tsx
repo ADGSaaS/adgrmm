@@ -110,7 +110,7 @@ export default function IntegrationsTab({ onDirtyChange, saveHandleRef }: Props)
         <CardContent className="space-y-4">
           <div>
             <Label>Callback URL</Label>
-            <Input {...form.register("webhookUrl")} placeholder="https://example.com/webhooks/remoteiq" onBlur={autosave} />
+            <Input {...form.register("webhookUrl")} placeholder="https://example.com/webhooks/adgrmm" onBlur={autosave} />
             {form.formState.errors.webhookUrl && <p className="mt-1 text-xs text-destructive">{form.formState.errors.webhookUrl.message}</p>}
           </div>
           <div>

@@ -5,7 +5,7 @@
 // agent ingest route, their series, bucketing, the reasons when empty, that they never alert or show as checks, and that
 // an old agent (or a broken counter) never harms the rest of the response.
 //
-//   RIQ_E2E_ALLOW=1 BASE_URL=http://127.0.0.1:3951 DATABASE_URL=postgres://.../riq_g1_e2e JWT_SECRET=... node test/device-metrics-http.e2e.cjs
+//   ADG_E2E_ALLOW=1 BASE_URL=http://127.0.0.1:3951 DATABASE_URL=postgres://.../adg_g1_e2e JWT_SECRET=... node test/device-metrics-http.e2e.cjs
 "use strict";
 const crypto = require("node:crypto");
 const { assert, call, json, runner, setup, uuid } = require("./groupc-helpers.cjs");

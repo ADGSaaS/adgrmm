@@ -1,4 +1,4 @@
-// remoteiq-frontend/lib/toast.ts
+// adgrmm-frontend/lib/toast.ts
 "use client";
 
 import * as React from "react";

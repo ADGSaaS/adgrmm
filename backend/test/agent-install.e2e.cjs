@@ -2,8 +2,8 @@
 // End-to-end test of agent installation, driven one step at a time by
 // .github/workflows/agent-install.yml, which runs the real installer between steps.
 //
-//   RIQ_E2E_ALLOW=1 BASE_URL=http://127.0.0.1:3001 DATABASE_URL=postgres://.../riq_e2e \
-//   AGENT_OS=windows STATE_DIR=/tmp/riq node test/agent-install.e2e.cjs <step>
+//   ADG_E2E_ALLOW=1 BASE_URL=http://127.0.0.1:3001 DATABASE_URL=postgres://.../adg_e2e \
+//   AGENT_OS=windows STATE_DIR=/tmp/adg node test/agent-install.e2e.cjs <step>
 //
 // It writes test rows, so it refuses any database whose name lacks "e2e".
 "use strict";
@@ -27,8 +27,8 @@ const HOST = os.hostname().toLowerCase();
 const dbName = (() => {
     try { return new URL(DB_URL.replace(/^postgres(ql)?:/, "http:")).pathname; } catch { return ""; }
 })();
-if (process.env.RIQ_E2E_ALLOW !== "1" || !/e2e/.test(dbName) || !STATE_DIR || !["windows", "linux"].includes(AGENT_OS)) {
-    console.error("Refusing to run: set RIQ_E2E_ALLOW=1, AGENT_OS, STATE_DIR and a DATABASE_URL naming an e2e database.");
+if (process.env.ADG_E2E_ALLOW !== "1" || !/e2e/.test(dbName) || !STATE_DIR || !["windows", "linux"].includes(AGENT_OS)) {
+    console.error("Refusing to run: set ADG_E2E_ALLOW=1, AGENT_OS, STATE_DIR and a DATABASE_URL naming an e2e database.");
     process.exit(2);
 }
 
@@ -180,7 +180,7 @@ const steps = {
         });
         console.log(`file job ok: ${JSON.stringify(roots).slice(0, 160)}`);
 
-        const action = await api(state, "POST", `/api/devices/${device.id}/actions/uninstall`, { name: "RemoteIQ Not Installed" });
+        const action = await api(state, "POST", `/api/devices/${device.id}/actions/uninstall`, { name: "ADG RMM Not Installed" });
         if (AGENT_OS === "windows") {
             assert.equal(action.status, 202, `script job: ${action.text.slice(0, 300)}`);
             const job = await waitFor("a script job to finish", 90, () => db(async (c) => {
@@ -209,7 +209,7 @@ const steps = {
         const state = loadState();
         const id = state.deviceId;
         const files = `/api/devices/${id}/files`;
-        const base = path.join(os.tmpdir(), `riq-e2e-${crypto.randomBytes(4).toString("hex")}`);
+        const base = path.join(os.tmpdir(), `adg-e2e-${crypto.randomBytes(4).toString("hex")}`);
 
         const done = async (res) => {
             assert.ok(res.status < 300, `file op: ${res.status} ${res.text.slice(0, 300)}`);

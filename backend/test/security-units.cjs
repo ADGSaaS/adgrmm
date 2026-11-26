@@ -149,7 +149,7 @@ check("every script is ASCII, has no backtick or ${ (it lives in a template stri
     for (const [n, t] of Object.entries({ scan: S.SECURITY_SCAN_SCRIPT, update: S.DEFENDER_SCRIPTS.update, defScan: S.DEFENDER_SCRIPTS.scan })) {
         assert.ok(/^[\x00-\x7f]*$/.test(t), `${n} ascii`);
         assert.ok(!t.includes("`") && !t.includes("${"), `${n} no backtick`);
-        assert.ok(t.includes("Out-Riq"), n);
+        assert.ok(t.includes("Out-Adg"), n);
     }
 });
 check("nothing secret is ever asked for: no key id, recovery password, key, DefaultPassword, hash, manage-bde, Get-BitLockerVolume", () => {
@@ -174,8 +174,8 @@ check("the scripts contain nothing a person types and nothing that turns protect
     assert.ok(!/Set-MpPreference|Add-MpPreference|Remove-MpPreference|Disable-|DisableRealtimeMonitoring|-ExclusionPath|-ExclusionExtension|-ExclusionProcess|Remove-MpThreat|Set-NetFirewall|netsh/i.test(all));
     // Exclusions are only READ (the property of Get-MpPreference), never added, changed or removed.
     assert.ok(/Get-MpPreference/.test(S.SECURITY_SCAN_SCRIPT) && !/(Set|Add|Remove)-MpPreference/i.test(S.SECURITY_SCAN_SCRIPT));
-    assert.ok(/\$env:RIQ_SCAN_TYPE/.test(S.DEFENDER_SCRIPTS.scan));
-    assert.ok(!/\$env:RIQ_SCAN_TYPE[^\n]*Command/.test(S.DEFENDER_SCRIPTS.scan.replace(/\$type = \$env:RIQ_SCAN_TYPE/, "")));
+    assert.ok(/\$env:ADG_SCAN_TYPE/.test(S.DEFENDER_SCRIPTS.scan));
+    assert.ok(!/\$env:ADG_SCAN_TYPE[^\n]*Command/.test(S.DEFENDER_SCRIPTS.scan.replace(/\$type = \$env:ADG_SCAN_TYPE/, "")));
 });
 
 /* ------------------------------ Security Center ------------------------------ */

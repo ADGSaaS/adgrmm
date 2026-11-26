@@ -18,8 +18,8 @@ async function maybeSetupSwagger(app: INestApplication) {
     const { SwaggerModule, DocumentBuilder } = require("@nestjs/swagger");
 
     const config = new DocumentBuilder()
-      .setTitle("RemoteIQ API")
-      .setDescription("OpenAPI for RemoteIQ RMM")
+      .setTitle("ADG RMM API")
+      .setDescription("OpenAPI for ADG RMM RMM")
       .setVersion("v1")
       .addBearerAuth(
         { type: "http", scheme: "bearer", bearerFormat: "JWT" },

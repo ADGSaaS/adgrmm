@@ -9,7 +9,7 @@
 //
 // `applyBrandingToDocument` must stay self-contained (no imports, no outside names): its source text is what runs in <head>.
 
-export const BRANDING_CACHE_KEY = "riq-branding";
+export const BRANDING_CACHE_KEY = "adg-branding";
 
 export type BrandingLook = {
     primaryColor?: string | null;
@@ -76,13 +76,13 @@ export function applyBrandingToDocument(look: BrandingLook): void {
         var text = (look.customCss || "").trim();
         // The starter text "/* ... */" is a comment with nothing in it.
         var emptyComment = /^\/\*[\s\S]*\*\/$/.test(text) && !/[{}]/.test(text);
-        var el = document.getElementById("riq-custom-css");
+        var el = document.getElementById("adg-custom-css");
         if (!text || emptyComment) {
             if (el && el.parentNode) el.parentNode.removeChild(el);
         } else {
             if (!el) {
                 el = document.createElement("style");
-                el.id = "riq-custom-css";
+                el.id = "adg-custom-css";
                 document.head.appendChild(el);
             }
             el.textContent = text;

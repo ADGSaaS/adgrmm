@@ -10,6 +10,6 @@ export const metadata: Metadata = {
 
 export default async function PortalLayout({ children }: { children: React.ReactNode }) {
     // "" when the portal has its own domain, "/portal" when it is reached on the main address.
-    const base = (await headers()).get("x-riq-portal-base") ?? "/portal";
+    const base = (await headers()).get("x-adg-portal-base") ?? "/portal";
     return <PortalShell base={base}>{children}</PortalShell>;
 }

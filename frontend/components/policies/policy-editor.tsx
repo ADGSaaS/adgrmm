@@ -135,7 +135,7 @@ function toBody(f: Form) {
 }
 
 const TIME = /^([01]\d|2[0-3]):[0-5]\d$/;
-/** Names Windows keeps for itself; RemoteIQ never manages these. The server checks the list again. */
+/** Names Windows keeps for itself; ADG RMM never manages these. The server checks the list again. */
 const RESERVED_ACCOUNTS = ["administrator", "guest", "defaultaccount", "system", "wdagutilityaccount", "krbtgt"];
 const whole = (s: string, min: number, max: number) => /^\d+$/.test(s.trim()) && Number(s) >= min && Number(s) <= max;
 
@@ -562,13 +562,13 @@ export function PolicyEditor({ open, onOpenChange, policy, newKind, template = f
                                         <ul className="list-disc space-y-1 pl-5">
                                             <li>Everything is stored encrypted on this server and shown only to people with the right to view device secrets (Roles). Nobody has it by default except the owner. Every reveal asks for a reason and is logged.</li>
                                             <li>The password is generated on the device and sent here; it is never made or seen anywhere else.</li>
-                                            <li>RemoteIQ only creates and manages its own account. It never touches the built-in Administrator account or any other account.</li>
+                                            <li>ADG RMM only creates and manages its own account. It never touches the built-in Administrator account or any other account.</li>
                                             <li>Turning password management off keeps the stored passwords and stops rotating them. The last password may still work on the device.</li>
                                         </ul>
                                         <p>Leave a field on &quot;Leave as is&quot; and the policy says nothing about it.</p>
                                     </div>
                                     <h3 className="pb-2 text-sm font-semibold sm:col-span-2">Disk recovery keys (BitLocker, LUKS)</h3>
-                                    <Field label="Escrow disk recovery keys" htmlFor="pe-escrow" hint="Off unless a policy says on. A Windows device sends the keys of its BitLocker volumes here. On Linux, RemoteIQ adds one recovery key slot to each LUKS2 disk that unlocks with the TPM or a key file and stores that key. Encrypted at rest." className="sm:col-span-2">
+                                    <Field label="Escrow disk recovery keys" htmlFor="pe-escrow" hint="Off unless a policy says on. A Windows device sends the keys of its BitLocker volumes here. On Linux, ADG RMM adds one recovery key slot to each LUKS2 disk that unlocks with the TPM or a key file and stores that key. Encrypted at rest." className="sm:col-span-2">
                                         <select id="pe-escrow" className={selectClass} value={form.escrow} onChange={(ev) => set("escrow", ev.target.value as Form["escrow"])}>
                                             <option value="">Leave as is (off unless another policy says otherwise)</option>
                                             <option value="on">On: collect and store the recovery keys</option>
@@ -583,7 +583,7 @@ export function PolicyEditor({ open, onOpenChange, policy, newKind, template = f
                                             <option value="off">Off: stop rotating (stored passwords are kept)</option>
                                         </select>
                                     </Field>
-                                    <Field label="Account name" htmlFor="pe-laps-account" error={e("lapsAccount")} hint="Default riq-admin. 1 to 20 letters, digits, . _ - Not Administrator, Guest or another Windows account.">
+                                    <Field label="Account name" htmlFor="pe-laps-account" error={e("lapsAccount")} hint="Default adg-admin. 1 to 20 letters, digits, . _ - Not Administrator, Guest or another Windows account.">
                                         <input id="pe-laps-account" type="text" maxLength={20} autoComplete="off" className={selectClass} value={form.lapsAccount} onChange={(ev) => set("lapsAccount", ev.target.value)} placeholder="Leave as is" aria-invalid={e("lapsAccount") ? true : undefined} />
                                     </Field>
                                     <Field label="Password length" htmlFor="pe-laps-length" error={e("lapsLength")} hint="Default 20 characters. 14 to 64">

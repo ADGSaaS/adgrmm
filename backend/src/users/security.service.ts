@@ -9,7 +9,7 @@ import { isCanonicalUuid } from "../common/agent-lookup.util";
 import { enforcePasswordPolicy, rememberPassword } from "../auth/password-policy";
 
 const PASSWORD_MIN_LEN = parseInt(process.env.PASSWORD_MIN_LEN || "8", 10) || 8;
-const TOTP_ISSUER = process.env.TOTP_ISSUER || "RemoteIQ";
+const TOTP_ISSUER = process.env.TOTP_ISSUER || "ADG RMM";
 const RATE_WINDOW_MS = 10_000;
 const RATE_MAX_ATTEMPTS = 5;
 const TOTP_WINDOW = parseInt(process.env.TOTP_WINDOW || "1", 10) || 1;

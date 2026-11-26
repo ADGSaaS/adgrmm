@@ -1,8 +1,8 @@
 #!/usr/bin/env node
-// The tray app on a Windows computer, with the REAL agent program: its pipe and its call to the server (RemoteIQ.Agent.exe --tray-bridge-test)
-// against a real backend and database, and the real tray process (RemoteIQ.Agent.exe --tray) on this machine's desktop talking to that pipe.
+// The tray app on a Windows computer, with the REAL agent program: its pipe and its call to the server (AdgRmm.Agent.exe --tray-bridge-test)
+// against a real backend and database, and the real tray process (AdgRmm.Agent.exe --tray) on this machine's desktop talking to that pipe.
 // Windows only. Needs the Release build of the agent:
-//   AGENT_EXE=<path to RemoteIQ.Agent.exe> RIQ_E2E_ALLOW=1 BASE_URL=http://127.0.0.1:3977 DATABASE_URL=postgres://.../riq_tray_e2e JWT_SECRET=... node test/tray-pipe.e2e.cjs
+//   AGENT_EXE=<path to AdgRmm.Agent.exe> ADG_E2E_ALLOW=1 BASE_URL=http://127.0.0.1:3977 DATABASE_URL=postgres://.../adg_tray_e2e JWT_SECRET=... node test/tray-pipe.e2e.cjs
 "use strict";
 const crypto = require("node:crypto");
 const net = require("node:net");
@@ -11,7 +11,7 @@ const { assert, call, runner, setup, uuid } = require("./groupc-helpers.cjs");
 
 if (process.platform !== "win32") { console.log("Windows only, skipped."); process.exit(0); }
 const EXE = process.env.AGENT_EXE;
-if (!EXE) { console.log("Set AGENT_EXE to the built RemoteIQ.Agent.exe, skipped."); process.exit(0); }
+if (!EXE) { console.log("Set AGENT_EXE to the built AdgRmm.Agent.exe, skipped."); process.exit(0); }
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 async function main() {
@@ -28,7 +28,7 @@ async function main() {
     const settings = (body) => call("/api/admin/tray", { method: "PUT", token: admin.token, body });
     await settings({ enabled: false });
 
-    const PIPE = `riq-tray-test-${process.pid}`;
+    const PIPE = `adg-tray-test-${process.pid}`;
     const procs = [];
     const start = (args, env = {}) => { const p = spawn(EXE, args, { env: { ...process.env, ...env }, stdio: ["ignore", "pipe", "pipe"], windowsHide: true }); procs.push(p); p.out = ""; p.stdout.on("data", (d) => (p.out += d)); p.stderr.on("data", (d) => (p.out += d)); p.exited = new Promise((r) => p.once("exit", (c) => r(c))); return p; };
     const bridge = start(["--tray-bridge-test", process.env.BASE_URL, token, PIPE]);
@@ -107,17 +107,17 @@ async function main() {
     console.log("the tray program on this desktop");
     await test("with the tray off, it starts, hears so and closes by itself", async () => {
         await settings({ enabled: false });
-        const tray = start(["--tray", "--tray-pipe", PIPE], { REMOTEIQ_TRAY_POLL_SECONDS: "1" });
+        const tray = start(["--tray", "--tray-pipe", PIPE], { ADG_TRAY_POLL_SECONDS: "1" });
         const code = await Promise.race([tray.exited, sleep(15000).then(() => "still running")]);
         if (code === "still running") tray.kill();
         assert.equal(code, 0, `it did not close: ${tray.out}`);
     });
     await test("with the tray on, it keeps running; one tray per person (a second one closes at once); turning it off closes it", async () => {
         await settings({ enabled: true });
-        const tray = start(["--tray", "--tray-pipe", PIPE], { REMOTEIQ_TRAY_POLL_SECONDS: "1" });
+        const tray = start(["--tray", "--tray-pipe", PIPE], { ADG_TRAY_POLL_SECONDS: "1" });
         await sleep(5000);
         assert.equal(tray.exitCode, null, `it closed by itself while on: ${tray.out}`);
-        const second = start(["--tray", "--tray-pipe", PIPE], { REMOTEIQ_TRAY_POLL_SECONDS: "1" });
+        const second = start(["--tray", "--tray-pipe", PIPE], { ADG_TRAY_POLL_SECONDS: "1" });
         assert.equal(await Promise.race([second.exited, sleep(10000).then(() => "still running")]), 0, "a second tray stayed open");
         await settings({ enabled: false });
         const code = await Promise.race([tray.exited, sleep(20000).then(() => "still running")]);
@@ -126,7 +126,7 @@ async function main() {
     });
     await test("when the agent is not there it waits quietly instead of closing or crashing", async () => {
         await settings({ enabled: true });
-        const tray = start(["--tray", "--tray-pipe", "riq-tray-no-such-pipe"], { REMOTEIQ_TRAY_POLL_SECONDS: "1" });
+        const tray = start(["--tray", "--tray-pipe", "adg-tray-no-such-pipe"], { ADG_TRAY_POLL_SECONDS: "1" });
         await sleep(6000);
         const alive = tray.exitCode === null;
         tray.kill();

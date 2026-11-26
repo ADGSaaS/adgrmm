@@ -128,7 +128,7 @@
 }
 
 /* === Ambient tooltip (data-tooltip) === */
-.riq-tooltip {
+.adg-tooltip {
   position: absolute;
   z-index: 9999;
   max-width: 280px;
@@ -146,13 +146,13 @@
   opacity: 1;
 }
 
-.riq-tooltip.hidden {
+.adg-tooltip.hidden {
   opacity: 0;
   visibility: hidden;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .riq-tooltip {
+  .adg-tooltip {
     transition: none;
   }
 }

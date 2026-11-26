@@ -57,8 +57,8 @@ export class DeviceToolsService {
             agentId: t.agentId,
             language: t.family === "windows" ? "powershell" : "bash",
             scriptText: script,
-            // RIQ_TOOL marks the job as one of these, so only these jobs can be read back through this service.
-            env: { ...env, RIQ_TOOL: kind },
+            // ADG_TOOL marks the job as one of these, so only these jobs can be read back through this service.
+            env: { ...env, ADG_TOOL: kind },
             timeoutSec: TOOL_TIMEOUT_SEC,
         });
         return job.id;
@@ -101,7 +101,7 @@ export class DeviceToolsService {
         if (!isCanonicalUuid(jobId)) throw new NotFoundException("Job not found");
         const j = await this.jobs.getJobWithResult(jobId).catch(() => null);
         const env = ((j?.parsed_payload as any)?.env ?? {}) as Record<string, string>;
-        const kind = String(env.RIQ_TOOL ?? "") as ToolKind;
+        const kind = String(env.ADG_TOOL ?? "") as ToolKind;
         if (!j || j.agent_id !== t.agentId || j.type !== "RUN_SCRIPT" || !kind) throw new NotFoundException("Job not found");
         if (kind.startsWith("registry.") !== (scope === "registry")) throw new NotFoundException("Job not found");
         if (!["succeeded", "failed", "timeout"].includes(j.status)) return { pending: true, jobId };
@@ -114,13 +114,13 @@ export class DeviceToolsService {
             case "services.list": return family === "windows" ? win((p) => ({ items: windowsServices(p) })) : (o) => ({ items: linuxServices(o) });
             case "processes.list": return family === "windows" ? win((p) => ({ items: windowsProcesses(p) })) : (o) => ({ items: linuxProcesses(o) });
             case "eventlog": {
-                const levels = String(env.RIQ_LEVELS ?? "").split(",").filter(Boolean).map(Number);
+                const levels = String(env.ADG_LEVELS ?? "").split(",").filter(Boolean).map(Number);
                 return family === "windows" ? win((p) => windowsEvents(p)) : (o) => linuxEvents(o, levels);
             }
             case "service.action": return family === "windows"
                 ? win((p) => ({ ok: true, state: String(p.state ?? "").toLowerCase(), startType: String(p.startMode ?? "").toLowerCase() }))
                 : (o, e) => { const l = linuxOutcome(o, e); return { ok: true, state: l[0] ?? "", startType: l[1] ?? "" }; };
-            case "registry.key": return win((p) => parseRegistryKey(p, String(env.RIQ_REG_PATH ?? "")));
+            case "registry.key": return win((p) => parseRegistryKey(p, String(env.ADG_REG_PATH ?? "")));
             case "registry.search": return win((p) => parseRegistrySearch(p));
             case "registry.roots": return win((p) => parseRegistryRoots(p));
             case "registry.set":
@@ -140,20 +140,20 @@ export class DeviceToolsService {
 
     async serviceAction(t: Target, input: { name: unknown; action: ServiceAction; startType?: StartType; force?: boolean }) {
         const name = cleanServiceName(input.name, t.family);
-        const env: Record<string, string> = { RIQ_SERVICE: name, RIQ_FORCE: input.force ? "1" : "0" };
+        const env: Record<string, string> = { ADG_SERVICE: name, ADG_FORCE: input.force ? "1" : "0" };
         if (t.family === "windows") {
-            env.RIQ_ACTION = input.action;
+            env.ADG_ACTION = input.action;
             if (input.action === "startup") {
                 if (!input.startType || !START_TYPES.includes(input.startType)) throw new BadRequestException("Choose how the service should start.");
-                env.RIQ_STARTTYPE = input.startType;
+                env.ADG_STARTTYPE = input.startType;
             }
         } else if (input.action === "startup") {
             if (input.startType === "delayed") throw new BadRequestException("Delayed start is a Windows setting. Choose automatic, manual or disabled.");
             // automatic = enable; manual = disable (starts only when asked); disabled = mask (cannot be started at all)
-            env.RIQ_ACTION = ({ automatic: "enable", manual: "disable", disabled: "mask" } as Record<string, string>)[String(input.startType)] ?? "";
-            if (!env.RIQ_ACTION) throw new BadRequestException("Choose how the service should start.");
+            env.ADG_ACTION = ({ automatic: "enable", manual: "disable", disabled: "mask" } as Record<string, string>)[String(input.startType)] ?? "";
+            if (!env.ADG_ACTION) throw new BadRequestException("Choose how the service should start.");
         } else {
-            env.RIQ_ACTION = input.action;
+            env.ADG_ACTION = input.action;
         }
         const { jobId, answer } = await this.run(t, "service.action", t.family === "windows" ? WINDOWS.serviceAction : LINUX.serviceAction, env, this.reader("service.action", t.family, env));
         return { jobId, name, ...answer };
@@ -166,7 +166,7 @@ export class DeviceToolsService {
 
     async endProcess(t: Target, input: { pid: unknown; force?: boolean }) {
         const pid = cleanPid(input.pid);
-        const env = { RIQ_PID: String(pid), RIQ_FORCE: input.force ? "1" : "0" };
+        const env = { ADG_PID: String(pid), ADG_FORCE: input.force ? "1" : "0" };
         const { jobId, answer } = await this.run(t, "process.end", t.family === "windows" ? WINDOWS.processEnd : LINUX.processEnd, env, this.reader("process.end", t.family, env));
         return { jobId, pid, ...answer };
     }
@@ -179,11 +179,11 @@ export class DeviceToolsService {
     }
 
     async eventLog(t: Target, query: ReturnType<DeviceToolsService["parseEventQuery"]>): Promise<{ jobId: string; pending: boolean; items?: EventRow[]; truncated?: boolean; scanned?: number }> {
-        const env: Record<string, string> = { RIQ_LOG: query.log, RIQ_MAX: String(query.max), RIQ_TEXT: query.text, RIQ_SCAN: String(SEARCH_SCAN), RIQ_LEVELS: query.levels.join(",") };
-        if (t.family === "windows") env.RIQ_HOURS = String(query.hours);
+        const env: Record<string, string> = { ADG_LOG: query.log, ADG_MAX: String(query.max), ADG_TEXT: query.text, ADG_SCAN: String(SEARCH_SCAN), ADG_LEVELS: query.levels.join(",") };
+        if (t.family === "windows") env.ADG_HOURS = String(query.hours);
         else {
-            env.RIQ_SINCE = String(Math.floor(Date.now() / 1000) - query.hours * 3600);
-            env.RIQ_PRIO = maxPriorityFor(query.levels);
+            env.ADG_SINCE = String(Math.floor(Date.now() / 1000) - query.hours * 3600);
+            env.ADG_PRIO = maxPriorityFor(query.levels);
         }
         const { jobId, answer } = await this.run(t, "eventlog", t.family === "windows" ? WINDOWS.eventLog : LINUX.eventLog, env, this.reader("eventlog", t.family, env));
         return { jobId, ...answer };

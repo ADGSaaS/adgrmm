@@ -1,6 +1,6 @@
 <# 
 .SYNOPSIS
-  Tests RemoteIQ SMTP endpoints via REST (secure password + no $PROFILE clash).
+  Tests ADG RMM SMTP endpoints via REST (secure password + no $PROFILE clash).
 
 .EXAMPLE
   $sec = Read-Host -AsSecureString "SMTP password"
@@ -30,8 +30,8 @@ param(
 
     # Test email
     [Parameter(Mandatory = $true)][string] $TestTo,
-    [string] $Subject = "RemoteIQ SMTP test",
-    [string] $Body = "This is a test from RemoteIQ.",
+    [string] $Subject = "ADG RMM SMTP test",
+    [string] $Body = "This is a test from ADG RMM.",
 
     # Optional admin API key header
     [string] $AdminApiKey,

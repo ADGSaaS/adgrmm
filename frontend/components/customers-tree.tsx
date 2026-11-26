@@ -36,8 +36,8 @@ export function treeClientsOf(counts: { clients: Array<{ name: string | null; to
     return (counts?.clients ?? []).map((c) => ({ name: c.name, total: c.total, offline: c.offline, sites: c.sites.map((s) => ({ name: s.name, total: s.total, offline: s.offline })) }));
 }
 
-const EXPANDED_KEY = "riq.customers.expanded";
-const COLLAPSED_KEY = "riq.customers.collapsed";
+const EXPANDED_KEY = "adg.customers.expanded";
+const COLLAPSED_KEY = "adg.customers.collapsed";
 
 const byName = (a: string, b: string) => a.localeCompare(b, undefined, { sensitivity: "base" });
 const clean = (value: unknown) => String(value ?? "").trim();

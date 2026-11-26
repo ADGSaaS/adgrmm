@@ -239,7 +239,7 @@ export default function SlaTab({ push }: { push: ToastFn }) {
 
             <section className="grid gap-3 rounded-xl border border-border/70 bg-card p-5 shadow-sm" aria-labelledby="sla-customers">
                 <h3 id="sla-customers" className="text-base font-semibold">Customers with their own policy</h3>
-                <p className="text-sm text-muted-foreground">A customer listed here is held to this policy instead of the queue&apos;s or the default one. Contract-based policies are not available yet: there are no contracts in RemoteIQ to attach them to.</p>
+                <p className="text-sm text-muted-foreground">A customer listed here is held to this policy instead of the queue&apos;s or the default one. Contract-based policies are not available yet: there are no contracts in ADG RMM to attach them to.</p>
                 <div className="flex flex-wrap items-end gap-2">
                     <div className="grid gap-1">
                         <Label htmlFor="sla-client" className="text-xs">Customer</Label>

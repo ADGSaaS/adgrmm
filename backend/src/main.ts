@@ -1,4 +1,4 @@
-// remoteiq-minimal-e2e/backend/src/main.ts
+// adgrmm-minimal-e2e/backend/src/main.ts
 
 import "reflect-metadata";
 import "dotenv/config";
@@ -41,8 +41,8 @@ async function maybeSetupSwagger(app: INestApplication) {
     const { SwaggerModule, DocumentBuilder } = require("@nestjs/swagger");
 
     const config = new DocumentBuilder()
-      .setTitle("RemoteIQ API")
-      .setDescription("OpenAPI for RemoteIQ RMM")
+      .setTitle("ADG RMM API")
+      .setDescription("OpenAPI for ADG RMM RMM")
       .setVersion("v1")
       .addBearerAuth(
         { type: "http", scheme: "bearer", bearerFormat: "JWT" },

@@ -1,4 +1,4 @@
-// remoteiq-frontend/lib/use-job-run.ts
+// adgrmm-frontend/lib/use-job-run.ts
 "use client";
 
 import * as React from "react";

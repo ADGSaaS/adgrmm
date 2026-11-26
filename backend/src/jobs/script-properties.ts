@@ -8,7 +8,7 @@
 //    exits with an error, so it shows up in the run history like any other failure.
 //  - A value is only put into the script text when it holds nothing a shell could act on (no quotes, $, backticks,
 //    brackets, ; | & < > and so on). Otherwise the script stops the same way and says to read the value from its
-//    environment variable instead (RIQ_AGENT_<NAME>), which is never parsed as code. Every property is always
+//    environment variable instead (ADG_AGENT_<NAME>), which is never parsed as code. Every property is always
 //    available as an environment variable when a script uses any {{agent.*}} at all.
 //  - Anything else in double braces is left alone.
 
@@ -18,7 +18,7 @@ export type ScriptLanguage = "powershell" | "bash" | "cmd";
 export const AGENT_PROPERTIES: Record<string, string> = {
     hostname: "The device's host name",
     name: "The device's display name (its alias, or its host name)",
-    id: "The device's id in RemoteIQ",
+    id: "The device's id in ADG RMM",
     uuid: "The agent's id",
     os: "windows or linux",
     osname: "The operating system as the device reports it",
@@ -42,7 +42,7 @@ export function referencedCustomFields(text: string): string[] {
     return [...out];
 }
 
-export const customEnvName = (key: string) => `RIQ_CUSTOMER_${key.toUpperCase()}`;
+export const customEnvName = (key: string) => `ADG_CUSTOMER_${key.toUpperCase()}`;
 
 /** Names of the properties a script text asks for, lower-case, without repeats. */
 export function referencedProperties(text: string): string[] {
@@ -57,7 +57,7 @@ export function isSafeToInline(value: string): boolean {
     return !/[`$"';|&<>(){}]/.test(value);
 }
 
-export const envName = (property: string) => `RIQ_AGENT_${property.toUpperCase()}`;
+export const envName = (property: string) => `ADG_AGENT_${property.toUpperCase()}`;
 
 /** A script that only reports why the real one was not run. The message holds property names, never values. */
 export function failureScript(language: ScriptLanguage, message: string): string {
@@ -107,13 +107,13 @@ export function applyAgentProperties(
         if (!isSafeToInline(v)) problems.push(`{{customer.${key}}} holds characters that are not safe to put into script text. Read it from the environment variable ${customEnvName(key)} instead.`);
     }
     for (const name of wanted) {
-        if (!(name in AGENT_PROPERTIES)) { problems.push(`{{agent.${name}}} is not a property RemoteIQ knows. Known properties: ${Object.keys(AGENT_PROPERTIES).map((n) => `agent.${n}`).join(", ")}.`); continue; }
+        if (!(name in AGENT_PROPERTIES)) { problems.push(`{{agent.${name}}} is not a property ADG RMM knows. Known properties: ${Object.keys(AGENT_PROPERTIES).map((n) => `agent.${n}`).join(", ")}.`); continue; }
         const v = String(values[name] ?? "");
         if (!v.trim()) { problems.push(`{{agent.${name}}} has no value on this device.`); continue; }
         if (!isSafeToInline(v)) problems.push(`{{agent.${name}}} holds characters that are not safe to put into script text. Read it from the environment variable ${envName(name)} instead.`);
     }
     if (problems.length) {
-        const message = `RemoteIQ did not run this script. ${problems.join(" ")}`;
+        const message = `ADG RMM did not run this script. ${problems.join(" ")}`;
         return { used: true, ok: false, problems, scriptText: failureScript(language, message), env };
     }
 

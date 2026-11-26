@@ -73,7 +73,7 @@ export default function TrayCard({ push }: { push: ToastFn }) {
             </div>
             <div className="grid gap-1"><Label htmlFor="tray-hours">Office hours</Label><Input id="tray-hours" value={t.officeHours ?? ""} maxLength={300} placeholder="Mon to Fri, 8:00 to 17:00 Eastern" onChange={(e) => setT({ ...t, officeHours: e.target.value })} /></div>
             <div className="grid gap-1"><Label htmlFor="tray-notice">Notice (shown at the top of the window, optional)</Label><Input id="tray-notice" value={t.notice ?? ""} maxLength={400} placeholder="For example: our phones are down today, please use chat or email" onChange={(e) => setT({ ...t, notice: e.target.value })} /></div>
-            <AdminNote>People at a computer are not signed in to RemoteIQ: the tray works through the computer&apos;s own agent, so a request or message says which computer it came from and the Windows name of whoever typed it, nothing more.</AdminNote>
+            <AdminNote>People at a computer are not signed in to ADG RMM: the tray works through the computer&apos;s own agent, so a request or message says which computer it came from and the Windows name of whoever typed it, nothing more.</AdminNote>
         </AdminSection>
     );
 }

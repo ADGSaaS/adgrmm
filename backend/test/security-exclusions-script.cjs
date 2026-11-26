@@ -19,7 +19,7 @@ assert.ok(m, "the probe is in the script");
 const body = m[1];
 assert.ok(body.includes("$p = Get-MpPreference"));
 
-const dir = fs.mkdtempSync(path.join(os.tmpdir(), "riq-excl-"));
+const dir = fs.mkdtempSync(path.join(os.tmpdir(), "adg-excl-"));
 const q = (a) => "@(" + a.map((x) => `'${x.replace(/'/g, "''")}'`).join(",") + ")";
 function run(paths, exts, procs) {
     const fake = `$p = [pscustomobject]@{ ExclusionPath = ${q(paths)}; ExclusionExtension = ${q(exts)}; ExclusionProcess = ${q(procs)} }`;
@@ -36,7 +36,7 @@ check("no exclusions: zero counts and nothing broad", () => {
     assert.deepEqual(JSON.parse(r.out), { paths: 0, extensions: 0, processes: 0, broad: [] });
 });
 check("an application's own folders and harmless types are not broad", () => {
-    const r = run(["C:\\Program Files\\RemoteIQ", "C:\\ProgramData\\RemoteIQ\\agent", "D:\\Data\\App", "C:\\Users\\ann\\source\\repo"], [".tmp", "log"], ["C:\\Tools\\app.exe", "service.exe"]);
+    const r = run(["C:\\Program Files\\AdgRmm", "C:\\ProgramData\\AdgRmm\\agent", "D:\\Data\\App", "C:\\Users\\ann\\source\\repo"], [".tmp", "log"], ["C:\\Tools\\app.exe", "service.exe"]);
     assert.equal(r.status, 0, r.err);
     const j = JSON.parse(r.out);
     assert.deepEqual(j, { paths: 4, extensions: 2, processes: 2, broad: [] });

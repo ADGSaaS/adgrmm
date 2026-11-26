@@ -120,7 +120,7 @@ function startFreshdesk(stamp, agentEmails) {
     const stamp = Date.now().toString(36);
     state.stamp = stamp;
     const agentEmails = [`agent1-${stamp}@fd.test`, `agent2-${stamp}@fd.test`];
-    const uploadDir = fs.mkdtempSync(path.join(os.tmpdir(), "riq-import-"));
+    const uploadDir = fs.mkdtempSync(path.join(os.tmpdir(), "adg-import-"));
     const fdServer = await startFreshdesk(stamp, agentEmails);
     const svc = new ImportsService(prisma);
     svc.makeClient = (host, key) => new fd.FreshdeskClient(`${fdServer.base}/api/v2`, key, { sleep: async () => { }, maxPages: 2 });

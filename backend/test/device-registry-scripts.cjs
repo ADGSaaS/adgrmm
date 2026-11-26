@@ -18,12 +18,12 @@ const timings = [];
 const check = (name, fn) => { try { fn(); passed++; console.log(`ok   ${name}`); } catch (e) { failed++; console.log(`FAIL ${name}: ${e.message}`); } };
 const ps = (file, env) => spawnSync("powershell", ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", file], { env: { ...process.env, ...env }, encoding: "utf8", maxBuffer: 1e8 });
 
-const dir = fs.mkdtempSync(path.join(os.tmpdir(), "riq-reg-"));
+const dir = fs.mkdtempSync(path.join(os.tmpdir(), "adg-reg-"));
 function run(kind, env, label) {
     const f = path.join(dir, `${kind}.ps1`);
     fs.writeFileSync(f, "\ufeff" + R.REGISTRY_SCRIPTS[kind]);
     const t = Date.now();
-    const r = ps(f, { RIQ_REG_VIEW: "64", RIQ_REG_PATH: "", RIQ_REG_TEXT: "", RIQ_REG_IN: "keys", ...env });
+    const r = ps(f, { ADG_REG_VIEW: "64", ADG_REG_PATH: "", ADG_REG_TEXT: "", ADG_REG_IN: "keys", ...env });
     const ms = Date.now() - t;
     timings.push(`${label || kind}: ${ms} ms, ${r.stdout.length} chars`);
     assert.ok(r.stdout.length < 190000, "output is under the agent's 200000 character cap");
@@ -33,7 +33,7 @@ function run(kind, env, label) {
 const reader = { key: (p, path) => R.parseRegistryKey(p, path), search: (p) => R.parseRegistrySearch(p), roots: (p) => R.parseRegistryRoots(p) };
 
 const mk = path.join(dir, "mk.ps1");
-fs.writeFileSync(mk, `$k = 'HKCU:\\Software\\RiqRegTestUnit'
+fs.writeFileSync(mk, `$k = 'HKCU:\\Software\\AdgRegTestUnit'
 Remove-Item $k -Recurse -ErrorAction SilentlyContinue
 New-Item $k | Out-Null; New-Item "$k\\child1" | Out-Null; New-Item "$k\\child1\\deep" | Out-Null
 New-Item -Path ($k + '\\Caf' + [char]0xe9 + ' q') | Out-Null
@@ -53,11 +53,11 @@ New-ItemProperty $k 'LongStr' -Value ('x' * 5000) | Out-Null
 const made = ps(mk, {});
 const sid = made.stdout.trim().split(/\r?\n/).pop();
 assert.match(sid, /^S-1-5-21-/, made.stderr);
-const HKU_KEY = `HKU\\${sid}\\Software\\RiqRegTestUnit`;
+const HKU_KEY = `HKU\\${sid}\\Software\\AdgRegTestUnit`;
 
 try {
     check("a key with every kind of value is read and rendered; unicode, quotes and control characters survive", () => {
-        const { ms, parsed } = run("key", { RIQ_REG_PATH: HKU_KEY }, "key (test key under HKU)");
+        const { ms, parsed } = run("key", { ADG_REG_PATH: HKU_KEY }, "key (test key under HKU)");
         const k = reader.key(parsed, HKU_KEY);
         const v = Object.fromEntries(k.values.map((x) => [x.name, x]));
         assert.equal(v[""].display, "(Default)"); assert.equal(v[""].data, "defval");
@@ -81,27 +81,27 @@ try {
     const timed = (label, kind, env, extra) => check(label, () => {
         const { ms, parsed } = run(kind, env, label);
         assert.ok(ms < 5000, `${ms} ms is not under 5 s`);
-        if (extra) extra(reader[kind](parsed, env.RIQ_REG_PATH), parsed);
+        if (extra) extra(reader[kind](parsed, env.ADG_REG_PATH), parsed);
     });
-    timed("HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion lists sub keys and values (under 5 s)", "key", { RIQ_REG_PATH: "HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion" }, (k) => {
+    timed("HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion lists sub keys and values (under 5 s)", "key", { ADG_REG_PATH: "HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion" }, (k) => {
         assert.ok(k.subKeys.length > 5 && k.values.length > 3);
         assert.ok(k.values.some((x) => x.name === "ProgramFilesDir" && /Program Files/.test(x.data)));
     });
-    timed("the same key in the 32-bit view (under 5 s)", "key", { RIQ_REG_PATH: "HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion", RIQ_REG_VIEW: "32" }, (k) => {
-        const p64 = reader.key(run("key", { RIQ_REG_PATH: "HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion" }, "64-bit view").parsed, "x").values.find((x) => x.name === "ProgramFilesDir").data;
+    timed("the same key in the 32-bit view (under 5 s)", "key", { ADG_REG_PATH: "HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion", ADG_REG_VIEW: "32" }, (k) => {
+        const p64 = reader.key(run("key", { ADG_REG_PATH: "HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion" }, "64-bit view").parsed, "x").values.find((x) => x.name === "ProgramFilesDir").data;
         const p32 = k.values.find((x) => x.name === "ProgramFilesDir").data;
         assert.notEqual(p32, p64, "the 32-bit view has its own ProgramFilesDir");
     });
-    timed("HKU lists the loaded hives (under 5 s)", "key", { RIQ_REG_PATH: "HKU" }, (k) => assert.ok(k.subKeys.some((s) => s.name === sid)));
-    timed("HKLM lists its keys with SAM and SECURITY marked blocked (under 5 s)", "key", { RIQ_REG_PATH: "HKLM" }, (k) => {
+    timed("HKU lists the loaded hives (under 5 s)", "key", { ADG_REG_PATH: "HKU" }, (k) => assert.ok(k.subKeys.some((s) => s.name === sid)));
+    timed("HKLM lists its keys with SAM and SECURITY marked blocked (under 5 s)", "key", { ADG_REG_PATH: "HKLM" }, (k) => {
         for (const n of ["SAM", "SECURITY"]) { const s = k.subKeys.find((x) => x.name === n); assert.ok(s && s.blocked && !s.hasChildren, n); }
         assert.ok(k.subKeys.find((x) => x.name === "SOFTWARE").hasChildren);
     });
-    timed("a big key (HKLM\\SOFTWARE\\Classes, thousands of sub keys) is cut at 2000, within the output cap (under 5 s)", "key", { RIQ_REG_PATH: "HKLM\\SOFTWARE\\Classes" }, (k) => {
+    timed("a big key (HKLM\\SOFTWARE\\Classes, thousands of sub keys) is cut at 2000, within the output cap (under 5 s)", "key", { ADG_REG_PATH: "HKLM\\SOFTWARE\\Classes" }, (k) => {
         assert.ok(k.subKeys.length <= R.MAX_SUBKEYS);
         if (k.subKeyCount > R.MAX_SUBKEYS) assert.equal(k.subKeysTruncated, true);
     });
-    timed("Control\\Lsa is listed as blocked inside its parent (under 5 s)", "key", { RIQ_REG_PATH: "HKLM\\SYSTEM\\CurrentControlSet\\Control" }, (k) => {
+    timed("Control\\Lsa is listed as blocked inside its parent (under 5 s)", "key", { ADG_REG_PATH: "HKLM\\SYSTEM\\CurrentControlSet\\Control" }, (k) => {
         const l = k.subKeys.find((s) => s.name === "Lsa"); assert.ok(l && l.blocked);
     });
     timed("roots helper: loaded user SIDs with account names (under 5 s)", "roots", {}, (r) => {
@@ -111,47 +111,47 @@ try {
 
     check("blocked or missing keys are errors, never an empty list", () => {
         for (const p of ["HKLM\\SAM", "HKLM\\SECURITY\\Policy", "HKLM\\SYSTEM\\CurrentControlSet\\Control\\Lsa", "HKLM\\SYSTEM\\ControlSet001\\Control\\Lsa\\Data"]) {
-            assert.throws(() => run("key", { RIQ_REG_PATH: p }), /blocked/, p);
-            assert.throws(() => run("search", { RIQ_REG_PATH: p, RIQ_REG_TEXT: "a" }), /blocked/, p);
+            assert.throws(() => run("key", { ADG_REG_PATH: p }), /blocked/, p);
+            assert.throws(() => run("search", { ADG_REG_PATH: p, ADG_REG_TEXT: "a" }), /blocked/, p);
         }
-        assert.throws(() => run("key", { RIQ_REG_PATH: "HKLM\\SOFTWARE\\RiqNoSuchKey" }), /does not exist/);
-        assert.throws(() => run("key", { RIQ_REG_PATH: "HKCU\\Software" }), /Only HKLM and HKU/);
+        assert.throws(() => run("key", { ADG_REG_PATH: "HKLM\\SOFTWARE\\AdgNoSuchKey" }), /does not exist/);
+        assert.throws(() => run("key", { ADG_REG_PATH: "HKCU\\Software" }), /Only HKLM and HKU/);
     });
 
     check("search: keys, values and data below a key; the secret value is never found by its data; time is reported", () => {
-        const base = { RIQ_REG_PATH: HKU_KEY };
-        const keys = reader.search(run("search", { ...base, RIQ_REG_TEXT: "DEEP", RIQ_REG_IN: "keys" }, "search keys (test key)").parsed);
+        const base = { ADG_REG_PATH: HKU_KEY };
+        const keys = reader.search(run("search", { ...base, ADG_REG_TEXT: "DEEP", ADG_REG_IN: "keys" }, "search keys (test key)").parsed);
         assert.deepEqual(keys.results.map((r) => r.path), [`${HKU_KEY}\\child1\\deep`]);
-        const vals = reader.search(run("search", { ...base, RIQ_REG_TEXT: "password", RIQ_REG_IN: "values" }, "search values (test key)").parsed);
+        const vals = reader.search(run("search", { ...base, ADG_REG_TEXT: "password", ADG_REG_IN: "values" }, "search values (test key)").parsed);
         assert.deepEqual(vals.results.map((r) => r.name), ["MyPassword"], "found by its name");
-        const data = reader.search(run("search", { ...base, RIQ_REG_TEXT: "hunter2", RIQ_REG_IN: "data" }, "search data (test key)").parsed);
+        const data = reader.search(run("search", { ...base, ADG_REG_TEXT: "hunter2", ADG_REG_IN: "data" }, "search data (test key)").parsed);
         assert.equal(data.results.length, 0, "a secret-named value is not searched by its data");
-        const d2 = reader.search(run("search", { ...base, RIQ_REG_TEXT: "QUOTED", RIQ_REG_IN: "data" }).parsed);
+        const d2 = reader.search(run("search", { ...base, ADG_REG_TEXT: "QUOTED", ADG_REG_IN: "data" }).parsed);
         assert.deepEqual(d2.results.map((r) => [r.name, r.type]), [["Str", "REG_SZ"]]);
-        const dw = reader.search(run("search", { ...base, RIQ_REG_TEXT: "4294967295", RIQ_REG_IN: "data" }).parsed);
+        const dw = reader.search(run("search", { ...base, ADG_REG_TEXT: "4294967295", ADG_REG_IN: "data" }).parsed);
         assert.deepEqual(dw.results.map((r) => r.name), ["Dw"]);
         assert.equal(keys.truncated, false);
-        const regex = reader.search(run("search", { ...base, RIQ_REG_TEXT: ".*", RIQ_REG_IN: "keys" }).parsed);
+        const regex = reader.search(run("search", { ...base, ADG_REG_TEXT: ".*", ADG_REG_IN: "keys" }).parsed);
         assert.equal(regex.results.length, 0, ".* is plain text, not a pattern");
-        const wild = reader.search(run("search", { ...base, RIQ_REG_TEXT: "*", RIQ_REG_IN: "values" }).parsed);
+        const wild = reader.search(run("search", { ...base, ADG_REG_TEXT: "*", ADG_REG_IN: "values" }).parsed);
         assert.equal(wild.results.length, 0, "* is plain text, not a wildcard");
     });
 
     check("search: a wide search stops at the time limit or the result limit and says so (HKLM, takes up to 20 s by design)", () => {
-        const { parsed, ms } = run("search", { RIQ_REG_PATH: "HKLM\\SOFTWARE", RIQ_REG_TEXT: "e", RIQ_REG_IN: "keys" }, "search HKLM\\SOFTWARE keys 'e' (bounded)");
+        const { parsed, ms } = run("search", { ADG_REG_PATH: "HKLM\\SOFTWARE", ADG_REG_TEXT: "e", ADG_REG_IN: "keys" }, "search HKLM\\SOFTWARE keys 'e' (bounded)");
         const s = reader.search(parsed);
         assert.equal(s.truncated, true); assert.ok(s.reason === "results" || s.reason === "time");
         assert.ok(s.results.length <= R.SEARCH_MAX_RESULTS); assert.ok(ms < 30_000);
-        const t = run("search", { RIQ_REG_PATH: "HKLM", RIQ_REG_TEXT: "zzzz-not-there-zzzz", RIQ_REG_IN: "data" }, "search all HKLM data (time-limited)");
+        const t = run("search", { ADG_REG_PATH: "HKLM", ADG_REG_TEXT: "zzzz-not-there-zzzz", ADG_REG_IN: "data" }, "search all HKLM data (time-limited)");
         const s2 = reader.search(t.parsed);
         assert.equal(s2.reason, "time"); assert.ok(t.ms < 30_000, `${t.ms} ms`);
     });
 
     check("search: depth is limited to 6 levels below the start key", () => {
         const deep = path.join(dir, "deep.ps1");
-        fs.writeFileSync(deep, "$k = 'HKCU:\\Software\\RiqRegTestUnit\\child1\\deep'; $p = $k; 1..8 | ForEach-Object { $p = $p + '\\L' + $_; New-Item $p -Force | Out-Null }");
+        fs.writeFileSync(deep, "$k = 'HKCU:\\Software\\AdgRegTestUnit\\child1\\deep'; $p = $k; 1..8 | ForEach-Object { $p = $p + '\\L' + $_; New-Item $p -Force | Out-Null }");
         ps(deep, {});
-        const s = reader.search(run("search", { RIQ_REG_PATH: HKU_KEY, RIQ_REG_TEXT: "L", RIQ_REG_IN: "keys" }, "search depth").parsed);
+        const s = reader.search(run("search", { ADG_REG_PATH: HKU_KEY, ADG_REG_TEXT: "L", ADG_REG_IN: "keys" }, "search depth").parsed);
         const levels = s.results.map((r) => r.path.slice(HKU_KEY.length).split("\\").length - 1);
         assert.ok(Math.max(...levels) <= R.SEARCH_MAX_DEPTH, `deepest ${Math.max(...levels)}`);
         assert.ok(s.results.some((r) => r.path.endsWith("\\L3")) && !s.results.some((r) => r.path.endsWith("\\L5")), "child1\\deep is level 2: L1 is 3, L4 is 6, L5 is cut");
@@ -159,12 +159,12 @@ try {
 
     check("user input only travels in the environment: text with quotes and PowerShell syntax is just text", () => {
         const nasty = "'; Remove-Item C:\\x -Recurse; $(calc) \"`n";
-        const s = reader.search(run("search", { RIQ_REG_PATH: HKU_KEY, RIQ_REG_TEXT: nasty, RIQ_REG_IN: "data" }).parsed);
+        const s = reader.search(run("search", { ADG_REG_PATH: HKU_KEY, ADG_REG_TEXT: nasty, ADG_REG_IN: "data" }).parsed);
         assert.equal(s.results.length, 0);
-        assert.throws(() => run("key", { RIQ_REG_PATH: `HKLM\\SOFTWARE\\'; calc; '` }), /does not exist/);
+        assert.throws(() => run("key", { ADG_REG_PATH: `HKLM\\SOFTWARE\\'; calc; '` }), /does not exist/);
     });
 } finally {
-    fs.writeFileSync(path.join(dir, "rm.ps1"), "Remove-Item 'HKCU:\\Software\\RiqRegTestUnit' -Recurse -ErrorAction SilentlyContinue");
+    fs.writeFileSync(path.join(dir, "rm.ps1"), "Remove-Item 'HKCU:\\Software\\AdgRegTestUnit' -Recurse -ErrorAction SilentlyContinue");
     ps(path.join(dir, "rm.ps1"), {});
     fs.rmSync(dir, { recursive: true, force: true });
 }

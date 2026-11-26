@@ -1,4 +1,4 @@
-// remoteiq-minimal-e2e/backend/src/app.module.ts
+// adgrmm-minimal-e2e/backend/src/app.module.ts
 
 import { Module, MiddlewareConsumer, NestModule } from "@nestjs/common";
 import { ServeStaticModule } from "@nestjs/serve-static";

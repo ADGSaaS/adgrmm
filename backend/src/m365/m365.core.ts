@@ -1,7 +1,7 @@
 // backend/src/m365/m365.core.ts
 //
 // Microsoft 365 tenant management: what may be saved, and what is made of what Microsoft Graph said (findings, a health score, plain licence
-// names). Pure (no database, no network) so it can be tested alone. Everything here is read-only: RemoteIQ reads a tenant and says what it sees;
+// names). Pure (no database, no network) so it can be tested alone. Everything here is read-only: ADG RMM reads a tenant and says what it sees;
 // it never changes users, licences or policies.
 import { BadRequestException } from "@nestjs/common";
 

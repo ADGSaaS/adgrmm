@@ -93,18 +93,18 @@ export async function proxy(req: NextRequest) {
         // A portal page asked for by its internal name (the server asks for it that way after the rewrite below, and
         // someone may type it): served as it is, with the portal's own paths.
         if (pathname === "/portal" || pathname.startsWith("/portal/")) {
-            return NextResponse.next({ request: { headers: withHeaders(req, { "x-riq-portal": "1", "x-riq-portal-base": "" }) } });
+            return NextResponse.next({ request: { headers: withHeaders(req, { "x-adg-portal": "1", "x-adg-portal-base": "" }) } });
         }
         const url = req.nextUrl.clone();
         // The rewrite must stay on this server's own http address, or Next takes it for an outside address and tries to proxy it.
         url.protocol = "http:";
         url.pathname = pathname === "/" ? "/portal" : `/portal${pathname}`;
-        return NextResponse.rewrite(url, { request: { headers: withHeaders(req, { "x-riq-portal": "1", "x-riq-portal-base": "" }) } });
+        return NextResponse.rewrite(url, { request: { headers: withHeaders(req, { "x-adg-portal": "1", "x-adg-portal-base": "" }) } });
     }
 
     // Reachable on the main address too (before the domain is set up, or to try it), with its own sign-in.
     if (pathname === "/portal" || pathname.startsWith("/portal/")) {
-        return NextResponse.next({ request: { headers: withHeaders(req, { "x-riq-portal": "1", "x-riq-portal-base": "/portal" }) } });
+        return NextResponse.next({ request: { headers: withHeaders(req, { "x-adg-portal": "1", "x-adg-portal-base": "/portal" }) } });
     }
 
     // Normalize old path

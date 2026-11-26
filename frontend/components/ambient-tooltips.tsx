@@ -19,7 +19,7 @@ export default function AmbientTooltips() {
     React.useEffect(() => {
         // Create tooltip node once
         const tooltip = document.createElement("div");
-        tooltip.className = "riq-tooltip hidden";
+        tooltip.className = "adg-tooltip hidden";
         document.body.appendChild(tooltip);
         tooltipRef.current = tooltip;
 

@@ -2,13 +2,13 @@
 // Administration > Security Policies, Sessions and Agents & Endpoints, against a real backend and database.
 //
 // Start two throwaway backends on the same e2e database. The first stands in for Cloudflare Turnstile through
-// RIQ_TURNSTILE_VERIFY_URL; the second has the two safety switches on (RIQ_IGNORE_IP_ALLOWLIST, RIQ_DISABLE_CAPTCHA):
+// ADG_TURNSTILE_VERIFY_URL; the second has the two safety switches on (ADG_IGNORE_IP_ALLOWLIST, ADG_DISABLE_CAPTCHA):
 //
-//   RIQ_TURNSTILE_VERIFY_URL=http://127.0.0.1:3991/verify PORT=3911 node dist/main.js
-//   RIQ_TURNSTILE_VERIFY_URL=http://127.0.0.1:3991/verify RIQ_IGNORE_IP_ALLOWLIST=1 RIQ_DISABLE_CAPTCHA=1 PORT=3912 node dist/main.js
+//   ADG_TURNSTILE_VERIFY_URL=http://127.0.0.1:3991/verify PORT=3911 node dist/main.js
+//   ADG_TURNSTILE_VERIFY_URL=http://127.0.0.1:3991/verify ADG_IGNORE_IP_ALLOWLIST=1 ADG_DISABLE_CAPTCHA=1 PORT=3912 node dist/main.js
 //
-//   RIQ_E2E_ALLOW=1 BASE_URL=http://127.0.0.1:3911 BYPASS_URL=http://127.0.0.1:3912 TS_PORT=3991 \
-//   DATABASE_URL=postgres://.../riq_e2e JWT_SECRET=... [RIQ_DIST=/path/to/dist] node test/security-policies.e2e.cjs
+//   ADG_E2E_ALLOW=1 BASE_URL=http://127.0.0.1:3911 BYPASS_URL=http://127.0.0.1:3912 TS_PORT=3991 \
+//   DATABASE_URL=postgres://.../adg_e2e JWT_SECRET=... [ADG_DIST=/path/to/dist] node test/security-policies.e2e.cjs
 //
 // It writes test rows, so it refuses any database whose name lacks "e2e".
 "use strict";
@@ -29,10 +29,10 @@ const TS_PORT = Number(process.env.TS_PORT || 3991);
 const DB_URL = process.env.DATABASE_URL || "";
 const SECRET = process.env.JWT_SECRET || "";
 const COOKIE = process.env.AUTH_COOKIE_NAME || "auth_token";
-const DIST = process.env.RIQ_DIST || path.join(__dirname, "..", "dist");
+const DIST = process.env.ADG_DIST || path.join(__dirname, "..", "dist");
 
-if (process.env.RIQ_E2E_ALLOW !== "1" || !/e2e/.test(new URL(DB_URL).pathname) || !SECRET) {
-    console.error("Refusing to run: set RIQ_E2E_ALLOW=1, JWT_SECRET, and a DATABASE_URL naming an e2e database.");
+if (process.env.ADG_E2E_ALLOW !== "1" || !/e2e/.test(new URL(DB_URL).pathname) || !SECRET) {
+    console.error("Refusing to run: set ADG_E2E_ALLOW=1, JWT_SECRET, and a DATABASE_URL naming an e2e database.");
     process.exit(2);
 }
 
@@ -378,13 +378,13 @@ async function main() {
         await call(BASE, "/api/admin/security-policies", as(admin));
     });
     if (BYPASS) {
-        await test("RIQ_IGNORE_IP_ALLOWLIST=1 on the server switches the list off", async () => {
+        await test("ADG_IGNORE_IP_ALLOWLIST=1 on the server switches the list off", async () => {
             const view = await json(await call(BYPASS, "/api/admin/security-policies", as(admin)));
             assert.equal(view.env.allowlistIgnored, true);
             await sleep(5200);
             assert.equal((await login(staff.email, staff.password, {}, BYPASS, "198.51.100.7")).status, 201);
         });
-    } else console.log("  skip  the RIQ_IGNORE_IP_ALLOWLIST switch (set BYPASS_URL)");
+    } else console.log("  skip  the ADG_IGNORE_IP_ALLOWLIST switch (set BYPASS_URL)");
     await test("clearing the list lets everyone in again", async () => {
         assert.equal((await putPolicy({ ipAllowlist: "" })).status, 200);
         assert.equal((await login(staff.email, staff.password, {}, BASE, "198.51.100.7")).status, 201);
@@ -471,16 +471,16 @@ async function main() {
             assert.equal(r.status, 503);
             const b = await json(r);
             assert.equal(b.code, "captcha_misconfigured");
-            assert.match(b.message, /RIQ_DISABLE_CAPTCHA=1/);
+            assert.match(b.message, /ADG_DISABLE_CAPTCHA=1/);
         } finally { standIn.rotated = false; }
     });
     if (BYPASS) {
-        await test("RIQ_DISABLE_CAPTCHA=1 on the server lets people in, and the page is told there is no CAPTCHA", async () => {
+        await test("ADG_DISABLE_CAPTCHA=1 on the server lets people in, and the page is told there is no CAPTCHA", async () => {
             assert.deepEqual(await json(await call(BYPASS, "/api/auth/login-config")), { captcha: { enabled: false, siteKey: "" } });
             assert.equal((await login(human.email, human.password, {}, BYPASS)).status, 201);
             assert.equal((await json(await call(BYPASS, "/api/admin/security-policies", as(admin)))).env.captchaDisabled, true);
         });
-    } else console.log("  skip  the RIQ_DISABLE_CAPTCHA switch (set BYPASS_URL)");
+    } else console.log("  skip  the ADG_DISABLE_CAPTCHA switch (set BYPASS_URL)");
     await test("turning it off removes the requirement and keeps the keys for later", async () => {
         assert.equal((await putPolicy({ captchaEnabled: false })).status, 200);
         assert.deepEqual((await json(await call(BASE, "/api/auth/login-config"))).captcha, { enabled: false, siteKey: "" });
@@ -489,15 +489,15 @@ async function main() {
     });
     await test("the real Cloudflare test endpoint agrees with the stand-in, when it can be reached", async () => {
         const { verifyTurnstile } = require(path.join(DIST, "auth", "turnstile.js"));
-        const saved = process.env.RIQ_TURNSTILE_VERIFY_URL;
-        delete process.env.RIQ_TURNSTILE_VERIFY_URL;
+        const saved = process.env.ADG_TURNSTILE_VERIFY_URL;
+        delete process.env.ADG_TURNSTILE_VERIFY_URL;
         try {
             const pass = await verifyTurnstile(CF_PASS_SECRET, "XXXX.DUMMY.TOKEN.XXXX", null);
             if (pass.kind === "unreachable") { console.log(`        (not reachable from here: ${pass.detail})`); return; }
             assert.equal(pass.kind, "ok");
             assert.equal((await verifyTurnstile(CF_FAIL_SECRET, "XXXX.DUMMY.TOKEN.XXXX", null)).kind, "rejected");
             assert.equal((await verifyTurnstile("not-a-real-secret", "x", null)).kind, "misconfigured");
-        } finally { if (saved !== undefined) process.env.RIQ_TURNSTILE_VERIFY_URL = saved; }
+        } finally { if (saved !== undefined) process.env.ADG_TURNSTILE_VERIFY_URL = saved; }
     });
 
     // ------------------------------------------------------------------ Administration > Sessions
@@ -620,7 +620,7 @@ async function main() {
     });
     await test("turning automatic updates off stops the server offering any package", async () => {
         const { AgentUpdatesService } = require(path.join(DIST, "agents", "agent-updates.service.js"));
-        const dir = fs.mkdtempSync(path.join(os.tmpdir(), "riq-gpkg-"));
+        const dir = fs.mkdtempSync(path.join(os.tmpdir(), "adg-gpkg-"));
         const pkg = path.join(dir, "agent.zip");
         fs.writeFileSync(pkg, "pretend package");
         const sha = sha256("pretend package");

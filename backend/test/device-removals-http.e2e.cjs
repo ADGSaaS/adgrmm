@@ -3,7 +3,7 @@
 //   - POST /api/device-removals/approve deletes the devices; /decline closes the requests and keeps them; both need devices.delete
 //   - nothing is deleted without a waiting request, one bad id does not stop the others, every answer is audited
 //   - the Overview's attention list says how many wait
-// Run: RIQ_E2E_ALLOW=1 BASE_URL=http://127.0.0.1:3951 DATABASE_URL=postgres://.../riq_x_e2e JWT_SECRET=... node test/device-removals-http.e2e.cjs
+// Run: ADG_E2E_ALLOW=1 BASE_URL=http://127.0.0.1:3951 DATABASE_URL=postgres://.../adg_x_e2e JWT_SECRET=... node test/device-removals-http.e2e.cjs
 "use strict";
 const { assert, call, runner, setup, uuid } = require("./groupc-helpers.cjs");
 

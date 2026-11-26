@@ -17,7 +17,7 @@ const B = require(path.join(dist, "security.baseline.js"));
 
 let passed = 0, failed = 0;
 const check = (name, fn) => { try { fn(); passed++; console.log(`ok   ${name}`); } catch (e) { failed++; console.log(`FAIL ${name}: ${e.message}`); } };
-const dir = fs.mkdtempSync(path.join(os.tmpdir(), "riq-sec-"));
+const dir = fs.mkdtempSync(path.join(os.tmpdir(), "adg-sec-"));
 const ps = (file, env = {}) => spawnSync("powershell", ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", file], { env: { ...process.env, ...env }, encoding: "utf8", maxBuffer: 1e8, timeout: 120_000 });
 const write = (name, text) => { const f = path.join(dir, name); fs.writeFileSync(f, "﻿" + text); return f; };
 
@@ -67,7 +67,7 @@ console.log("a probe that never returns");
 check("is dropped at its time limit, the rest still answer, and the process ends at once", () => {
     const hung = S.SECURITY_SCAN_SCRIPT
         .replace("Probe 'os' 0 {", "Probe 'hang' 2000 { Start-Sleep 300; @{ a = 1 } }\nProbe 'spin' 2000 { while ($true) { $x = 1 } }\nProbe 'os' 0 {")
-        .replace("Out-Riq @{ ok = $true; v = 1;", "Out-Riq @{ ok = $true; v = 1; extra = 1;");
+        .replace("Out-Adg @{ ok = $true; v = 1;", "Out-Adg @{ ok = $true; v = 1; extra = 1;");
     const f = write("hang.ps1", hung);
     const t = Date.now();
     const h = ps(f);

@@ -1,4 +1,4 @@
-/* remoteiq-frontend/app/administration/tabs/StorageTab.tsx */
+/* adgrmm-frontend/app/administration/tabs/StorageTab.tsx */
 "use client";
 
 import * as React from "react";
@@ -254,7 +254,7 @@ export default function StorageTab() {
                 webdavUrl: "",
                 username: "",
                 password: "",
-                path: "/Backups/RemoteIQ",
+                path: "/Backups/AdgRmm",
             } as NextcloudConnConfig;
         } else if (kind === "gdrive") {
             base.config = {
@@ -271,7 +271,7 @@ export default function StorageTab() {
                 privateKeyPem: "",
                 passphrase: "",
                 hostKeyFingerprint: "",
-                path: "/srv/remoteiq/backups",
+                path: "/srv/adgrmm/backups",
             } as SftpConnConfig;
         }
         setDraft(base);
@@ -1181,7 +1181,7 @@ export default function StorageTab() {
                                                 config: { ...(d.config as S3ConnConfig), roleArn: v },
                                             }))
                                         )}
-                                        placeholder="arn:aws:iam::123456789012:role/RemoteIQBackupRole"
+                                        placeholder="arn:aws:iam::123456789012:role/AdgRmmBackupRole"
                                     />
                                     <LabeledInput
                                         label="External ID (optional)"
@@ -1300,7 +1300,7 @@ export default function StorageTab() {
                                                 config: { ...(d.config as NextcloudConnConfig), path: v },
                                             }))
                                         )}
-                                        placeholder="/Backups/RemoteIQ"
+                                        placeholder="/Backups/AdgRmm"
                                     />
                                 </div>
 
@@ -1500,7 +1500,7 @@ export default function StorageTab() {
                                                 config: { ...(d.config as SftpConnConfig), path: v },
                                             }))
                                         )}
-                                        placeholder="/srv/remoteiq/backups"
+                                        placeholder="/srv/adgrmm/backups"
                                     />
                                 </div>
                             </div>

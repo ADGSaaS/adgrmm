@@ -14,7 +14,7 @@ const path = require("node:path");
 
 require("reflect-metadata");
 
-const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "riq-cred-enc-"));
+const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "adg-cred-enc-"));
 const keyFile = path.join(tmp, "data.key");
 fs.writeFileSync(keyFile, crypto.randomBytes(32).toString("hex"));
 const otherKeyFile = path.join(tmp, "other.key");

@@ -113,11 +113,11 @@ export default function IntegrationsTab({ push }: { push: ToastFn }) {
 
 /* ------------------------------ webhooks ------------------------------ */
 
-const FORMAT_NAME: Record<string, string> = { remoteiq: "RemoteIQ signed JSON", slack: "Slack message", discord: "Discord message", teams: "Microsoft Teams card" };
+const FORMAT_NAME: Record<string, string> = { adgrmm: "ADG RMM signed JSON", slack: "Slack message", discord: "Discord message", teams: "Microsoft Teams card" };
 
 type EventDef = { key: string; label: string; description: string };
 type Hook = {
-    id: string; name: string; url: string; events: string[]; enabled: boolean; format: string; sends: "remoteiq" | "slack" | "discord" | "teams";
+    id: string; name: string; url: string; events: string[]; enabled: boolean; format: string; sends: "adgrmm" | "slack" | "discord" | "teams";
     last: { status: string; event: string; at: string; responseStatus: number | null; error: string | null } | null;
     pending: number; failedLast24h: number; deliveredLast24h: number;
 };
@@ -195,7 +195,7 @@ function Webhooks({ push, onChanged }: { push: ToastFn; onChanged: () => Promise
                 <details className="mt-2 max-w-3xl text-sm">
                     <summary className="cursor-pointer font-medium">How to check a delivery is genuine</summary>
                     <div className="mt-2 grid gap-1 text-muted-foreground">
-                        <p>Each delivery is an HTTP POST with a JSON body and these headers: <code>X-RemoteIQ-Event</code>, <code>X-RemoteIQ-Delivery</code> (a unique id), <code>X-RemoteIQ-Timestamp</code> (seconds) and <code>X-RemoteIQ-Signature</code>.</p>
+                        <p>Each delivery is an HTTP POST with a JSON body and these headers: <code>X-ADG-Event</code>, <code>X-ADG-Delivery</code> (a unique id), <code>X-ADG-Timestamp</code> (seconds) and <code>X-ADG-Signature</code>.</p>
                         <p>The signature is <code>sha256=</code> followed by the HMAC-SHA256, in hex, of <code>{"<timestamp>.<raw body>"}</code>, keyed with the webhook&apos;s signing secret. Compute it yourself, compare, and refuse a timestamp more than five minutes old. Answer with any 2xx status to say it arrived.</p>
                     </div>
                 </details>
@@ -324,7 +324,7 @@ function HookDialog({ editing, events, onClose, onSaved, push }: { editing: Hook
                     </div>
                     <div className="grid gap-1">
                         <Label htmlFor="wh-url" className={tried && !urlOk ? "text-destructive" : ""}>Address</Label>
-                        <Input id="wh-url" value={url} onChange={(e) => setUrl(e.target.value)} aria-invalid={tried && !urlOk} placeholder="https://example.com/hooks/remoteiq" />
+                        <Input id="wh-url" value={url} onChange={(e) => setUrl(e.target.value)} aria-invalid={tried && !urlOk} placeholder="https://example.com/hooks/adgrmm" />
                         <p className="text-xs text-muted-foreground">Must be https, and cannot point at a private network address (unless the server allows it).</p>
                     </div>
                     <div className="grid gap-1">
@@ -334,7 +334,7 @@ function HookDialog({ editing, events, onClose, onSaved, push }: { editing: Hook
                             <option value="slack">A Slack message</option>
                             <option value="teams">A Microsoft Teams card</option>
                             <option value="discord">A Discord message</option>
-                            <option value="remoteiq">RemoteIQ&apos;s signed JSON (for your own system or an automation service)</option>
+                            <option value="adgrmm">ADG RMM&apos;s signed JSON (for your own system or an automation service)</option>
                         </select>
                         <p className="text-xs text-muted-foreground">Chat services only accept their own kind of message, so use the Slack, Teams or Discord choice for their incoming-webhook addresses.</p>
                     </div>

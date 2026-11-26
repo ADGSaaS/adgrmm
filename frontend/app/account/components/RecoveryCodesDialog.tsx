@@ -26,7 +26,7 @@ export default function RecoveryCodesDialog({ open, onOpenChange, codes }: Props
         const filename = `recovery-codes-${y}${m}${d}.txt`;
 
         const header =
-            `RemoteIQ Recovery Codes
+            `ADG RMM Recovery Codes
 Generated: ${now.toISOString()}
 Each code can be used once. Store these somewhere safe.
 

@@ -1,4 +1,4 @@
-// remoteiq-minimal-e2e/backend/src/patches/patches.service.ts
+// adgrmm-minimal-e2e/backend/src/patches/patches.service.ts
 import { Injectable, Logger, NotFoundException, BadRequestException, ConflictException } from "@nestjs/common";
 import { Interval } from "@nestjs/schedule";
 import { PrismaService } from "../storage/prisma.service";

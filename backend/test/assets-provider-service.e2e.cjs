@@ -1,12 +1,12 @@
-// Who owns assets, in-process against a real database: what each setting does to the parts of RemoteIQ that use assets without an HTTP route to
+// Who owns assets, in-process against a real database: what each setting does to the parts of ADG RMM that use assets without an HTTP route to
 // look at: the hardware age and renewals reports, a device moved to another customer, the expiry emails, the hourly fill-in from agents.
 // Needs the migration 20261121040000_asset_provider applied to the throwaway database.
-//   RIQ_E2E_ALLOW=1 DATABASE_URL=postgres://.../riq_x_e2e JWT_SECRET=... node test/assets-provider-service.e2e.cjs
+//   ADG_E2E_ALLOW=1 DATABASE_URL=postgres://.../adg_x_e2e JWT_SECRET=... node test/assets-provider-service.e2e.cjs
 "use strict";
 const path = require("node:path");
 const crypto = require("node:crypto");
 
-if (process.env.RIQ_E2E_ALLOW !== "1" || !/e2e/.test(process.env.DATABASE_URL || "")) { console.error("Refusing to run: set RIQ_E2E_ALLOW=1 and an e2e-named DATABASE_URL."); process.exit(2); }
+if (process.env.ADG_E2E_ALLOW !== "1" || !/e2e/.test(process.env.DATABASE_URL || "")) { console.error("Refusing to run: set ADG_E2E_ALLOW=1 and an e2e-named DATABASE_URL."); process.exit(2); }
 process.env.JWT_SECRET ||= "e2e-only-not-a-real-secret-e2e-only-not-a-real-secret";
 process.env.DATA_ENCRYPTION_KEY ||= "e2e-only-data-key";
 process.env.IMAP_POLL_ENABLED = "false";

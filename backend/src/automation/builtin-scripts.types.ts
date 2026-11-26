@@ -1,7 +1,7 @@
 // backend/src/automation/builtin-scripts.types.ts
 //
-// The shape of one built-in script. Parameters reach a script ONLY as environment variables named RIQ_<NAME> (see ScriptsService.environment),
-// so a value is never parsed as code. Every script that changes the device needs RIQ_CONFIRM to be YES, and every clean-up or
+// The shape of one built-in script. Parameters reach a script ONLY as environment variables named ADG_<NAME> (see ScriptsService.environment),
+// so a value is never parsed as code. Every script that changes the device needs ADG_CONFIRM to be YES, and every clean-up or
 // account change also has a dry run that is ON by default.
 export type BuiltinLanguage = "powershell" | "bash";
 

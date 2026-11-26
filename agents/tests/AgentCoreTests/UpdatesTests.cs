@@ -1,5 +1,5 @@
 using System.Text;
-using RemoteIQ.Agent.Shared;
+using AdgRmm.Agent.Shared;
 
 /// <summary>Tests for the outdated-programs scan (winget and Chocolatey output, the scan itself) and for updates. No processes, no network.</summary>
 static class UpdatesTests

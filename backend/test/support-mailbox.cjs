@@ -86,7 +86,7 @@ const mail = ({ from = "Pat Customer <pat@customer.test>", to = "support@msp.tes
     });
 
     // ---- The service, against the test database ----
-    process.env.RIQ_E2E_ALLOW = process.env.RIQ_E2E_ALLOW || "1";
+    process.env.ADG_E2E_ALLOW = process.env.ADG_E2E_ALLOW || "1";
     const { PrismaService } = dist("storage/prisma.service.js");
     const { SupportMailboxService } = dist("support-mailbox/support-mailbox.service.js");
     const { encryptSecret } = dist("common/secret-box.js");

@@ -4,7 +4,7 @@
 //
 // The script editor as an IDE-style window: name and description on top, a strip of settings (language, category, time limit), the script in a
 // real code editor with a status bar, and the parameters beside it. New scripts, edits and copies all use it. A built-in script can be edited
-// too; saving it marks it Customized (it then stops following RemoteIQ's updates) and it can be reset to the shipped version.
+// too; saving it marks it Customized (it then stops following ADG RMM's updates) and it can be reset to the shipped version.
 import * as React from "react";
 import dynamic from "next/dynamic";
 import { Plus, RotateCcw, X } from "lucide-react";
@@ -135,7 +135,7 @@ export default function ScriptEditorDialog({ initial, template, defaultCategory,
 
     const reset = async () => {
         if (!initial) return;
-        if (!window.confirm(`Put "${initial.name}" back to the version RemoteIQ ships? Your changes to it are lost.`)) return;
+        if (!window.confirm(`Put "${initial.name}" back to the version ADG RMM ships? Your changes to it are lost.`)) return;
         setSaving(true);
         try {
             await jfetch(`/api/scripts/${initial.id}/reset`, { method: "POST", body: {} });
@@ -252,8 +252,8 @@ export default function ScriptEditorDialog({ initial, template, defaultCategory,
                     </div>
                     {builtin ? (
                         <p className="rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs" role="note" data-testid="builtin-edit-note">
-                            This is a built-in script. If you save changes it becomes <strong>Customized</strong> and no longer follows RemoteIQ&apos;s updates to it.
-                            {initial?.customized ? " Reset to original brings back the version RemoteIQ ships." : " You can reset it to the original at any time afterwards."}
+                            This is a built-in script. If you save changes it becomes <strong>Customized</strong> and no longer follows ADG RMM&apos;s updates to it.
+                            {initial?.customized ? " Reset to original brings back the version ADG RMM ships." : " You can reset it to the original at any time afterwards."}
                         </p>
                     ) : null}
                 </div>
@@ -312,7 +312,7 @@ export default function ScriptEditorDialog({ initial, template, defaultCategory,
                                 <p className="text-xs text-muted-foreground">Values someone fills in when it runs.</p>
                             ) : (
                                 <p className="text-xs text-muted-foreground">
-                                    Read them from environment variables: a parameter named <code>user</code> is <code>{several ? "$env:RIQ_USER (PowerShell) or $RIQ_USER (bash)" : language === "powershell" ? "$env:RIQ_USER" : "$RIQ_USER"}</code>.
+                                    Read them from environment variables: a parameter named <code>user</code> is <code>{several ? "$env:ADG_USER (PowerShell) or $ADG_USER (bash)" : language === "powershell" ? "$env:ADG_USER" : "$ADG_USER"}</code>.
                                 </p>
                             )}
                             {parameters.map((parameter, i) => (

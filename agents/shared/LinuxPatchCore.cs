@@ -10,7 +10,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Xml.Linq;
 
-namespace RemoteIQ.Agent.Shared;
+namespace AdgRmm.Agent.Shared;
 
 public enum LinuxPackageManager { None, Apt, Dnf, Yum, Zypper }
 
@@ -309,7 +309,7 @@ public sealed class LinuxPatchEngine
         {
             if (id.Contains("tumbleweed") || id.Contains("slowroll"))
             {
-                refusal = "openSUSE Tumbleweed is a rolling release updated with \"zypper dup\", which RemoteIQ does not run for you. Patching supports Leap and SUSE Linux Enterprise.";
+                refusal = "openSUSE Tumbleweed is a rolling release updated with \"zypper dup\", which ADG RMM does not run for you. Patching supports Leap and SUSE Linux Enterprise.";
                 return LinuxPackageManager.None;
             }
             return LinuxPackageManager.Zypper;

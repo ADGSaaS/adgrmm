@@ -1,4 +1,4 @@
-// remoteiq-frontend/lib/api.ts
+// adgrmm-frontend/lib/api.ts
 // Centralized typed API client used by the frontend (Next.js / React).
 // It reads NEXT_PUBLIC_API_BASE for the backend base URL.
 
@@ -1092,7 +1092,7 @@ export async function requestUninstallSoftware(
    Customers (Clients + Sites) — matches backend /api/customers + /:client/sites
    ==========================================================================*/
 
-export const CUSTOMERS_CHANGED_EVENT = "remoteiq:customers-changed";
+export const CUSTOMERS_CHANGED_EVENT = "adgrmm:customers-changed";
 
 function emitCustomersChanged() {
   if (typeof window === "undefined") return;

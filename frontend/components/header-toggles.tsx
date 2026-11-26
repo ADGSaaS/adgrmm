@@ -10,7 +10,7 @@ import { useTheme } from "next-themes";
 import { Button } from "@/components/ui/button";
 
 type Layout = "full" | "centered";
-const KEY = "riq-layout";
+const KEY = "adg-layout";
 
 function applyLayout(layout: Layout) {
     document.documentElement.dataset.layout = layout;

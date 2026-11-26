@@ -2,7 +2,7 @@
 // The tray app on a device, through the real HTTP API and a real database: it is off until an administrator turns it on, a help request
 // becomes a ticket for the device's customer (and shows in the tray, but nobody else's tickets do), chat between the person at the device and
 // the technicians (what is read and delivered, what is cleaned, the limits), and who may see which device's chat.
-//   RIQ_E2E_ALLOW=1 BASE_URL=http://127.0.0.1:3977 DATABASE_URL=postgres://.../riq_tray_e2e JWT_SECRET=... node test/device-tray-http.e2e.cjs
+//   ADG_E2E_ALLOW=1 BASE_URL=http://127.0.0.1:3977 DATABASE_URL=postgres://.../adg_tray_e2e JWT_SECRET=... node test/device-tray-http.e2e.cjs
 "use strict";
 const crypto = require("node:crypto");
 const { assert, call, runner, setup, uuid } = require("./groupc-helpers.cjs");

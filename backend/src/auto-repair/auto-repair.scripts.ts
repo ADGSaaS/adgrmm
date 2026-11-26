@@ -1,15 +1,15 @@
 // backend/src/auto-repair/auto-repair.scripts.ts
 //
 // The two scripts the automatic repair runs on a Windows computer (as the agent's own signed script jobs). Both are fixed text: what to look at
-// or repair comes in as environment variables (RIQ_CHECKS, RIQ_APP, RIQ_FIX), never pasted into the script. The first only reads. The second
+// or repair comes in as environment variables (ADG_CHECKS, ADG_APP, ADG_FIX), never pasted into the script. The first only reads. The second
 // only does what is written here for the problems it is asked about, and says for each one whether it worked.
-// With RIQ_DRYRUN=1 the repair changes nothing and says what it would have done (used by the tests).
+// With ADG_DRYRUN=1 the repair changes nothing and says what it would have done (used by the tests).
 
 export const DIAGNOSE_KIND = "auto-repair.diagnose";
 export const REPAIR_KIND = "auto-repair.repair";
 
 export const DIAGNOSE_SCRIPT = String.raw`$ErrorActionPreference = 'SilentlyContinue'
-$checks = @(($env:RIQ_CHECKS -split ',') | ForEach-Object { $_.Trim() })
+$checks = @(($env:ADG_CHECKS -split ',') | ForEach-Object { $_.Trim() })
 function Clean([string]$s) { if ($null -eq $s) { return '' }; $t = ($s -replace '[\r\n\|]', ' ').Trim(); if ($t.Length -gt 300) { $t = $t.Substring(0, 300) }; return $t }
 function Issue([string]$id, [string]$detail) { Write-Output ('ISSUE ' + $id + '|' + (Clean $detail)) }
 function Info([string]$k, [string]$v) { Write-Output ('INFO ' + $k + '|' + (Clean $v)) }
@@ -18,14 +18,14 @@ function Reach([string]$h, [int]$port, [int]$ms) {
 }
 function CrashHits([string[]]$names) {
   if ($names.Count -eq 0) { return @() }
-  # a repair cannot remove what is already in the event log, so when the checks run again to confirm a repair, only crashes AFTER the repair count (RIQ_SINCE)
+  # a repair cannot remove what is already in the event log, so when the checks run again to confirm a repair, only crashes AFTER the repair count (ADG_SINCE)
   $from = (Get-Date).AddDays(-7)
-  if ($env:RIQ_SINCE) { try { $s = [datetimeoffset]::Parse($env:RIQ_SINCE).LocalDateTime; if ($s -gt $from) { $from = $s } } catch { } }
+  if ($env:ADG_SINCE) { try { $s = [datetimeoffset]::Parse($env:ADG_SINCE).LocalDateTime; if ($s -gt $from) { $from = $s } } catch { } }
   return @(Get-WinEvent -FilterHashtable @{ LogName = 'Application'; Id = 1000, 1002; StartTime = $from } -MaxEvents 500 | Where-Object { $m = $_.Message; ($names | Where-Object { $m -like ('*' + $_ + '*') }).Count -gt 0 })
 }
 
 Info 'host' $env:COMPUTERNAME
-if ($env:RIQ_SINCE) { Info 'counting_crashes_since' $env:RIQ_SINCE }
+if ($env:ADG_SINCE) { Info 'counting_crashes_since' $env:ADG_SINCE }
 $upDays = 0
 try { $os = Get-CimInstance Win32_OperatingSystem; $upDays = [int]((Get-Date) - $os.LastBootUpTime).TotalDays; Info 'uptime_days' $upDays } catch { }
 
@@ -138,7 +138,7 @@ if ($checks -contains 'hardware') {
 }
 
 if ($checks -contains 'crash') {
-  $app = [string]$env:RIQ_APP
+  $app = [string]$env:ADG_APP
   $names = @()
   if ($checks -contains 'teams') { $names = @('ms-teams.exe', 'Teams.exe') }
   else { $names = @(($app -split '[^A-Za-z0-9]+') | Where-Object { $_.Length -ge 4 -and $_ -notmatch '^(microsoft|windows|corporation|version|software|application|office)$' } | Select-Object -First 3) }
@@ -151,14 +151,14 @@ Write-Output 'DONE'
 `;
 
 export const REPAIR_SCRIPT = String.raw`$ErrorActionPreference = 'Stop'
-$dry = ($env:RIQ_DRYRUN -eq '1')
+$dry = ($env:ADG_DRYRUN -eq '1')
 $custom = @{}
 function Clean([string]$s) { if ($null -eq $s) { return '' }; $t = ($s -replace '[\r\n\|]', ' ').Trim(); if ($t.Length -gt 300) { $t = $t.Substring(0, 300) }; return $t }
 function Fixed([string]$id, [string]$msg) { Write-Output ('FIXED ' + $id + '|' + (Clean $msg)) }
 function Failed([string]$id, [string]$msg) { Write-Output ('FAILED ' + $id + '|' + (Clean $msg)) }
 function Resolves() { try { return [bool](Resolve-DnsName -Name 'www.microsoft.com' -DnsOnly -QuickTimeout -ErrorAction Stop) } catch { return $false } }
 
-foreach ($id in (($env:RIQ_FIX -split ',') | ForEach-Object { $_.Trim() })) {
+foreach ($id in (($env:ADG_FIX -split ',') | ForEach-Object { $_.Trim() })) {
   try {
     switch ($id) {
       'spooler-stopped' {

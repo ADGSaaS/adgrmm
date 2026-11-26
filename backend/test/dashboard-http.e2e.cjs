@@ -4,7 +4,7 @@
 // theirs, the clientId filter works, the 30 s cache (set short here) never lets one scope, organisation or filter see another's
 // numbers, an empty install, and a 5,000 device seed answers quickly.
 //
-//   RIQ_E2E_ALLOW=1 DASHBOARD_CACHE_TTL_MS=2500 BASE_URL=http://127.0.0.1:3961 DATABASE_URL=postgres://.../riq_dash_e2e JWT_SECRET=... node test/dashboard-http.e2e.cjs
+//   ADG_E2E_ALLOW=1 DASHBOARD_CACHE_TTL_MS=2500 BASE_URL=http://127.0.0.1:3961 DATABASE_URL=postgres://.../adg_dash_e2e JWT_SECRET=... node test/dashboard-http.e2e.cjs
 //   (SCALE_DEVICES=5000 by default)
 "use strict";
 const { assert, call, runner, setup, uuid } = require("./groupc-helpers.cjs");

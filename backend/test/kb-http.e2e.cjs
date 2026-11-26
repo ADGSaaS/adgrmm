@@ -4,7 +4,7 @@
 // suggestions from the subject, the audit log, and the customer portal (only published articles marked visible to
 // customers, only for people signed in to the portal, and nothing internal in the answers).
 //
-//   RIQ_E2E_ALLOW=1 BASE_URL=http://127.0.0.1:3901 DATABASE_URL=postgres://.../riq_x_e2e JWT_SECRET=... node test/kb-http.e2e.cjs
+//   ADG_E2E_ALLOW=1 BASE_URL=http://127.0.0.1:3901 DATABASE_URL=postgres://.../adg_x_e2e JWT_SECRET=... node test/kb-http.e2e.cjs
 "use strict";
 const bcrypt = require("bcryptjs");
 const { assert, call, json, runner, setup, uuid } = require("./groupc-helpers.cjs");

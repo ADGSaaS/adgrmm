@@ -156,7 +156,7 @@ export default function SecretsCard({ deviceId, deviceName }: { deviceId: string
     };
 
     const lapsState = laps.enabled
-        ? `Managed: RemoteIQ keeps the password of the account ${laps.account} (${laps.passwordLength} characters) and changes it every ${laps.rotateDays} ${laps.rotateDays === 1 ? "day" : "days"}${laps.rotateAfterRevealMinutes > 0 ? `, and ${laps.rotateAfterRevealMinutes} minutes after someone reveals it` : ", but not after a reveal"}. Controlled by ${from(laps.source)}.`
+        ? `Managed: ADG RMM keeps the password of the account ${laps.account} (${laps.passwordLength} characters) and changes it every ${laps.rotateDays} ${laps.rotateDays === 1 ? "day" : "days"}${laps.rotateAfterRevealMinutes > 0 ? `, and ${laps.rotateAfterRevealMinutes} minutes after someone reveals it` : ", but not after a reveal"}. Controlled by ${from(laps.source)}.`
         : `Off: ${from(laps.source)} does not manage the administrator password, so nothing is rotated.`;
 
     return (
@@ -256,7 +256,7 @@ export default function SecretsCard({ deviceId, deviceName }: { deviceId: string
                                         ? `Asks ${deviceName} to add one new recovery key slot to each encrypted (LUKS2) disk that has none stored here yet, and to send the new key to this server, where it is stored encrypted. LUKS never keeps a key that can be read back, so this is the only way to hold one without the passphrase, and it works only for disks that unlock with the machine's TPM or with a key file listed in /etc/crypttab. Nothing is removed and the existing passphrase and keys are not touched.`
                                         : confirm === "escrow"
                                         ? `Asks ${deviceName} to send the recovery keys of its BitLocker volumes to this server, where they are stored encrypted. Nothing on the device is changed. Only people with the right to view device secrets can see them.`
-                                        : `Asks ${deviceName} to generate a new password for the account ${laps.account}, set it, and send it to this server, where it is stored encrypted. The old password stops working on the device. RemoteIQ only manages its own account and never touches the built-in Administrator. The password is made on the device.`}
+                                        : `Asks ${deviceName} to generate a new password for the account ${laps.account}, set it, and send it to this server, where it is stored encrypted. The old password stops working on the device. ADG RMM only manages its own account and never touches the built-in Administrator. The password is made on the device.`}
                                     {" "}This is recorded in the audit log.
                                 </DialogDescription>
                             </DialogHeader>

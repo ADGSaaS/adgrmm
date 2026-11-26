@@ -1,12 +1,12 @@
 // backend/src/vault/vault.scripts.ts
 //
 // The two fixed signed scripts of the device-secrets vault. Neither contains anything a person typed: the only inputs travel in
-// environment variables (RIQ_LAPS_ACCOUNT, RIQ_LAPS_LENGTH, RIQ_DRY_RUN), which PowerShell never parses as code. No secret is ever SENT
+// environment variables (ADG_LAPS_ACCOUNT, ADG_LAPS_LENGTH, ADG_DRY_RUN), which PowerShell never parses as code. No secret is ever SENT
 // to a device: the recovery keys are read there, and the local administrator password is generated there.
 //
 // What the agent does with a script (agents/windows ScriptExecutor.cs, TaskWorker.cs): the script text is written to
-// %TEMP%\RemoteIQ\job-<guid>.ps1 (C:\Windows\Temp\RemoteIQ for the SYSTEM service) and deleted afterwards; stdout and stderr go through
-// redirected pipes into memory and are sent to the server in the job result; the agent's own log (ProgramData\RemoteIQ\Logs) records job
+// %TEMP%\AdgRmm\job-<guid>.ps1 (C:\Windows\Temp\AdgRmm for the SYSTEM service) and deleted afterwards; stdout and stderr go through
+// redirected pipes into memory and are sent to the server in the job result; the agent's own log (ProgramData\AdgRmm\Logs) records job
 // ids and warnings, never the output; the environment goes into the child process only. So these scripts print their secret to stdout
 // only, never to stderr and never to a file, build the JSON by hand (no cmdlet ever receives the secret as a parameter, so PowerShell
 // module logging has nothing to record), and pass no secret on any command line.
@@ -26,28 +26,28 @@ function HrOf($e) { try { return ('{0:X8}' -f [uint32]($e.Exception.HResult -ban
 `;
 
 /** Password generator: OS random numbers, rejection sampling (no modulo bias), one of every class, Fisher-Yates shuffle. */
-export const LAPS_GENERATOR = String.raw`function Get-RiqIndex($rng, [int]$n) {
+export const LAPS_GENERATOR = String.raw`function Get-AdgIndex($rng, [int]$n) {
   $limit = 256 - (256 % $n)
   $b = New-Object byte[] 1
   do { $rng.GetBytes($b) } while ($b[0] -ge $limit)
   return [int]($b[0] % $n)
 }
-function New-RiqPassword([int]$len) {
+function New-AdgPassword([int]$len) {
   $sets = @('ABCDEFGHJKLMNPQRSTUVWXYZ', 'abcdefghijkmnpqrstuvwxyz', '23456789', '!#%&*+=?@^_')
   $all = ($sets -join '')
   $rng = [System.Security.Cryptography.RandomNumberGenerator]::Create()
   try {
     $chars = New-Object System.Collections.Generic.List[char]
-    foreach ($s in $sets) { $chars.Add($s[(Get-RiqIndex $rng $s.Length)]) }
-    while ($chars.Count -lt $len) { $chars.Add($all[(Get-RiqIndex $rng $all.Length)]) }
+    foreach ($s in $sets) { $chars.Add($s[(Get-AdgIndex $rng $s.Length)]) }
+    while ($chars.Count -lt $len) { $chars.Add($all[(Get-AdgIndex $rng $all.Length)]) }
     for ($i = $chars.Count - 1; $i -gt 0; $i--) {
-      $j = Get-RiqIndex $rng ($i + 1)
+      $j = Get-AdgIndex $rng ($i + 1)
       $t = $chars[$i]; $chars[$i] = $chars[$j]; $chars[$j] = $t
     }
     return (-join $chars)
   } finally { $rng.Dispose() }
 }
-function Test-RiqPassword([string]$pw, [int]$len) {
+function Test-AdgPassword([string]$pw, [int]$len) {
   if ($pw.Length -ne $len) { return $false }
   if ($pw -cnotmatch '^[ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789!#%&*+=?@^_]+$') { return $false }
   return ($pw -cmatch '[A-HJ-NP-Z]') -and ($pw -cmatch '[a-km-z]') -and ($pw -cmatch '[2-9]') -and ($pw -cmatch '[!#%&*+=?@^_]')
@@ -80,9 +80,9 @@ try {
 export const BITLOCKER_KEYS_SCRIPT = HEAD + BITLOCKER_BODY;
 
 const LAPS_BODY = String.raw`
-$dry = ($env:RIQ_DRY_RUN -eq '1')
-$acct = [string]$env:RIQ_LAPS_ACCOUNT
-$lenText = [string]$env:RIQ_LAPS_LENGTH
+$dry = ($env:ADG_DRY_RUN -eq '1')
+$acct = [string]$env:ADG_LAPS_ACCOUNT
+$lenText = [string]$env:ADG_LAPS_LENGTH
 if ($acct -notmatch '^[A-Za-z0-9._-]{1,20}$') { Fail 'invalid_account' '' }
 if (@('administrator', 'guest', 'defaultaccount', 'system', 'wdagutilityaccount', 'krbtgt', 'localservice', 'networkservice', 'root', 'admin', 'administrators', 'users') -contains $acct.ToLower()) { Fail 'reserved_account' '' }
 if ($lenText -notmatch '^[0-9]{2}$') { Fail 'invalid_length' '' }
@@ -90,8 +90,8 @@ $len = [int]$lenText
 if ($len -lt 14 -or $len -gt 64) { Fail 'invalid_length' '' }
 
 try {
-  $pw = New-RiqPassword $len
-  if (-not (Test-RiqPassword $pw $len)) { Fail 'generate_failed' '' }
+  $pw = New-AdgPassword $len
+  if (-not (Test-AdgPassword $pw $len)) { Fail 'generate_failed' '' }
 } catch { Fail 'generate_failed' (HrOf $_) }
 
 if ($dry) {
@@ -120,7 +120,7 @@ try {
   $user.SetPassword($pw)
   if ($created) {
     $user.UserFlags = ([int]$user.UserFlags.Value -bor 0x10000)
-    $user.Description = 'Managed by RemoteIQ'
+    $user.Description = 'Managed by ADG RMM'
   }
   $user.SetInfo()
 } catch { Fail 'set_failed' (HrOf $_) }
@@ -137,10 +137,10 @@ if ($created) {
 $verified = $false
 try {
   $t = $null
-  foreach ($a in [AppDomain]::CurrentDomain.GetAssemblies()) { $t = $a.GetType('RiqLapsNative', $false); if ($t) { break } }
+  foreach ($a in [AppDomain]::CurrentDomain.GetAssemblies()) { $t = $a.GetType('AdgLapsNative', $false); if ($t) { break } }
   if (-not $t) {
-    $ab = [AppDomain]::CurrentDomain.DefineDynamicAssembly((New-Object System.Reflection.AssemblyName('RiqLapsDyn')), [System.Reflection.Emit.AssemblyBuilderAccess]::Run)
-    $tb = $ab.DefineDynamicModule('RiqLapsDyn').DefineType('RiqLapsNative', 'Public,Class')
+    $ab = [AppDomain]::CurrentDomain.DefineDynamicAssembly((New-Object System.Reflection.AssemblyName('AdgLapsDyn')), [System.Reflection.Emit.AssemblyBuilderAccess]::Run)
+    $tb = $ab.DefineDynamicModule('AdgLapsDyn').DefineType('AdgLapsNative', 'Public,Class')
     $m1 = $tb.DefinePInvokeMethod('LogonUserW', 'advapi32.dll', 'Public,Static,PinvokeImpl', [System.Reflection.CallingConventions]::Standard, [bool], @([string], [string], [string], [int], [int], [IntPtr].MakeByRefType()), [System.Runtime.InteropServices.CallingConvention]::Winapi, [System.Runtime.InteropServices.CharSet]::Unicode)
     $m1.SetImplementationFlags($m1.GetMethodImplementationFlags() -bor [System.Reflection.MethodImplAttributes]::PreserveSig)
     $m2 = $tb.DefinePInvokeMethod('CloseHandle', 'kernel32.dll', 'Public,Static,PinvokeImpl', [System.Reflection.CallingConventions]::Standard, [bool], @([IntPtr]), [System.Runtime.InteropServices.CallingConvention]::Winapi, [System.Runtime.InteropServices.CharSet]::Unicode)
@@ -163,7 +163,7 @@ export const LAPS_ROTATE_SCRIPT = HEAD + LAPS_GENERATOR + LAPS_BODY;
 
 /* ------------------------------ Linux ------------------------------ */
 // The same two jobs for Linux devices, as fixed bash scripts that print the same JSON answers. The same rules hold: the only inputs
-// are environment variables (RIQ_LAPS_ACCOUNT, RIQ_LAPS_LENGTH, RIQ_DRY_RUN, RIQ_LUKS_HAVE), no secret is ever sent to the device, the
+// are environment variables (ADG_LAPS_ACCOUNT, ADG_LAPS_LENGTH, ADG_DRY_RUN, ADG_LUKS_HAVE), no secret is ever sent to the device, the
 // secret is printed to stdout only (never stderr, never a file), and it never appears on a command line (printf is a shell builtin and
 // the password travels through a pipe). These scripts live in template literals: no dollar-brace sequence and no backtick inside.
 
@@ -176,8 +176,8 @@ have() { command -v "$1" >/dev/null 2>&1; }
 `;
 
 export const LINUX_LAPS_ROTATE_SCRIPT = LINUX_HEAD + String.raw`
-ACCT="$RIQ_LAPS_ACCOUNT"
-LEN="$RIQ_LAPS_LENGTH"
+ACCT="$ADG_LAPS_ACCOUNT"
+LEN="$ADG_LAPS_LENGTH"
 printf '%s' "$ACCT" | grep -Eq '^[a-z_][a-z0-9_-]{0,19}$' || fail invalid_account
 case "$ACCT" in root|admin|administrator|guest|system|daemon|bin|sys|sync|nobody|operator|adm|wheel|sudo|users|krbtgt) fail reserved_account;; esac
 printf '%s' "$LEN" | grep -Eq '^[0-9]{2}$' || fail invalid_length
@@ -200,7 +200,7 @@ while [ "$N" -lt 60 ]; do
 done
 [ -n "$PW" ] || fail generate_failed
 
-if [ "$RIQ_DRY_RUN" = "1" ]; then
+if [ "$ADG_DRY_RUN" = "1" ]; then
   # Nothing is changed and nothing is looked up: only the shape of the answer, with a password that is never applied.
   printf '{"ok":true,"dryRun":true,"account":"%s","created":false,"verified":false,"password":"%s"}' "$ACCT" "$PW"
   exit 0
@@ -220,14 +220,14 @@ if id "$ACCT" >/dev/null 2>&1; then
 else
   have useradd || fail no_tools
   # The password is set only after the account exists. If anything fails the account (or the old password) is left as it was.
-  useradd -m -s /bin/bash -c 'Managed by RemoteIQ' "$ACCT" >/dev/null 2>&1 || fail create_failed
+  useradd -m -s /bin/bash -c 'Managed by ADG RMM' "$ACCT" >/dev/null 2>&1 || fail create_failed
   CREATED=true
   G=""
   for X in sudo wheel; do getent group "$X" >/dev/null 2>&1 && G="$X" && break; done
   if [ -n "$G" ]; then
     usermod -aG "$G" "$ACCT" >/dev/null 2>&1 || fail group_failed
   elif [ -d /etc/sudoers.d ] && have visudo; then
-    F="/etc/sudoers.d/90-riq-admin"
+    F="/etc/sudoers.d/90-adg-admin"
     printf '%s ALL=(ALL) ALL\n' "$ACCT" > "$F.tmp" && chmod 440 "$F.tmp" && visudo -cf "$F.tmp" >/dev/null 2>&1 && mv -f "$F.tmp" "$F" || { rm -f "$F.tmp"; fail group_failed; }
   else
     fail group_failed
@@ -265,13 +265,13 @@ printf '{"ok":true,"account":"%s","created":%s,"verified":%s,"password":"%s"}' "
 // LUKS has no recovery key to read back: the passphrase is never stored on the machine. What can be done without anyone typing the
 // passphrase is to ADD a new recovery key slot, which systemd-cryptenroll can do when the volume unlocks with the machine's TPM2 or with a
 // key file listed in /etc/crypttab. The new key is printed once, here, and stored encrypted by the server. A volume that already has a
-// stored key (RIQ_LUKS_HAVE lists their LUKS UUIDs) is not touched again, so a volume gets at most one slot from RemoteIQ. Nothing else
+// stored key (ADG_LUKS_HAVE lists their LUKS UUIDs) is not touched again, so a volume gets at most one slot from ADG RMM. Nothing else
 // on the volume changes: no slot is removed and no existing passphrase is read.
 export const LINUX_LUKS_ESCROW_SCRIPT = LINUX_HEAD + String.raw`
 [ "$(id -u)" = "0" ] || fail not_root
 have cryptsetup || fail no_luks
 have lsblk || fail no_tools
-HAVE=",$RIQ_LUKS_HAVE,"
+HAVE=",$ADG_LUKS_HAVE,"
 
 LIST=""
 for NAME in $(lsblk -rno NAME,TYPE 2>/dev/null | awk '$2=="crypt"{print $1}'); do

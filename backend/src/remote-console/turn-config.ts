@@ -39,7 +39,7 @@ export function builtinIceServers(env: NodeJS.ProcessEnv = process.env, nowMs = 
     throw new Error("The builtin TURN provider needs TURN_URLS and TURN_AUTH_SECRET.");
   }
 
-  const username = `${Math.floor(nowMs / 1000) + TURN_CREDENTIAL_TTL_SEC}:remoteiq`;
+  const username = `${Math.floor(nowMs / 1000) + TURN_CREDENTIAL_TTL_SEC}:adgrmm`;
   const credential = createHmac("sha1", secret).update(username).digest("base64");
   return [...stunServers(env), { urls, username, credential }];
 }

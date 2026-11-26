@@ -12,9 +12,9 @@ export type InstallerScriptValues = {
   onlyIfMissing?: boolean;
 };
 
-const WINDOWS_TEMPLATE = String.raw`# RemoteIQ agent installer for Windows
+const WINDOWS_TEMPLATE = String.raw`# ADG RMM agent installer for Windows
 # Paste the command from the console into PowerShell as Administrator, or right-click this file
-# and choose Run with PowerShell. Log: C:\ProgramData\RemoteIQ\install.log
+# and choose Run with PowerShell. Log: C:\ProgramData\AdgRmm\install.log
 & {
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
@@ -25,13 +25,13 @@ $EnrollmentKey = '__ENROLLMENT_KEY__'
 $PackageSha256 = '__PACKAGE_SHA256__'
 $OnlyIfMissing = __ONLY_IF_MISSING__
 
-$ServiceName = 'RemoteIQAgent'
-$DataDir = Join-Path $env:ProgramData 'RemoteIQ'
-$InstallDir = Join-Path $env:ProgramFiles 'RemoteIQ\Agent'
+$ServiceName = 'AdgRmmAgent'
+$DataDir = Join-Path $env:ProgramData 'ADG RMM'
+$InstallDir = Join-Path $env:ProgramFiles 'AdgRmm\Agent'
 $ConfigPath = Join-Path $DataDir 'agent.config.json'
 $EnrollmentPath = Join-Path $DataDir 'enrollment.json'
 $LogPath = Join-Path $DataDir 'install.log'
-$ZipPath = Join-Path $env:TEMP ('remoteiq-agent-' + [Guid]::NewGuid().ToString('N') + '.zip')
+$ZipPath = Join-Path $env:TEMP ('adgrmm-agent-' + [Guid]::NewGuid().ToString('N') + '.zip')
 
 function Write-Log([string]$Message) {
   $line = '[' + (Get-Date).ToString('yyyy-MM-dd HH:mm:ss') + '] ' + $Message
@@ -63,7 +63,7 @@ if ($OnlyIfMissing) {
   $enrolled = ''
   if (Test-Path -LiteralPath $ConfigPath) { try { $enrolled = [string](Get-Content -LiteralPath $ConfigPath -Raw | ConvertFrom-Json).AgentId } catch {} }
   if ((Get-Service -Name $ServiceName -ErrorAction SilentlyContinue) -and $enrolled) {
-    Write-Host 'The RemoteIQ agent is already installed and enrolled. Nothing to do.'
+    Write-Host 'The ADG RMM agent is already installed and enrolled. Nothing to do.'
     return
   }
 }
@@ -71,7 +71,7 @@ if ($OnlyIfMissing) {
 New-Item -ItemType Directory -Force -Path $InstallDir | Out-Null
 
 # The data folder will hold the agent's credentials and what the SYSTEM service trusts (its server and key, the update script),
-# so only SYSTEM and Administrators may read or change it. A standard user can create C:\ProgramData\RemoteIQ before the agent is
+# so only SYSTEM and Administrators may read or change it. A standard user can create C:\ProgramData\AdgRmm before the agent is
 # installed and would then own it, so an existing folder first goes back to Administrators and has every permission reset,
 # down to the last file in it. Well-known SIDs, not names, so this works in every Windows language.
 if (Test-Path -LiteralPath $DataDir) {
@@ -81,20 +81,20 @@ if (Test-Path -LiteralPath $DataDir) {
   New-Item -ItemType Directory -Force -Path $DataDir | Out-Null
 }
 & icacls.exe $DataDir /inheritance:r /grant:r '*S-1-5-18:(OI)(CI)F' '*S-1-5-32-544:(OI)(CI)F' | Out-Null
-if ($LASTEXITCODE -ne 0) { throw 'Could not restrict access to the RemoteIQ data folder.' }
+if ($LASTEXITCODE -ne 0) { throw 'Could not restrict access to the ADG RMM data folder.' }
 # Nothing is written to it until it is checked: owned by Administrators or SYSTEM, and nobody else allowed anything.
 $trustedSids = @('S-1-5-18', 'S-1-5-32-544')
 $dataAcl = Get-Acl -LiteralPath $DataDir
 if ($trustedSids -notcontains $dataAcl.GetOwner([Security.Principal.SecurityIdentifier]).Value) {
-  throw ('The RemoteIQ data folder ' + $DataDir + ' is owned by another account and could not be taken back. Delete that folder and run the installer again.')
+  throw ('The ADG RMM data folder ' + $DataDir + ' is owned by another account and could not be taken back. Delete that folder and run the installer again.')
 }
 foreach ($rule in $dataAcl.GetAccessRules($true, $true, [Security.Principal.SecurityIdentifier])) {
   if ($rule.AccessControlType -eq 'Allow' -and $trustedSids -notcontains $rule.IdentityReference.Value) {
-    throw ('The RemoteIQ data folder ' + $DataDir + ' still lets ' + $rule.IdentityReference.Value + ' in. Delete that folder and run the installer again.')
+    throw ('The ADG RMM data folder ' + $DataDir + ' still lets ' + $rule.IdentityReference.Value + ' in. Delete that folder and run the installer again.')
   }
 }
 
-Write-Log ('Installing the RemoteIQ agent from ' + $BaseUrl)
+Write-Log ('Installing the ADG RMM agent from ' + $BaseUrl)
 
 try { [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12 } catch {}
 
@@ -104,10 +104,10 @@ try { [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::
 # exactly what breaks the certificate. Whatever happens here, the install carries on.
 function Get-ServerDate([bool]$Verify) {
   if (-not $Verify) {
-    if (-not ('RiqTrustAll' -as [type])) {
-      Add-Type -TypeDefinition 'using System.Net; using System.Net.Security; using System.Security.Cryptography.X509Certificates; public static class RiqTrustAll { public static bool Yes(object s, X509Certificate c, X509Chain ch, SslPolicyErrors e) { return true; } public static void On() { ServicePointManager.ServerCertificateValidationCallback = new RemoteCertificateValidationCallback(Yes); } public static void Off() { ServicePointManager.ServerCertificateValidationCallback = null; } }'
+    if (-not ('AdgTrustAll' -as [type])) {
+      Add-Type -TypeDefinition 'using System.Net; using System.Net.Security; using System.Security.Cryptography.X509Certificates; public static class AdgTrustAll { public static bool Yes(object s, X509Certificate c, X509Chain ch, SslPolicyErrors e) { return true; } public static void On() { ServicePointManager.ServerCertificateValidationCallback = new RemoteCertificateValidationCallback(Yes); } public static void Off() { ServicePointManager.ServerCertificateValidationCallback = null; } }'
     }
-    [RiqTrustAll]::On()
+    [AdgTrustAll]::On()
   }
   try {
     $req = [Net.HttpWebRequest]::Create($BaseUrl + '/')
@@ -123,7 +123,7 @@ function Get-ServerDate([bool]$Verify) {
     $style = [Globalization.DateTimeStyles]::AdjustToUniversal -bor [Globalization.DateTimeStyles]::AssumeUniversal
     return [DateTime]::Parse($text, [Globalization.CultureInfo]::InvariantCulture, $style)
   } finally {
-    if (-not $Verify) { [RiqTrustAll]::Off() }
+    if (-not $Verify) { [AdgTrustAll]::Off() }
   }
 }
 
@@ -184,8 +184,8 @@ Get-ChildItem -LiteralPath $InstallDir -Force | Remove-Item -Recurse -Force
 Expand-Archive -LiteralPath $ZipPath -DestinationPath $InstallDir -Force
 Remove-Item -LiteralPath $ZipPath -Force -ErrorAction SilentlyContinue
 
-$AgentExe = Join-Path $InstallDir 'RemoteIQ.Agent.exe'
-if (-not (Test-Path -LiteralPath $AgentExe)) { throw 'The agent package is missing RemoteIQ.Agent.exe.' }
+$AgentExe = Join-Path $InstallDir 'AdgRmm.Agent.exe'
+if (-not (Test-Path -LiteralPath $AgentExe)) { throw 'The agent package is missing AdgRmm.Agent.exe.' }
 
 # A reinstall keeps this machine's device id, so it stays the same device in the console.
 $DeviceId = ''
@@ -196,16 +196,16 @@ if ([string]::IsNullOrWhiteSpace($DeviceId)) { $DeviceId = [Guid]::NewGuid().ToS
 
 @{ baseUrl = $BaseUrl; deviceId = $DeviceId; enrollmentKey = $EnrollmentKey } | ConvertTo-Json | Set-Content -LiteralPath $EnrollmentPath -Encoding UTF8
 
-try { if (-not [Diagnostics.EventLog]::SourceExists('RemoteIQ Agent')) { New-EventLog -LogName Application -Source 'RemoteIQ Agent' } } catch {}
+try { if (-not [Diagnostics.EventLog]::SourceExists('ADG RMM Agent')) { New-EventLog -LogName Application -Source 'ADG RMM Agent' } } catch {}
 
 $imagePath = '"' + $AgentExe + '"'
 if ($existing) {
   # An existing service may come from an older install or a dev build, so it is pointed at this one.
   $wmiService = Get-CimInstance Win32_Service -Filter ("Name='" + $ServiceName + "'")
-  $changed = Invoke-CimMethod -InputObject $wmiService -MethodName Change -Arguments @{ PathName = $imagePath; StartMode = 'Automatic'; StartName = 'LocalSystem'; StartPassword = ''; DisplayName = 'RemoteIQ Agent' }
-  if ($changed.ReturnValue -ne 0) { throw ('Could not update the existing RemoteIQAgent service (error ' + $changed.ReturnValue + ').') }
+  $changed = Invoke-CimMethod -InputObject $wmiService -MethodName Change -Arguments @{ PathName = $imagePath; StartMode = 'Automatic'; StartName = 'LocalSystem'; StartPassword = ''; DisplayName = 'ADG RMM Agent' }
+  if ($changed.ReturnValue -ne 0) { throw ('Could not update the existing AdgRmmAgent service (error ' + $changed.ReturnValue + ').') }
 } else {
-  New-Service -Name $ServiceName -BinaryPathName $imagePath -DisplayName 'RemoteIQ Agent' -Description 'RemoteIQ endpoint agent' -StartupType Automatic | Out-Null
+  New-Service -Name $ServiceName -BinaryPathName $imagePath -DisplayName 'ADG RMM Agent' -Description 'ADG RMM endpoint agent' -StartupType Automatic | Out-Null
 }
 & sc.exe failure $ServiceName reset= 86400 actions= restart/60000/restart/60000/restart/60000 | Out-Null
 
@@ -268,7 +268,7 @@ Wait-ForKey
 `;
 
 const LINUX_TEMPLATE = String.raw`#!/usr/bin/env bash
-# RemoteIQ agent installer for Linux (x64; systemd or OpenRC; glibc or musl, so Alpine too). Run as root.
+# ADG RMM agent installer for Linux (x64; systemd or OpenRC; glibc or musl, so Alpine too). Run as root.
 set -euo pipefail
 
 BASE_URL='__BASE_URL__'
@@ -276,9 +276,9 @@ ENROLLMENT_KEY='__ENROLLMENT_KEY__'
 PACKAGE_SHA256='__PACKAGE_SHA256__'
 ONLY_IF_MISSING=__ONLY_IF_MISSING_SH__
 
-CONFIG_DIR=/etc/remoteiq
-INSTALL_DIR=/opt/remoteiq-agent
-SERVICE=remoteiq-agent
+CONFIG_DIR=/etc/adgrmm
+INSTALL_DIR=/opt/adgrmm-agent
+SERVICE=adgrmm-agent
 
 die() { echo "ERROR: $1" >&2; exit 1; }
 
@@ -302,10 +302,10 @@ svc_stop() { if [ "$INIT" = openrc ]; then rc-service "$SERVICE" stop >/dev/null
 # Run on every boot by configuration management, this must leave a working machine alone.
 if [ "$ONLY_IF_MISSING" = "1" ] && svc_active \
   && grep -q '"AgentId": *"[^"]\+"' "$CONFIG_DIR/agent.json" 2>/dev/null; then
-  echo "The RemoteIQ agent is already installed and enrolled. Nothing to do."
+  echo "The ADG RMM agent is already installed and enrolled. Nothing to do."
   exit 0
 fi
-[ "$(uname -m)" = "x86_64" ] || die "The RemoteIQ agent currently supports x86_64 only, not $(uname -m)."
+[ "$(uname -m)" = "x86_64" ] || die "The ADG RMM agent currently supports x86_64 only, not $(uname -m)."
 # Alpine: the small base system lacks what the installer and the agent need, so it is added from Alpine's own repositories.
 if [ "$MUSL" = "1" ] && command -v apk >/dev/null 2>&1; then
   apk add --no-cache bash curl tar ca-certificates libstdc++ libgcc zlib libssl3 coreutils >/dev/null 2>&1 || die "Could not install the packages the agent needs on Alpine (apk add bash curl tar ca-certificates libstdc++ libgcc zlib libssl3 coreutils)."
@@ -332,7 +332,7 @@ TMP_DIR="$(mktemp -d)"
 trap 'rm -rf "$TMP_DIR"' EXIT
 PACKAGE="$TMP_DIR/agent.tar.gz"
 
-echo "Installing the RemoteIQ agent from $BASE_URL"
+echo "Installing the ADG RMM agent from $BASE_URL"
 
 # A device with the wrong date cannot check the server's certificate (it looks expired or not yet valid) and the download would fail,
 # so the clock is put right first. Only when it is more than five minutes off: first by asking the system's own time service, then
@@ -402,12 +402,12 @@ chmod 700 "$CONFIG_DIR"
 tar -xzf "$PACKAGE" -C "$INSTALL_DIR"
 # The package carries a glibc program and a musl program; this machine keeps the one it can run, under the one name.
 if [ "$MUSL" = "1" ]; then
-  [ -f "$INSTALL_DIR/remoteiq-agent-musl" ] || die "This agent package has no build for musl based systems such as Alpine. Ask your administrator for a newer package."
-  mv -f "$INSTALL_DIR/remoteiq-agent-musl" "$INSTALL_DIR/remoteiq-agent"
+  [ -f "$INSTALL_DIR/adgrmm-agent-musl" ] || die "This agent package has no build for musl based systems such as Alpine. Ask your administrator for a newer package."
+  mv -f "$INSTALL_DIR/adgrmm-agent-musl" "$INSTALL_DIR/adgrmm-agent"
 else
-  rm -f "$INSTALL_DIR/remoteiq-agent-musl"
+  rm -f "$INSTALL_DIR/adgrmm-agent-musl"
 fi
-chmod 755 "$INSTALL_DIR/remoteiq-agent" "$INSTALL_DIR/uninstall.sh"
+chmod 755 "$INSTALL_DIR/adgrmm-agent" "$INSTALL_DIR/uninstall.sh"
 # SELinux (Fedora, Rocky, RHEL): give the new files the labels their folders call for, so the service may run them.
 if command -v restorecon >/dev/null 2>&1; then restorecon -R "$INSTALL_DIR" "$CONFIG_DIR" >/dev/null 2>&1 || true; fi
 
@@ -427,12 +427,12 @@ JSON
 if [ "$INIT" = "systemd" ]; then
 cat > "/etc/systemd/system/$SERVICE.service" <<UNIT
 [Unit]
-Description=RemoteIQ Agent
+Description=ADG RMM Agent
 After=network-online.target
 Wants=network-online.target
 
 [Service]
-ExecStart=$INSTALL_DIR/remoteiq-agent
+ExecStart=$INSTALL_DIR/adgrmm-agent
 WorkingDirectory=$INSTALL_DIR
 Restart=always
 RestartSec=10
@@ -452,15 +452,15 @@ else
   # OpenRC: a supervised service that is restarted whenever it stops, started at boot, logging to one file.
   cat > "/etc/init.d/$SERVICE" <<RC
 #!/sbin/openrc-run
-name="RemoteIQ Agent"
-description="RemoteIQ Agent"
+name="ADG RMM Agent"
+description="ADG RMM Agent"
 supervisor="supervise-daemon"
-command="$INSTALL_DIR/remoteiq-agent"
+command="$INSTALL_DIR/adgrmm-agent"
 directory="$INSTALL_DIR"
 respawn_delay=10
 respawn_max=0
-output_log="/var/log/remoteiq-agent.log"
-error_log="/var/log/remoteiq-agent.log"
+output_log="/var/log/adgrmm-agent.log"
+error_log="/var/log/adgrmm-agent.log"
 $OPENRC_ENV
 
 depend() {
@@ -486,7 +486,7 @@ for _ in $(seq 1 40); do
   fi
 done
 
-if [ "$INIT" = "openrc" ]; then tail -n 15 /var/log/remoteiq-agent.log >&2 2>/dev/null || true; else journalctl -u "$SERVICE" -n 15 --no-pager >&2 || true; fi
+if [ "$INIT" = "openrc" ]; then tail -n 15 /var/log/adgrmm-agent.log >&2 2>/dev/null || true; else journalctl -u "$SERVICE" -n 15 --no-pager >&2 || true; fi
 die "The agent is installed but has not enrolled. See the messages above. It keeps retrying on its own."
 `;
 

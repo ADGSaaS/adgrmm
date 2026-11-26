@@ -1,13 +1,13 @@
 // Outbound webhooks against a real database and a local receiver: creating, validating, signing, the events that are
 // sent (ticket created and updated, alert opened and resolved, device offline), only to the webhooks that asked,
 // retrying a failure, giving up, the delivery log, and that the secret is never shown again.
-// Usage, from backend/ after building: DIST=dist RIQ_E2E_ALLOW=1 DATABASE_URL=postgres://.../riq_x_e2e node test/webhooks.e2e.cjs
+// Usage, from backend/ after building: DIST=dist ADG_E2E_ALLOW=1 DATABASE_URL=postgres://.../adg_x_e2e node test/webhooks.e2e.cjs
 const http = require("node:http");
 const crypto = require("node:crypto");
 const path = require("node:path");
 
-if (process.env.RIQ_E2E_ALLOW !== "1" || !/e2e/.test(process.env.DATABASE_URL || "")) {
-    console.error("Refusing to run: set RIQ_E2E_ALLOW=1 and an e2e-named DATABASE_URL.");
+if (process.env.ADG_E2E_ALLOW !== "1" || !/e2e/.test(process.env.DATABASE_URL || "")) {
+    console.error("Refusing to run: set ADG_E2E_ALLOW=1 and an e2e-named DATABASE_URL.");
     process.exit(2);
 }
 
@@ -94,44 +94,44 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
     const req = { user: { organizationId: org.id, name: "Tester" } };
     const ticketId = await tickets.create({ subject: "WH printer is down", priority: "high", clientId: client.id }, req);
     await settle();
-    let got = forPath("/all").filter((r) => r.headers["x-remoteiq-event"] === "ticket.created");
+    let got = forPath("/all").filter((r) => r.headers["x-adg-event"] === "ticket.created");
     check("a new ticket is sent to the webhook that asked for it", got.length === 1, received.length);
     const body = JSON.parse(got[0]?.body || "{}");
     check("the payload names the event and the ticket", body.event === "ticket.created" && body.data?.ticket?.id === ticketId && body.data.ticket.subject === "WH printer is down" && body.data.ticket.priority === "high" && body.data.ticket.customer === client.name && body.data.ticket.url === `https://console.example.test/tickets/${ticketId}`, body);
     const h = got[0].headers;
-    check("it is signed and the signature verifies with the secret that was shown", core.verify(everything.signingSecret, h["x-remoteiq-timestamp"], got[0].body, h["x-remoteiq-signature"]));
-    check("it carries the event and a delivery id", h["x-remoteiq-event"] === "ticket.created" && h["x-remoteiq-delivery"] === (await prisma.webhook_deliveries.findFirst({ where: { endpoint_id: everything.id, event: "ticket.created" } })).id);
+    check("it is signed and the signature verifies with the secret that was shown", core.verify(everything.signingSecret, h["x-adg-timestamp"], got[0].body, h["x-adg-signature"]));
+    check("it carries the event and a delivery id", h["x-adg-event"] === "ticket.created" && h["x-adg-delivery"] === (await prisma.webhook_deliveries.findFirst({ where: { endpoint_id: everything.id, event: "ticket.created" } })).id);
     check("a webhook that did not ask for tickets did not get one", forPath("/alerts").length === 0);
     check("a switched-off webhook gets nothing", forPath("/off").length === 0 && (await prisma.webhook_deliveries.count({ where: { endpoint_id: off.id } })) === 0);
 
     await tickets.update(ticketId, { status: "in_progress", priority: "urgent" }, req);
     await settle();
-    got = forPath("/all").filter((r) => r.headers["x-remoteiq-event"] === "ticket.updated");
+    got = forPath("/all").filter((r) => r.headers["x-adg-event"] === "ticket.updated");
     const upd = JSON.parse(got[0]?.body || "{}");
     check("an update says what changed", got.length === 1 && upd.data.changes.some((c) => c.field === "status" && c.from === "open" && c.to === "in_progress") && upd.data.changes.some((c) => c.field === "priority" && c.to === "urgent") && upd.data.ticket.status === "in_progress", upd);
     await tickets.update(ticketId, { status: "in_progress" }, req);
     await settle();
-    check("an edit that changes nothing sends nothing", forPath("/all").filter((r) => r.headers["x-remoteiq-event"] === "ticket.updated").length === 1);
+    check("an edit that changes nothing sends nothing", forPath("/all").filter((r) => r.headers["x-adg-event"] === "ticket.updated").length === 1);
 
     /* ------------------------------ alert events ------------------------------ */
     const assignmentId = crypto.randomUUID();
     await alerts.onCheckRun({ deviceId: device.id, assignmentId, checkName: "Disk C:", status: "CRIT", severity: "CRIT", output: "disk at 99%" });
     await settle();
-    let opened = [...forPath("/all"), ...forPath("/alerts")].filter((r) => r.headers["x-remoteiq-event"] === "alert.opened");
+    let opened = [...forPath("/all"), ...forPath("/alerts")].filter((r) => r.headers["x-adg-event"] === "alert.opened");
     check("an alert that opens is sent to both webhooks that asked", opened.length === 2, opened.length);
     const ob = JSON.parse(opened[0].body);
     check("the payload has the alert and its device", ob.data.alert.title.includes("Disk C:") && ob.data.alert.severity === "CRIT" && ob.data.device.name === "WH-PC-1" && ob.data.device.customer === client.name && ob.data.device.site === "Head Office", ob.data);
 
     await alerts.onCheckRun({ deviceId: device.id, assignmentId, checkName: "Disk C:", status: "OK", severity: null, output: "" });
     await settle();
-    const resolved = [...forPath("/all"), ...forPath("/alerts")].filter((r) => r.headers["x-remoteiq-event"] === "alert.resolved");
+    const resolved = [...forPath("/all"), ...forPath("/alerts")].filter((r) => r.headers["x-adg-event"] === "alert.resolved");
     check("an alert that resolves is sent too", resolved.length === 2 && JSON.parse(resolved[0].body).data.alert.state === "RESOLVED", resolved.length);
 
     await alerts.raise({ maintenanceChecked: true, deviceId: device.id, kind: "offline", dedupeKey: `offline:${device.id}`, severity: "CRIT", title: "WH-PC-1 is offline", detail: "Last seen yesterday." });
     await settle();
-    const offline = forPath("/all").filter((r) => r.headers["x-remoteiq-event"] === "device.offline");
+    const offline = forPath("/all").filter((r) => r.headers["x-adg-event"] === "device.offline");
     check("a device going offline is a device.offline event, as well as an alert", offline.length === 1 && JSON.parse(offline[0].body).data.device.id === device.id, offline.length);
-    check("a webhook that did not ask for it did not get device.offline", forPath("/alerts").filter((r) => r.headers["x-remoteiq-event"] === "device.offline").length === 0);
+    check("a webhook that did not ask for it did not get device.offline", forPath("/alerts").filter((r) => r.headers["x-adg-event"] === "device.offline").length === 0);
 
     /* ------------------------------ failure, retry, give up ------------------------------ */
     hook.status = 500;
@@ -158,7 +158,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
     /* ------------------------------ test, log, changes ------------------------------ */
     const t = await hooks.test(org.id, everything.id);
-    check("a test sends a sample now and reports the answer", t.ok === true && t.status === 200 && received.some((r) => r.headers["x-remoteiq-event"] === "webhook.test"), t);
+    check("a test sends a sample now and reports the answer", t.ok === true && t.status === 200 && received.some((r) => r.headers["x-adg-event"] === "webhook.test"), t);
     hook.status = 503;
     const t2 = await hooks.test(org.id, everything.id);
     check("a test against a failing address says why and is not retried", t2.ok === false && /503/.test(t2.message) && (await prisma.webhook_deliveries.count({ where: { endpoint_id: everything.id, event: "webhook.test", status: "pending" } })) === 0, t2);
@@ -172,8 +172,8 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
     const rotated = await hooks.update(org.id, everything.id, { rotateSecret: true });
     check("rotating the secret shows the new one once and the old one stops matching", rotated.signingSecret && rotated.signingSecret !== everything.signingSecret);
     await hooks.test(org.id, everything.id);
-    const lastTest = received.filter((r) => r.headers["x-remoteiq-event"] === "webhook.test").pop();
-    check("deliveries after that are signed with the new secret", core.verify(rotated.signingSecret, lastTest.headers["x-remoteiq-timestamp"], lastTest.body, lastTest.headers["x-remoteiq-signature"]) && !core.verify(everything.signingSecret, lastTest.headers["x-remoteiq-timestamp"], lastTest.body, lastTest.headers["x-remoteiq-signature"]));
+    const lastTest = received.filter((r) => r.headers["x-adg-event"] === "webhook.test").pop();
+    check("deliveries after that are signed with the new secret", core.verify(rotated.signingSecret, lastTest.headers["x-adg-timestamp"], lastTest.body, lastTest.headers["x-adg-signature"]) && !core.verify(everything.signingSecret, lastTest.headers["x-adg-timestamp"], lastTest.body, lastTest.headers["x-adg-signature"]));
 
     await hooks.update(org.id, off.id, { enabled: true });
     const n = forPath("/off").length;

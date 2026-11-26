@@ -633,7 +633,7 @@ export class SlaService {
             await this.prisma.ticket_notices.createMany({ data: people.map((p) => ({ id: randomUUID(), organization_id: t.organization_id, user_id: p.id, ticket_id: t.id, kind: kind === "warning" ? "sla_warning" : "sla_breached", title, body: detail })) });
             if (cfg.email) {
                 const base = (process.env.PUBLIC_CONSOLE_URL || "").replace(/\/+$/, "");
-                const text = `${title}\n\n${detail}\n${base ? `\n${base}/tickets/${t.id}\n` : ""}\nSent by the SLA rules in RemoteIQ.`;
+                const text = `${title}\n\n${detail}\n${base ? `\n${base}/tickets/${t.id}\n` : ""}\nSent by the SLA rules in ADG RMM.`;
                 for (const p of people) {
                     const sent = await this.smtp.sendPlain("alerts", p.email, title, text).catch((e: Error) => ({ ok: false, result: e.message }));
                     if (!sent.ok) this.log.warn(`SLA email to ${p.email} not sent: ${sent.result}`);

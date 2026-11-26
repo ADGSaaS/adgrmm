@@ -1,7 +1,7 @@
 // backend/src/endpoint-backups/backup.service.ts
 //
 // Backup status of customers' computers. Off until an administrator turns it on. Then, for every online Windows or Linux computer, a signed,
-// read-only script reads what protects it every few hours; RemoteIQ judges the age (backup.core.ts), keeps the answer per product, shows it
+// read-only script reads what protects it every few hours; ADG RMM judges the age (backup.core.ts), keeps the answer per product, shows it
 // per customer, raises an alert for a computer whose backup failed or that has none, and can write the customer's backup report.
 import { BadRequestException, Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { Interval } from "@nestjs/schedule";

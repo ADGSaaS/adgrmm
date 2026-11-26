@@ -6,7 +6,7 @@
 using System.Security.Cryptography;
 using System.Text.Json;
 
-namespace RemoteIQ.Agent.Shared;
+namespace AdgRmm.Agent.Shared;
 
 public sealed class OpenedTask
 {

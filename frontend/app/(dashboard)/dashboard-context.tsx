@@ -106,10 +106,10 @@ export const DEFAULT_DASHBOARD_ORDER: string[] = [
 ];
 
 /* ----------------------- localStorage helpers ------------------------ */
-const LS_SAVED_VIEWS_KEY = "remoteiq.savedViews.v2";
-const LS_LAST_VIEW_ID_KEY = "remoteiq.lastSavedViewId.v2";
-const LS_ALIASES_KEY = "remoteiq.deviceAliases.v1";
-const LS_SIDEBAR_COLLAPSED = "remoteiq.sidebarCollapsed.v1";
+const LS_SAVED_VIEWS_KEY = "adgrmm.savedViews.v2";
+const LS_LAST_VIEW_ID_KEY = "adgrmm.lastSavedViewId.v2";
+const LS_ALIASES_KEY = "adgrmm.deviceAliases.v1";
+const LS_SIDEBAR_COLLAPSED = "adgrmm.sidebarCollapsed.v1";
 
 function safeReadJSON<T>(key: string, fallback: T): T {
     if (typeof window === "undefined") return fallback;

@@ -6,7 +6,7 @@
 //   node test/parity-batch7.e2e.cjs seed     (before the backends start)
 //   node test/parity-batch7.e2e.cjs run      (once both are up)
 //
-// Required env: RIQ_E2E_ALLOW=1, JWT_SECRET, BASE_A, BASE_B, DB_A, DB_B, DB_C, DB_VERIFY,
+// Required env: ADG_E2E_ALLOW=1, JWT_SECRET, BASE_A, BASE_B, DB_A, DB_B, DB_C, DB_VERIFY,
 // DEST_DIR (shared destination folder), DIST_B (new build's dist, for direct calls).
 // It writes test rows, so it refuses any database whose name lacks "e2e".
 "use strict";
@@ -32,8 +32,8 @@ const safe = (url) => {
         return false;
     }
 };
-if (process.env.RIQ_E2E_ALLOW !== "1" || !SECRET || ![DB_A, DB_B, DB_C, DB_VERIFY].every(safe) || !ROOT || !DIST_B) {
-    console.error("Refusing to run: set RIQ_E2E_ALLOW=1, JWT_SECRET, DEST_DIR, DIST_B and e2e-named DB_A, DB_B, DB_C, DB_VERIFY.");
+if (process.env.ADG_E2E_ALLOW !== "1" || !SECRET || ![DB_A, DB_B, DB_C, DB_VERIFY].every(safe) || !ROOT || !DIST_B) {
+    console.error("Refusing to run: set ADG_E2E_ALLOW=1, JWT_SECRET, DEST_DIR, DIST_B and e2e-named DB_A, DB_B, DB_C, DB_VERIFY.");
     process.exit(2);
 }
 
@@ -195,14 +195,14 @@ function scrub(text) {
         .split(`${ROOT}/a`).join("<dest>")
         .split(`${ROOT}/b`).join("<dest>")
         .replace(/backup_\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}\.tar\.gz/g, "<archive>")
-        .replace(/remoteiq-postgresql_\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}\.dump/g, "<dump>")
-        .replace(/remoteiq_restore_[0-9a-f]+/g, "<restoredb>")
-        .replace(/riq_e2e_[ab]\b/g, "<db>")
+        .replace(/adgrmm-postgresql_\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}\.dump/g, "<dump>")
+        .replace(/adgrmm_restore_[0-9a-f]+/g, "<restoredb>")
+        .replace(/adg_e2e_[ab]\b/g, "<db>")
         .replace(/\b[0-9a-f]{64}\b/g, "<sha>")
         .replace(/\b\d+ bytes\b/g, "<n> bytes")
         .replace(/\b(in|Duration=)\s?\d+s\b/g, "$1 <n>s")
         .replace(/Size=\d+/g, "Size=<n>")
-        .replace(/remoteiq-(bkp|restore)-\w+/g, "<tmp>")
+        .replace(/adgrmm-(bkp|restore)-\w+/g, "<tmp>")
         .replace(UUID, (id) => (isFixtureId(id) ? id : "<uuid>"));
 }
 function normalize(value) {
@@ -675,7 +675,7 @@ async function downloadBytes(base, id) {
 }
 
 function extractNdjson(bytes) {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "riq-b7-x-"));
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "adg-b7-x-"));
     try {
         fs.writeFileSync(path.join(dir, "a.tar.gz"), bytes);
         execFileSync("tar", ["xzf", "a.tar.gz"], { cwd: dir });
@@ -1167,13 +1167,13 @@ async function main() {
             assert.equal(r.verification.verified, false, key);
         }
         for (const [label, db] of [["A", dbA], ["B", dbB]]) {
-            const { rows: left } = await db.query(`SELECT datname FROM pg_database WHERE datname LIKE 'remoteiq_restore_%'`);
+            const { rows: left } = await db.query(`SELECT datname FROM pg_database WHERE datname LIKE 'adgrmm_restore_%'`);
             assert.deepEqual(left, [], `${label} left a restore database behind`);
         }
     });
     await check("the downloaded PostgreSQL dump restores to a database with the same data", async () => {
         const dump = await downloadBytes(BASE_B, varsB.pg1);
-        const dir = fs.mkdtempSync(path.join(os.tmpdir(), "riq-b7-r-"));
+        const dir = fs.mkdtempSync(path.join(os.tmpdir(), "adg-b7-r-"));
         const verify = new URL(DB_VERIFY);
         const verifyName = verify.pathname.slice(1);
         const env = pgEnv(DB_VERIFY);

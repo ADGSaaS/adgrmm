@@ -1,4 +1,4 @@
-using RemoteIQ.Agent.Services;
+using AdgRmm.Agent.Services;
 
 static class Tests
 {

@@ -62,7 +62,7 @@ check("the calendar file is valid, escaped, folded and cancels with a higher seq
     assert.ok(ics.startsWith("BEGIN:VCALENDAR\r\n") && ics.endsWith("END:VCALENDAR\r\n"));
     assert.ok(ics.includes("DTSTART:20261116T090000Z") && ics.includes("DTEND:20261116T103000Z"));
     assert.ok(ics.includes("SUMMARY:Fix\\; the\\, printer\\nnow"));
-    assert.ok(ics.includes("UID:abc@remoteiq") && ics.includes("SEQUENCE:2") && ics.includes("METHOD:PUBLISH"));
+    assert.ok(ics.includes("UID:abc@adgrmm") && ics.includes("SEQUENCE:2") && ics.includes("METHOD:PUBLISH"));
     for (const line of ics.split("\r\n")) assert.ok(Buffer.byteLength(line) <= 75, `line too long: ${line.length}`);
     const c = m.buildIcs({ id: "abc", title: "t", startsAt: new Date("2026-11-16T09:00:00Z"), endsAt: new Date("2026-11-16T10:00:00Z"), sequence: 3, cancelled: true });
     assert.ok(c.includes("METHOD:CANCEL") && c.includes("STATUS:CANCELLED") && c.includes("SEQUENCE:3"));

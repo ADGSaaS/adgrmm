@@ -1,4 +1,4 @@
-// remoteiq-minimal-e2e/backend/src/devices/devices.module.ts
+// adgrmm-minimal-e2e/backend/src/devices/devices.module.ts
 import { Module, forwardRef } from "@nestjs/common";
 import { DevicesController } from "./devices.controller";
 import { DeviceActionsController } from "./device-actions.controller";

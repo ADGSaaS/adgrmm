@@ -20,7 +20,7 @@ export class DiagnosticsController {
         res.setHeader("Pragma", "no-cache");
         if (download === "1") {
             const stamp = report.generatedAt.replace(/[:.]/g, "-").slice(0, 19);
-            res.setHeader("Content-Disposition", `attachment; filename="remoteiq-diagnostics-${stamp}.json"`);
+            res.setHeader("Content-Disposition", `attachment; filename="adgrmm-diagnostics-${stamp}.json"`);
         }
         return report;
     }

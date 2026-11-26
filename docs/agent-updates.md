@@ -18,9 +18,9 @@ every so often, and the backend answers only when it has something newer.
 2. Copy the output into `AGENT_PKG_DIR`, keeping the layout. **The version files must be copied too.**
 
    ```
-   windows/remoteiq-agent-windows.zip
+   windows/adgrmm-agent-windows.zip
    windows/version.json
-   linux/remoteiq-agent-linux-x64.tar.gz
+   linux/adgrmm-agent-linux-x64.tar.gz
    linux/version.json
    ```
 
@@ -59,8 +59,8 @@ an older version does nothing for agents that already took the bad one.
 
    | | Windows | Linux |
    |---|---|---|
-   | Started by | Scheduled task `RemoteIQ Agent Update` as SYSTEM, or directly if the task cannot be created | systemd unit `remoteiq-agent-update.service` |
-   | State folder | `C:\ProgramData\RemoteIQ\update` | `/etc/remoteiq/update` |
+   | Started by | Scheduled task `ADG RMM Agent Update` as SYSTEM, or directly if the task cannot be created | systemd unit `adgrmm-agent-update.service` |
+   | State folder | `C:\ProgramData\AdgRmm\update` | `/etc/adgrmm/update` |
    | Log | `apply.log` in the state folder | `apply.log` in the state folder |
 
    A child process would not do on Linux, because stopping the agent's service kills its whole cgroup.

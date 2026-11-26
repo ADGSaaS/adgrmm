@@ -1,7 +1,7 @@
-# RemoteIQ PostgreSQL Disaster Recovery Promotion
+# ADG RMM PostgreSQL Disaster Recovery Promotion
 
 This procedure promotes a verified PostgreSQL DR backup into the live
-RemoteIQ database.
+ADG RMM database.
 
 The web application does not perform production database replacement.
 Production promotion is intentionally an offline operator action.
@@ -13,7 +13,7 @@ The promotion tool:
 - requires an explicit live database confirmation;
 - verifies the supplied SHA-256 checksum;
 - validates the archive with `pg_restore --list`;
-- refuses production promotion while `remoteiq-backend.service` is active;
+- refuses production promotion while `adgrmm-backend.service` is active;
 - refuses promotion while queued/running backup or restore work exists;
 - creates a pre-promotion PostgreSQL safety dump;
 - renames the previous live database and preserves it as a rollback database;
@@ -25,10 +25,10 @@ The promotion tool:
   localhost port and requires `/healthz` HTTP 200;
 - automatically attempts database-name rollback if promotion fails after the
   previous production database has been renamed;
-- never starts `remoteiq-backend.service` automatically.
+- never starts `adgrmm-backend.service` automatically.
 
 `--test-mode` is reserved for disposable databases whose names begin with
-`remoteiq_dr_tooltest_`. It must never be used for production recovery.
+`adgrmm_dr_tooltest_`. It must never be used for production recovery.
 
 ## Preconditions
 
@@ -36,15 +36,15 @@ Run from the backend VM.
 
 Repository:
 
-    /opt/remoteiq/backend-repo
+    /opt/adgrmm/backend-repo
 
 Application:
 
-    /opt/remoteiq/backend-repo/backend
+    /opt/adgrmm/backend-repo/backend
 
 Current production database:
 
-    remoteiq
+    adgrmm
 
 Before entering the outage window:
 
@@ -59,9 +59,9 @@ Before entering the outage window:
 Example active-work check:
 
     docker compose \
-      -f /opt/remoteiq/backend-repo/backend/docker-compose.db.yml \
+      -f /opt/adgrmm/backend-repo/backend/docker-compose.db.yml \
       exec -T postgres \
-    psql -U remoteiq -d remoteiq -P pager=off -c "
+    psql -U adgrmm -d adgrmm -P pager=off -c "
     SELECT 'backup_jobs' AS source, status, count(*)
     FROM backup_jobs
     WHERE status IN ('queued','running')
@@ -81,7 +81,7 @@ The result must contain zero rows.
 
 Set the artifact and expected checksum:
 
-    DR_ARCHIVE="/absolute/path/to/remoteiq-postgresql.dump"
+    DR_ARCHIVE="/absolute/path/to/adgrmm-postgresql.dump"
     DR_CHECKSUM="<64-character-sha256>"
 
 Independently verify the local artifact:
@@ -90,23 +90,23 @@ Independently verify the local artifact:
 
 The calculated checksum must exactly match `DR_CHECKSUM`.
 
-Stop the RemoteIQ backend:
+Stop the ADG RMM backend:
 
-    systemctl stop remoteiq-backend.service
+    systemctl stop adgrmm-backend.service
 
 Confirm it is no longer active:
 
-    systemctl is-active remoteiq-backend.service
+    systemctl is-active adgrmm-backend.service
 
 Run the promotion:
 
-    sudo -u remoteiq -H \
+    sudo -u adgrmm -H \
     node \
-    /opt/remoteiq/backend-repo/backend/scripts/postgres-dr-promote.cjs \
+    /opt/adgrmm/backend-repo/backend/scripts/postgres-dr-promote.cjs \
     --promote \
     --archive "$DR_ARCHIVE" \
     --checksum "$DR_CHECKSUM" \
-    --confirm-live-database remoteiq
+    --confirm-live-database adgrmm
 
 A successful promotion must report all of the following:
 
@@ -117,7 +117,7 @@ A successful promotion must report all of the following:
     PROMOTION_SCHEMA_EXACT_MATCH=1
     PROMOTION_APP_HEALTH_HTTP=200
     PROMOTION_COMPLETED=1
-    PROMOTION_LIVE_DATABASE=remoteiq
+    PROMOTION_LIVE_DATABASE=adgrmm
     PROMOTION_ROLLBACK_DATABASE=<database-name>
     PROMOTION_PRODUCTION_SERVICE_STARTED=0
 
@@ -133,7 +133,7 @@ Do not delete the rollback database or safety dump during the recovery window.
 
 Only after `PROMOTION_COMPLETED=1`:
 
-    systemctl start remoteiq-backend.service
+    systemctl start adgrmm-backend.service
 
 Check local health:
 
@@ -152,7 +152,7 @@ Both must return HTTP 200.
 Review recent service logs:
 
     journalctl \
-      -u remoteiq-backend.service \
+      -u adgrmm-backend.service \
       --since "10 minutes ago" \
       --no-pager
 
@@ -163,7 +163,7 @@ Perform application-level smoke tests before declaring recovery complete.
 If production must be returned to the preserved pre-promotion database, first
 take the backend offline again:
 
-    systemctl stop remoteiq-backend.service
+    systemctl stop adgrmm-backend.service
 
 Set the exact rollback database returned by the promotion command:
 
@@ -171,24 +171,24 @@ Set the exact rollback database returned by the promotion command:
 
 Run:
 
-    sudo -u remoteiq -H \
+    sudo -u adgrmm -H \
     node \
-    /opt/remoteiq/backend-repo/backend/scripts/postgres-dr-promote.cjs \
+    /opt/adgrmm/backend-repo/backend/scripts/postgres-dr-promote.cjs \
     --rollback \
     --rollback-database "$ROLLBACK_DB" \
-    --confirm-live-database remoteiq
+    --confirm-live-database adgrmm
 
 Success must report:
 
     BACKEND_SERVICE_OFFLINE=1
     ROLLBACK_COMPLETED=1
-    ROLLBACK_LIVE_DATABASE=remoteiq
+    ROLLBACK_LIVE_DATABASE=adgrmm
     ROLLBACK_FAILED_PROMOTION_DATABASE=<database-name>
     ROLLBACK_PRODUCTION_SERVICE_STARTED=0
 
 Then:
 
-    systemctl start remoteiq-backend.service
+    systemctl start adgrmm-backend.service
 
 Repeat local/public health and application smoke tests.
 

@@ -129,7 +129,7 @@ export function createArchiveDecryptStream(): Transform {
     const readHeader = (): void => {
         const raw = queue.take(HEADER_BYTES);
         if (!raw.subarray(0, MAGIC.length).equals(MAGIC)) {
-            throw new Error("This file is not an encrypted RemoteIQ archive.");
+            throw new Error("This file is not an encrypted ADG RMM archive.");
         }
         const chunkBytes = raw.readUInt32BE(MAGIC.length);
         if (chunkBytes < 1 || chunkBytes > MAX_CHUNK_BYTES) throw new Error(DECRYPT_FAILED);
@@ -172,7 +172,7 @@ export function createArchiveDecryptStream(): Transform {
                 if (!header) {
                     // Reached only by a file shorter than the header, whatever its first bytes are.
                     if (queue.length >= MAGIC.length && !queue.take(MAGIC.length).equals(MAGIC)) {
-                        throw new Error("This file is not an encrypted RemoteIQ archive.");
+                        throw new Error("This file is not an encrypted ADG RMM archive.");
                     }
                     throw new Error(DECRYPT_FAILED);
                 }

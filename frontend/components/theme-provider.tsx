@@ -21,7 +21,7 @@ export function ThemeProvider({
       attribute="class"
       defaultTheme="dark"
       enableSystem
-      storageKey="riq-theme"
+      storageKey="adg-theme"
       disableTransitionOnChange
       {...props}
     >

@@ -8,7 +8,7 @@ Tests: `assets-provider-http.e2e.cjs` (12), `assets-provider-service.e2e.cjs` (1
 
 ## The rule
 
-RemoteIQ has a built-in asset manager. The owner's separate software, Killian, has its own. **When Killian is integrated, the built-in
+ADG RMM has a built-in asset manager. The owner's separate software, Killian, has its own. **When Killian is integrated, the built-in
 asset manager is switched off and Killian's is the only one.** Never two at once.
 
 ## What exists today
@@ -36,8 +36,8 @@ the Owner role only, and is audited with who, when, from and to.
 
 ### 2. One seam: `AssetProvider`
 
-Every part of RemoteIQ that touches assets goes through one interface instead of reading the `assets` table. It only has the
-operations RemoteIQ really needs:
+Every part of ADG RMM that touches assets goes through one interface instead of reading the `assets` table. It only has the
+operations ADG RMM really needs:
 
 | Operation | Used by |
 |---|---|
@@ -52,7 +52,7 @@ Two providers:
 
 * **Built-in**: today's code moved behind the interface. No behaviour change.
 * **External (Killian)**: an outbound adapter. It is written when Killian's API exists. Until then `external` means "assets are somewhere
-  else and RemoteIQ does not know how to reach them", which is safe: nothing breaks, the asset features simply are not there.
+  else and ADG RMM does not know how to reach them", which is safe: nothing breaks, the asset features simply are not there.
 
 ### 3. What switching to external does
 
@@ -74,7 +74,7 @@ Administration > Integrations gets an "Assets" card:
 
 ### 5. Rights and customer limits
 
-Customer limits keep working on whatever asset data RemoteIQ shows. `assets.read` and `assets.write` keep meaning what they mean today
+Customer limits keep working on whatever asset data ADG RMM shows. `assets.read` and `assets.write` keep meaning what they mean today
 for the built-in provider. Switching is `integrations.manage`, Owner only.
 
 ### 6. Failure behaviour
@@ -104,5 +104,5 @@ Steps 1 to 4 are built. Step 5 waits for Killian.
 ## Open questions
 
 * What does Killian's API look like (REST, sign-in method, how it names customers and sites)?
-* Does Killian want RemoteIQ to push device facts to it, or pull them?
-* Should a device deleted in RemoteIQ also be marked retired in Killian?
+* Does Killian want ADG RMM to push device facts to it, or pull them?
+* Should a device deleted in ADG RMM also be marked retired in Killian?

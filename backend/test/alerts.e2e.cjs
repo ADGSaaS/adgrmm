@@ -1,11 +1,11 @@
 // Runs the alert flow against a real database, with every migration applied.
-// Usage, from backend/ after building: RIQ_E2E_ALLOW=1 DATABASE_URL=postgres://.../riq_e2e node test/alerts.e2e.cjs
+// Usage, from backend/ after building: ADG_E2E_ALLOW=1 DATABASE_URL=postgres://.../adg_e2e node test/alerts.e2e.cjs
 const http = require("node:http");
 const crypto = require("node:crypto");
 const path = require("node:path");
 
-if (process.env.RIQ_E2E_ALLOW !== "1" || !/e2e/.test(process.env.DATABASE_URL || "")) {
-    console.error("Refusing to run: set RIQ_E2E_ALLOW=1 and an e2e-named DATABASE_URL.");
+if (process.env.ADG_E2E_ALLOW !== "1" || !/e2e/.test(process.env.DATABASE_URL || "")) {
+    console.error("Refusing to run: set ADG_E2E_ALLOW=1 and an e2e-named DATABASE_URL.");
     process.exit(2);
 }
 
@@ -89,8 +89,8 @@ function check(name, ok, extra) {
     await new Promise((r) => setTimeout(r, 200));
     check("the webhook received opened and escalated", received.length === 2, received.length);
     const first = received[0];
-    const expected = crypto.createHmac("sha256", channel.signingSecret).update(`${first?.headers["x-remoteiq-timestamp"]}.${first?.body}`).digest("hex");
-    check("the webhook signature verifies", first?.headers["x-remoteiq-signature"] === `sha256=${expected}`);
+    const expected = crypto.createHmac("sha256", channel.signingSecret).update(`${first?.headers["x-adg-timestamp"]}.${first?.body}`).digest("hex");
+    check("the webhook signature verifies", first?.headers["x-adg-signature"] === `sha256=${expected}`);
 
     const summary = await alerts.summary();
     check("the summary counts it", summary.open === 1 && summary.openCritical === 1, summary);

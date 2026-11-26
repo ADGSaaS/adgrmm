@@ -233,7 +233,7 @@ export class DeviceActionsController {
         // The name arrives through the environment, so PowerShell never parses it as code.
         const ps = `
 $ErrorActionPreference = 'Stop'
-$targetName = $env:REMOTEIQ_UNINSTALL_NAME
+$targetName = $env:ADG_UNINSTALL_NAME
 $apps = @()
 $apps += Get-ItemProperty "HKLM:\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\*" -ErrorAction SilentlyContinue
 $apps += Get-ItemProperty "HKLM:\\Software\\WOW6432Node\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\*" -ErrorAction SilentlyContinue
@@ -254,7 +254,7 @@ exit $p.ExitCode
             agentId,
             language: "powershell",
             scriptText: ps,
-            env: { REMOTEIQ_UNINSTALL_NAME: body.name },
+            env: { ADG_UNINSTALL_NAME: body.name },
             timeoutSec: 30 * 60,
         });
 
@@ -279,7 +279,7 @@ exit $p.ExitCode
             agentId,
             language: "bash",
             scriptText: LINUX_PACKAGE_SCRIPT,
-            env: { RIQ_PKG: name, RIQ_PKG_ACTION: action },
+            env: { ADG_PKG: name, ADG_PKG_ACTION: action },
             timeoutSec: 30 * 60,
         });
         return { accepted: true, jobId: job.id };

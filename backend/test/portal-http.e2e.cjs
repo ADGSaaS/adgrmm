@@ -3,7 +3,7 @@
 // in emails, and above all that a customer's people see only their own company.
 // Run against a throwaway backend and database only:
 //
-//   RIQ_E2E_ALLOW=1 BASE_URL=http://127.0.0.1:3901 DATABASE_URL=postgres://.../riq_e2e JWT_SECRET=... node test/portal-http.e2e.cjs
+//   ADG_E2E_ALLOW=1 BASE_URL=http://127.0.0.1:3901 DATABASE_URL=postgres://.../adg_e2e JWT_SECRET=... node test/portal-http.e2e.cjs
 "use strict";
 
 const assert = require("node:assert/strict");
@@ -17,8 +17,8 @@ const DB_URL = process.env.DATABASE_URL || "";
 const SECRET = process.env.JWT_SECRET || "";
 const COOKIE = process.env.AUTH_COOKIE_NAME || "auth_token";
 
-if (process.env.RIQ_E2E_ALLOW !== "1" || !/e2e/.test(new URL(DB_URL).pathname) || !SECRET) {
-    console.error("Refusing to run: set RIQ_E2E_ALLOW=1, JWT_SECRET, and a DATABASE_URL naming an e2e database.");
+if (process.env.ADG_E2E_ALLOW !== "1" || !/e2e/.test(new URL(DB_URL).pathname) || !SECRET) {
+    console.error("Refusing to run: set ADG_E2E_ALLOW=1, JWT_SECRET, and a DATABASE_URL naming an e2e database.");
     process.exit(2);
 }
 

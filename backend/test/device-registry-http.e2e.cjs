@@ -4,7 +4,7 @@
 // script jobs: the devices.registry.read right, path checks, the blocklist (403, no job), the mask, the customer limit, offline and
 // Linux devices, audit rows, the slow-device pending flow, and that nothing typed ever reaches the script text.
 //
-//   RIQ_E2E_ALLOW=1 BASE_URL=http://127.0.0.1:3951 DATABASE_URL=postgres://.../riq_reg_e2e JWT_SECRET=... node test/device-registry-http.e2e.cjs
+//   ADG_E2E_ALLOW=1 BASE_URL=http://127.0.0.1:3951 DATABASE_URL=postgres://.../adg_reg_e2e JWT_SECRET=... node test/device-registry-http.e2e.cjs
 "use strict";
 const path = require("node:path");
 const { assert, call, runner, setup, uuid } = require("./groupc-helpers.cjs");
@@ -50,11 +50,11 @@ function modelOf(dev) {
 }
 function fakeWrite(kind, env, dev) {
     const m = modelOf(dev);
-    const p = env.RIQ_REG_PATH;
+    const p = env.ADG_REG_PATH;
     if (/Denied/.test(p)) return { ok: false, error: "Access to the registry key is denied." };
     const un = (x) => String(x).slice(2);
     const dec = (j) => { const o = JSON.parse(j); return Array.isArray(o.v) ? o.v.map(un) : un(o.v); };
-    const ex = env.RIQ_REG_EXPECT ? JSON.parse(env.RIQ_REG_EXPECT) : null;
+    const ex = env.ADG_REG_EXPECT ? JSON.parse(env.ADG_REG_EXPECT) : null;
     const refuse = (reason, message, old) => ({ ok: true, status: "refused", reason, message, ...(old ? { old } : {}) });
     const expectOk = (old) => {
         if (!ex) return true;
@@ -67,12 +67,12 @@ function fakeWrite(kind, env, dev) {
     const key = m.get(lc(p));
     if (kind === "set" || kind === "delete-value") {
         if (!key) return { ok: false, error: "That registry key does not exist on this device." };
-        const name = env.RIQ_REG_NAME ?? "";
+        const name = env.ADG_REG_NAME ?? "";
         const old = key.values.get(lc(name));
         if (kind === "delete-value" && !old) return refuse("missing", "That value does not exist (any more), so there is nothing to delete.", rowOf(old));
         if (!expectOk(old)) return refuse("changed", "The value was changed on the device since you looked at it, so nothing was changed.", old ? rowOf(old) : undefined);
         if (kind === "delete-value") { key.values.delete(lc(name)); return { ok: true, status: "done", old: rowOf(old), new: { exists: false } }; }
-        const nv = { name: old ? old.name : name, type: env.RIQ_REG_TYPE, d: dec(env.RIQ_REG_DATA) };
+        const nv = { name: old ? old.name : name, type: env.ADG_REG_TYPE, d: dec(env.ADG_REG_DATA) };
         key.values.set(lc(name), nv);
         return { ok: true, status: "done", old: rowOf(old), new: rowOf(nv) };
     }
@@ -81,7 +81,7 @@ function fakeWrite(kind, env, dev) {
     if (kind === "create-key") {
         if (!parent) return refuse("missing", "The key above it does not exist, so the key cannot be created.");
         if (key) return refuse("exists", "That key already exists, so nothing was created.");
-        const items = env.RIQ_REG_VALUES ? JSON.parse(env.RIQ_REG_VALUES).items : [];
+        const items = env.ADG_REG_VALUES ? JSON.parse(env.ADG_REG_VALUES).items : [];
         m.set(lc(p), { path: p, values: new Map(items.map((it) => { const v = { name: un(it.n), type: it.t, d: Array.isArray(it.v) ? it.v.map(un) : un(it.v) }; return [lc(v.name), v]; })) });
         return { ok: true, status: "done", created: true, valueCount: items.length };
     }
@@ -141,12 +141,12 @@ async function main() {
         try {
             const rows = (await q(`SELECT j.id, j.payload, a.device_id, a.facts->>'os' AS os FROM jobs j JOIN agents a ON a.id = j.agent_id WHERE j.status = 'queued' AND a.device_id = ANY($1::uuid[])`, [devs])).rows;
             for (const r of rows) {
-                const kind = r.payload?.env?.RIQ_TOOL;
+                const kind = r.payload?.env?.ADG_TOOL;
                 if (!kind || handled.has(r.id)) continue;
                 handled.add(r.id);
                 if (kind === delayKind) { delayKind = null; await new Promise((x) => setTimeout(x, 27_000)); }
                 seen.push({ id: r.id, kind, os: r.os, payload: r.payload });
-                const p = r.payload?.env?.RIQ_REG_PATH ?? "";
+                const p = r.payload?.env?.ADG_REG_PATH ?? "";
                 const writeKind = ["set", "delete-value", "create-key", "delete-key"].find((k) => kind === `registry.${k}`);
                 const out = writeKind ? JSON.stringify(fakeWrite(writeKind, r.payload.env, r.device_id))
                     : kind === "registry.key"
@@ -205,8 +205,8 @@ async function main() {
         assert.equal(seen.length, before + 1);
         assert.equal(job.kind, "registry.key");
         assert.equal(job.payload.language, "powershell");
-        assert.equal(job.payload.env.RIQ_REG_PATH, "HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion");
-        assert.equal(job.payload.env.RIQ_REG_VIEW, "32");
+        assert.equal(job.payload.env.ADG_REG_PATH, "HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion");
+        assert.equal(job.payload.env.ADG_REG_VIEW, "32");
         assert.ok(!job.payload.scriptText.includes("Windows\CurrentVersion") && !/Get-CimInstance|Win32_/.test(job.payload.scriptText), "typed path is not in the script; no WMI");
         assert.equal(job.payload.timeoutSec ?? job.payload.timeout_sec ?? 90, 90);
     });
@@ -218,7 +218,7 @@ async function main() {
         assert.equal(seen[seen.length - 1].kind, "registry.roots");
         const r2 = await (await get(win.id, `?path=HKU`, reader)).json();
         assert.equal(r2.path, "HKU");
-        assert.equal(seen[seen.length - 1].payload.env.RIQ_REG_PATH, "HKU");
+        assert.equal(seen[seen.length - 1].payload.env.ADG_REG_PATH, "HKU");
     });
 
     await test("a key that does not exist is a 409 with the device's words", async () => {
@@ -264,12 +264,12 @@ async function main() {
         assert.equal(r.truncated, true); assert.equal(r.reason, "time");
         const job = seen[seen.length - 1];
         assert.equal(job.kind, "registry.search");
-        assert.equal(job.payload.env.RIQ_REG_TEXT, nasty);
-        assert.equal(job.payload.env.RIQ_REG_IN, "data");
-        assert.equal(job.payload.env.RIQ_REG_PATH, "HKLM\\SOFTWARE");
+        assert.equal(job.payload.env.ADG_REG_TEXT, nasty);
+        assert.equal(job.payload.env.ADG_REG_IN, "data");
+        assert.equal(job.payload.env.ADG_REG_PATH, "HKLM\\SOFTWARE");
         assert.ok(!job.payload.scriptText.includes("calc") && !job.payload.scriptText.includes("HKLM\\SOFTWARE\\Vendor"));
         const d = await (await get(win.id, `/search?path=HKU&text=Run`, reader)).json();
-        assert.equal(seen[seen.length - 1].payload.env.RIQ_REG_IN, "keys", "default is keys");
+        assert.equal(seen[seen.length - 1].payload.env.ADG_REG_IN, "keys", "default is keys");
         assert.equal(d.in, "keys");
     });
 
@@ -421,9 +421,9 @@ async function main() {
         const job = seen[seen.length - 1];
         assert.equal(job.kind, "registry.set"); assert.equal(job.payload.language, "powershell"); assert.equal(job.payload.scriptText, WR.REGISTRY_WRITE_SCRIPTS.set, "the fixed script, byte for byte");
         const env = job.payload.env;
-        assert.equal(env.RIQ_REG_PATH, V); assert.equal(env.RIQ_REG_NAME, "Name"); assert.equal(env.RIQ_REG_TYPE, "REG_SZ"); assert.equal(env.RIQ_REG_VIEW, "64");
-        assert.equal(JSON.parse(env.RIQ_REG_DATA).v, `s:${data}`);
-        assert.deepEqual(JSON.parse(env.RIQ_REG_EXPECT), { exists: true, type: "REG_SZ", size: 3, hasData: true, v: "s:old" });
+        assert.equal(env.ADG_REG_PATH, V); assert.equal(env.ADG_REG_NAME, "Name"); assert.equal(env.ADG_REG_TYPE, "REG_SZ"); assert.equal(env.ADG_REG_VIEW, "64");
+        assert.equal(JSON.parse(env.ADG_REG_DATA).v, `s:${data}`);
+        assert.deepEqual(JSON.parse(env.ADG_REG_EXPECT), { exists: true, type: "REG_SZ", size: 3, hasData: true, v: "s:old" });
         assert.ok(!job.payload.scriptText.includes(DATAMARK) && !job.payload.scriptText.includes("Vendor"), "no typed text in the script");
         assert.equal(job.payload.timeoutSec ?? job.payload.timeout_sec ?? 90, 90);
         const [row] = await rows(D);
@@ -445,9 +445,9 @@ async function main() {
         const b = await one("Blob", "REG_BINARY", "DE AD BE EF"); assert.equal(b.new.data, "de ad be ef");
         const e = await one("Path", "REG_EXPAND_SZ", "%SystemRoot%\\x"); assert.equal(e.new.type, "REG_EXPAND_SZ");
         const def = await one("", "REG_SZ", "changed default", { exists: true, type: "REG_SZ", data: "default data" }); assert.equal(def.display, "(Default)"); assert.equal(def.old.data, "default data");
-        assert.equal(jobsFor("registry.set").slice(-1)[0].payload.env.RIQ_REG_NAME, "");
-        const bin = jobsFor("registry.set").find((j) => j.payload.env.RIQ_REG_NAME === "Blob");
-        assert.equal(JSON.parse(bin.payload.env.RIQ_REG_DATA).v, "s:de ad be ef");
+        assert.equal(jobsFor("registry.set").slice(-1)[0].payload.env.ADG_REG_NAME, "");
+        const bin = jobsFor("registry.set").find((j) => j.payload.env.ADG_REG_NAME === "Blob");
+        assert.equal(JSON.parse(bin.payload.env.ADG_REG_DATA).v, "s:de ad be ef");
     });
 
     await test("optimistic concurrency: a stale 'expected old value' is a 409 'changed' (record: refused, audit: failure), nothing changes; a failing or missing key is a 409 and a 'failed' record", async () => {
@@ -512,12 +512,12 @@ async function main() {
             ["PUT", { path: "HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Policies\\System", name: "LocalAccountTokenFilterPolicy" }, /User Account Control/],
             ["PUT", { path: "HKLM\\SOFTWARE\\Microsoft\\Windows Defender\\Exclusions\\Paths", name: "C:\\x" }, /Defender/], ["PUT", { path: "HKLM\\SOFTWARE\\Policies\\Microsoft\\Windows Defender", name: "DisableAntiSpyware" }, /Defender/],
             ["PUT", { path: "HKLM\\SYSTEM\\CurrentControlSet\\Services\\WinDefend", name: "Start" }, /Defender/],
-            ["PUT", { path: "HKLM\\SOFTWARE\\RemoteIQ", name: "x" }, /RemoteIQ/], ["PUT", { path: "HKLM\\SOFTWARE\\WOW6432Node\\Vendor\\RemoteIQ Agent", name: "x" }, /RemoteIQ/], ["PUT", { path: "HKLM\\SYSTEM\\CurrentControlSet\\Services\\RemoteIQAgent", name: "ImagePath" }, /RemoteIQ/],
+            ["PUT", { path: "HKLM\\SOFTWARE\\AdgRmm", name: "x" }, /AdgRmm/], ["PUT", { path: "HKLM\\SOFTWARE\\WOW6432Node\\Vendor\\AdgRmm Agent", name: "x" }, /AdgRmm/], ["PUT", { path: "HKLM\\SYSTEM\\CurrentControlSet\\Services\\AdgRmmAgent", name: "ImagePath" }, /AdgRmm/],
             ["PUT", { path: "HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run", name: "Updater" }, /Run keys/], ["PUT", { path: "HKU\\S-1-5-21-1-2-3-1001\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\RunOnce", name: "x" }, /Run keys/], ["POST", { path: "HKLM\\SOFTWARE\\WOW6432Node\\Microsoft\\Windows\\CurrentVersion\\Run\\New" }, /Run keys/], ["PUT", { path: `${WN}\\Windows`, name: "AppInit_DLLs" }, /AppInit_DLLs/], ["PUT", { path: `${WN}\\Windows`, name: "LoadAppInit_DLLs" }, /AppInit_DLLs/],
             ["PUT", { path: "HKLM\\SYSTEM\\CurrentControlSet\\Control\\Lsa", name: "RunAsPPL" }, /blocked/], ["PUT", { path: "HKLM\\SAM\\SAM", name: "x" }, /protected|holds|blocked/], ["PUT", { path: "HKLM\\SECURITY", name: "x" }, /blocked/],
             ["PUT", { path: V, name: "MyPassword" }, /password, secret, token/], ["PUT", { path: V, name: "ApiKey" }, /password, secret, token/], ["PUT", { path: V, name: "client_secret" }, /password, secret, token/],
-            ["DELETE", { path: V, name: "MyPassword" }, /password, secret, token/], ["DELETE", { path: `${WN}\\Winlogon`, name: "Shell" }, /Winlogon/], ["DELETE", { path: "HKLM\\SOFTWARE\\RemoteIQ", name: "x" }, /RemoteIQ/],
-            ["POST", { path: "HKLM\\SYSTEM" }, /top-level/], ["POST", { path: "HKLM\\SOFTWARE\\RemoteIQ\\New" }, /RemoteIQ/], ["POST", { path: "HKLM\\SYSTEM\\Setup\\New" }, /Setup/], ["POST", { path: "HKU\\.DEFAULT" }, /top-level/],
+            ["DELETE", { path: V, name: "MyPassword" }, /password, secret, token/], ["DELETE", { path: `${WN}\\Winlogon`, name: "Shell" }, /Winlogon/], ["DELETE", { path: "HKLM\\SOFTWARE\\AdgRmm", name: "x" }, /AdgRmm/],
+            ["POST", { path: "HKLM\\SYSTEM" }, /top-level/], ["POST", { path: "HKLM\\SOFTWARE\\AdgRmm\\New" }, /AdgRmm/], ["POST", { path: "HKLM\\SYSTEM\\Setup\\New" }, /Setup/], ["POST", { path: "HKU\\.DEFAULT" }, /top-level/],
             ["DKEY", { path: `${WN}\\Winlogon` }, /Winlogon/], ["DKEY", { path: "HKLM\\SOFTWARE" }, /top-level/], ["DKEY", { path: `${WN}\\Image File Execution Options` }, /Image File/], ["DKEY", { path: "HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Policies\\System" }, /User Account Control/],
         ];
         const ids = [];
@@ -545,7 +545,7 @@ async function main() {
         assert.equal(jobsFor("registry.delete-value").slice(-1)[0].payload.scriptText, WR.REGISTRY_WRITE_SCRIPTS.deleteValue);
         r = await delv(D, W, { path: V, name: "Count" }); assert.equal(r.status, 409); assert.match((await r.json()).message, /does not exist/);
         r = await mkkey(D, W, { path: "HKLM\\SOFTWARE\\Created" }); assert.equal(r.status, 200); b = await r.json(); assert.equal(b.change.action, "create-key"); assert.equal(b.change.valueCount, 0);
-        assert.equal(jobsFor("registry.create-key").slice(-1)[0].payload.env.RIQ_REG_PATH, "HKLM\\SOFTWARE\\Created");
+        assert.equal(jobsFor("registry.create-key").slice(-1)[0].payload.env.ADG_REG_PATH, "HKLM\\SOFTWARE\\Created");
         assert.equal((await mkkey(D, W, { path: "HKLM\\SOFTWARE\\Created" })).status, 409);
         r = await mkkey(D, W, { path: "HKLM\\SOFTWARE\\NoParent\\Child" }); assert.equal(r.status, 409); assert.match((await r.json()).message, /above it does not exist/);
         r = await delkey(D, W, { path: V }); assert.equal(r.status, 409); assert.match((await r.json()).message, /has 1 sub key/); assert.ok(modelOf(D.id).has(lc(V)), "nothing deleted");
@@ -574,7 +574,7 @@ async function main() {
         assert.equal((await q(`SELECT undone_at FROM device_registry_changes WHERE id = $1`, [c1.id])).rows[0].undone_at, null);
         r = await undo(D, W, c2.id); assert.equal(r.status, 200); b = await r.json(); assert.equal(b.change.action, "set"); assert.equal(b.change.undo, true); assert.equal(b.change.undoOf, c2.id); assert.equal(b.change.new.data, "v1");
         assert.equal(modelOf(D.id).get(lc(V)).values.get("name").d, "v1");
-        const j = jobsFor("registry.set").slice(-1)[0]; assert.deepEqual(JSON.parse(j.payload.env.RIQ_REG_EXPECT), { exists: true, type: "REG_SZ", hasData: true, v: "s:v2" }, "undo expects what the change left");
+        const j = jobsFor("registry.set").slice(-1)[0]; assert.deepEqual(JSON.parse(j.payload.env.ADG_REG_EXPECT), { exists: true, type: "REG_SZ", hasData: true, v: "s:v2" }, "undo expects what the change left");
         const orig = (await q(`SELECT undone_at, undone_by FROM device_registry_changes WHERE id = $1`, [c2.id])).rows[0]; assert.ok(orig.undone_at); assert.equal(orig.undone_by, W.id);
         r = await undo(D, W, c2.id); assert.equal(r.status, 409); assert.match((await r.json()).message, /already undone/);
         r = await undo(D, W, b.change.id); assert.equal(r.status, 409); assert.match((await r.json()).message, /undo cannot be undone/);
@@ -595,7 +595,7 @@ async function main() {
         let r = await undo(D, W, made.id); assert.equal(r.status, 200); let b = await r.json(); assert.equal(b.change.action, "delete-value"); assert.equal(modelOf(D.id).get(lc(V)).values.has("fresh"), false);
         const del = (await (await delv(D, W, { path: V, name: "Count", expected: { exists: true, type: "REG_DWORD", data: 5 } })).json()).change;
         r = await undo(D, W, del.id); assert.equal(r.status, 200); b = await r.json(); assert.equal(b.change.action, "set"); assert.deepEqual([b.change.new.type, b.change.new.data], ["REG_DWORD", 5]);
-        assert.deepEqual(JSON.parse(jobsFor("registry.set").slice(-1)[0].payload.env.RIQ_REG_EXPECT), { exists: false });
+        assert.deepEqual(JSON.parse(jobsFor("registry.set").slice(-1)[0].payload.env.ADG_REG_EXPECT), { exists: false });
         const refusedRec = await put(D, W, { path: V, name: "Name", type: "REG_SZ", data: "x", expected: { exists: false } }); const rb = await refusedRec.json(); assert.equal(refusedRec.status, 409);
         r = await undo(D, W, rb.changeId); assert.equal(r.status, 409); assert.match((await r.json()).message, /Only a change that was made/);
         r = await undo(D2, W, made.id); assert.equal(r.status, 404, "a change id of another device");
@@ -615,7 +615,7 @@ async function main() {
         const dk = (await (await delkey(D, W, { path: "HKLM\\SOFTWARE\\Filled", expectedValueCount: 3 })).json()).change;
         r = await undo(D, W, dk.id); assert.equal(r.status, 200); const b = await r.json(); assert.equal(b.change.action, "create-key"); assert.equal(b.change.valueCount, 3);
         const restored = modelOf(D.id).get(lc("HKLM\\SOFTWARE\\Filled")); assert.ok(restored); assert.deepEqual([...restored.values.values()].map((v) => [v.name, v.type, v.d]), [["One", "REG_SZ", "1"], ["Two", "REG_QWORD", "18446744073709551615"], ["Three", "REG_MULTI_SZ", ["x", "y z"]]]);
-        const env = jobsFor("registry.create-key").slice(-1)[0].payload.env; assert.equal(JSON.parse(env.RIQ_REG_VALUES).items.length, 3); assert.equal(jobsFor("registry.create-key").slice(-1)[0].payload.scriptText, WR.REGISTRY_WRITE_SCRIPTS.createKey);
+        const env = jobsFor("registry.create-key").slice(-1)[0].payload.env; assert.equal(JSON.parse(env.ADG_REG_VALUES).items.length, 3); assert.equal(jobsFor("registry.create-key").slice(-1)[0].payload.scriptText, WR.REGISTRY_WRITE_SCRIPTS.createKey);
         r = await undo(D, W, dk.id); assert.equal(r.status, 409); assert.match((await r.json()).message, /already undone/);
     });
 

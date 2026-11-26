@@ -1,6 +1,6 @@
 "use client";
 
-// Health of the RemoteIQ servers themselves: database, disk, memory, the job queue, backups and the monthly restore test.
+// Health of the ADG RMM servers themselves: database, disk, memory, the job queue, backups and the monthly restore test.
 // It is checked every minute on the server and the Owner is told (email / Slack / webhook as set for backups) when something changes state.
 import * as React from "react";
 import { DatabaseBackup } from "lucide-react";

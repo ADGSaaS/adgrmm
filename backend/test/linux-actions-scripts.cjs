@@ -22,7 +22,7 @@ const A = require(path.join(base, "security", "security-linux.actions.js"));
 let passed = 0, failed = 0;
 const check = (name, fn) => { try { fn(); passed++; console.log(`ok   ${name}`); } catch (e) { failed++; console.log(`FAIL ${name}: ${e.message}`); } };
 
-const dir = fs.mkdtempSync(path.join(os.tmpdir(), "riq-lxact-"));
+const dir = fs.mkdtempSync(path.join(os.tmpdir(), "adg-lxact-"));
 fs.writeFileSync(path.join(dir, "pkg.sh"), P.LINUX_PACKAGE_SCRIPT, { mode: 0o755 });
 fs.writeFileSync(path.join(dir, "fw.sh"), A.LINUX_FIREWALL_ENABLE_SCRIPT, { mode: 0o755 });
 fs.writeFileSync(path.join(dir, "mw.sh"), A.LINUX_MALWARE_SCAN_SCRIPT, { mode: 0o755 });
@@ -32,7 +32,7 @@ const inBox = (image, body, env = {}) => {
     const r = docker(args);
     return { status: r.status, stdout: r.stdout || "", stderr: r.stderr || "" };
 };
-const pkgRun = (image, action, pkg, before = "") => inBox(image, `${before}\nbash /w/pkg.sh; echo "EXIT=$?"`, { RIQ_PKG: pkg, RIQ_PKG_ACTION: action });
+const pkgRun = (image, action, pkg, before = "") => inBox(image, `${before}\nbash /w/pkg.sh; echo "EXIT=$?"`, { ADG_PKG: pkg, ADG_PKG_ACTION: action });
 const exitOf = (r) => Number((/EXIT=(\d+)/.exec(r.stdout) || [])[1]);
 
 console.log("name checks (server side)");
@@ -43,11 +43,11 @@ check("a good name passes, bad names and shell tricks are refused", () => {
         assert.throws(() => P.checkPackageName(bad, "install"), /package|Say which/i, String(bad));
 });
 check("protected packages are never removed, but may be asked about by name only for install", () => {
-    for (const p of ["openssh-server", "systemd", "sudo", "bash", "libc6", "apt", "dpkg", "rpm", "dnf", "linux-image-6.8.0-generic", "kernel-core", "grub-pc", "ufw", "firewalld", "remoteiq-agent", "remoteiq", "network-manager", "libssl3:amd64"])
+    for (const p of ["openssh-server", "systemd", "sudo", "bash", "libc6", "apt", "dpkg", "rpm", "dnf", "linux-image-6.8.0-generic", "kernel-core", "grub-pc", "ufw", "firewalld", "adgrmm-agent", "adgrmm", "network-manager", "libssl3:amd64"])
         assert.throws(() => P.checkPackageName(p, "remove"), /not removed from here/, p);
     assert.equal(P.checkPackageName("tree", "remove"), "tree");
     assert.equal(P.checkPackageName("nginx", "remove"), "nginx");
-    assert.throws(() => P.checkPackageName("remoteiq-agent", "install"), /installer/);
+    assert.throws(() => P.checkPackageName("adgrmm-agent", "install"), /installer/);
 });
 check("the scripts are plain: no template markers, no backticks, no secrets", () => {
     for (const s of [P.LINUX_PACKAGE_SCRIPT, A.LINUX_FIREWALL_ENABLE_SCRIPT, A.LINUX_MALWARE_SCAN_SCRIPT]) {
@@ -65,14 +65,14 @@ check("debian: refuses a name that is not a name, and an unknown action", () => 
 });
 check("debian: install, install again (already there), a removal that would take another package is refused, remove", () => {
     const r = inBox("debian:12", `
-export RIQ_PKG_ACTION=install RIQ_PKG=cowsay
+export ADG_PKG_ACTION=install ADG_PKG=cowsay
 bash /w/pkg.sh >/tmp/a.out 2>&1; echo "INSTALL=$?"; tail -1 /tmp/a.out
 bash /w/pkg.sh >/tmp/b.out 2>&1; echo "AGAIN=$?"; tail -1 /tmp/b.out
-RIQ_PKG_ACTION=remove RIQ_PKG=perl bash /w/pkg.sh >/tmp/c.out 2>&1; echo "DEP=$?"; tail -1 /tmp/c.out
+ADG_PKG_ACTION=remove ADG_PKG=perl bash /w/pkg.sh >/tmp/c.out 2>&1; echo "DEP=$?"; tail -1 /tmp/c.out
 dpkg -s cowsay | grep -c 'install ok installed'
-RIQ_PKG_ACTION=remove RIQ_PKG=cowsay bash /w/pkg.sh >/tmp/d.out 2>&1; echo "REMOVE=$?"; tail -1 /tmp/d.out
+ADG_PKG_ACTION=remove ADG_PKG=cowsay bash /w/pkg.sh >/tmp/d.out 2>&1; echo "REMOVE=$?"; tail -1 /tmp/d.out
 dpkg -s cowsay 2>&1 | grep -c 'install ok installed'
-RIQ_PKG_ACTION=remove RIQ_PKG=cowsay bash /w/pkg.sh >/tmp/e.out 2>&1; echo "GONE=$?"; tail -1 /tmp/e.out`);
+ADG_PKG_ACTION=remove ADG_PKG=cowsay bash /w/pkg.sh >/tmp/e.out 2>&1; echo "GONE=$?"; tail -1 /tmp/e.out`);
     assert.match(r.stdout, /INSTALL=0\nOK Installed cowsay\./, r.stdout + r.stderr);
     assert.match(r.stdout, /AGAIN=0\nOK cowsay is already installed\./);
     assert.match(r.stdout, /DEP=3\nRemoving perl would also remove: .*cowsay/);
@@ -81,9 +81,9 @@ RIQ_PKG_ACTION=remove RIQ_PKG=cowsay bash /w/pkg.sh >/tmp/e.out 2>&1; echo "GONE
 for (const [image, pkg] of [["fedora:40", "tree"], ["rockylinux:9", "tree"], ["opensuse/leap:15.6", "tree"]]) {
     check(`${image}: install ${pkg}, remove it, and a removal that would break other packages is refused`, () => {
         const r = inBox(image, `
-RIQ_PKG_ACTION=install RIQ_PKG=${pkg} bash /w/pkg.sh >/tmp/a.out 2>&1; echo "INSTALL=$?"; tail -1 /tmp/a.out
-RIQ_PKG_ACTION=remove RIQ_PKG=bash bash /w/pkg.sh >/tmp/c.out 2>&1; echo "DEP=$?"; tail -1 /tmp/c.out | cut -c1-60
-RIQ_PKG_ACTION=remove RIQ_PKG=${pkg} bash /w/pkg.sh >/tmp/d.out 2>&1; echo "REMOVE=$?"; tail -1 /tmp/d.out
+ADG_PKG_ACTION=install ADG_PKG=${pkg} bash /w/pkg.sh >/tmp/a.out 2>&1; echo "INSTALL=$?"; tail -1 /tmp/a.out
+ADG_PKG_ACTION=remove ADG_PKG=bash bash /w/pkg.sh >/tmp/c.out 2>&1; echo "DEP=$?"; tail -1 /tmp/c.out | cut -c1-60
+ADG_PKG_ACTION=remove ADG_PKG=${pkg} bash /w/pkg.sh >/tmp/d.out 2>&1; echo "REMOVE=$?"; tail -1 /tmp/d.out
 rpm -q ${pkg} >/dev/null 2>&1 && echo STILL || echo GONE`);
         assert.match(r.stdout, new RegExp(`INSTALL=0\\nOK Installed ${pkg}\\.`), r.stdout + r.stderr);
         assert.match(r.stdout, /DEP=3\nRemoving bash would break/, r.stdout);

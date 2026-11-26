@@ -4,7 +4,7 @@
 // what a printer and a switch look like, alerts (not answering, supplies running low, printer faults) and when they end, history, the
 // customer limit and the audit trail. The server must run with SNMP_POLLER_ENABLED=false (the test asks for polls itself). Throwaway
 // backend and database only; the database needs the migration 20261121030000_snmp_monitoring applied (and the discovery ones).
-//   RIQ_E2E_ALLOW=1 SNMP_POLLER_ENABLED=false BASE_URL=http://127.0.0.1:3951 DATABASE_URL=postgres://.../riq_x_e2e JWT_SECRET=... DATA_ENCRYPTION_KEY=... node test/snmp-http.e2e.cjs
+//   ADG_E2E_ALLOW=1 SNMP_POLLER_ENABLED=false BASE_URL=http://127.0.0.1:3951 DATABASE_URL=postgres://.../adg_x_e2e JWT_SECRET=... DATA_ENCRYPTION_KEY=... node test/snmp-http.e2e.cjs
 "use strict";
 const path = require("node:path");
 const { assert, call, runner, setup, uuid } = require("./groupc-helpers.cjs");
@@ -40,7 +40,7 @@ async function main() {
     const linPoller = await mk(A.site, "linpoll", "linux");
     const bPoller = await mk(B.site, "bpoll", "windows");
 
-    // the fake poller: answers the poll jobs (found by RIQ_TOOL) with the scenario for the addresses it was asked about
+    // the fake poller: answers the poll jobs (found by ADG_TOOL) with the scenario for the addresses it was asked about
     let scenario = () => ""; let mode = "answer"; const seen = [];
     const handled = new Set();
     const finishJob = async (id, stdout, { stderr = "", status = "succeeded" } = {}) => {
@@ -51,11 +51,11 @@ async function main() {
         try {
             const rows = (await q(`SELECT j.id, j.payload FROM jobs j JOIN agents a ON a.id = j.agent_id WHERE j.status = 'queued' AND a.device_id = ANY($1::uuid[])`, [devs])).rows;
             for (const r of rows) {
-                if (r.payload?.env?.RIQ_SNMP_TARGETS === undefined || handled.has(r.id)) continue;
+                if (r.payload?.env?.ADG_SNMP_TARGETS === undefined || handled.has(r.id)) continue;
                 handled.add(r.id); seen.push(r);
                 if (mode === "never") continue;
                 if (mode === "fail") { await finishJob(r.id, "", { stderr: "The SNMP tools are missing on this device. Install the snmp package.", status: "failed" }); continue; }
-                const ips = r.payload.env.RIQ_SNMP_TARGETS.split(" ").map((t) => t.split(",")[0]);
+                const ips = r.payload.env.ADG_SNMP_TARGETS.split(" ").map((t) => t.split(",")[0]);
                 await finishJob(r.id, scenario(ips));
             }
         } catch { /* next tick */ }
@@ -111,12 +111,12 @@ async function main() {
         const row = (await q(`SELECT community_enc FROM snmp_devices WHERE id = $1`, [printer.id])).rows[0];
         assert.ok(row.community_enc.startsWith("enc:v1:") && !row.community_enc.includes("s3cret_x"));
         for (const body of [JSON.stringify(printer), JSON.stringify(await (await get("/devices")).json()), JSON.stringify(await (await get("/devices", ops)).json())]) assert.ok(!body.includes("s3cret_x") && !body.includes("enc:v1:"), "not in any answer");
-        assert.ok(seen.length >= 1 && seen[0].payload.env.RIQ_SNMP_TARGETS.includes("s3cret_x") === true || true);
-        const jobs = (await q(`SELECT payload FROM jobs WHERE payload->'env' ? 'RIQ_SNMP_TARGETS'`)).rows;
-        assert.ok(jobs.length >= 1 && jobs.every((j) => j.payload.env.RIQ_SNMP_TARGETS === "(removed)"), JSON.stringify(jobs.map((j) => j.payload.env)));
+        assert.ok(seen.length >= 1 && seen[0].payload.env.ADG_SNMP_TARGETS.includes("s3cret_x") === true || true);
+        const jobs = (await q(`SELECT payload FROM jobs WHERE payload->'env' ? 'ADG_SNMP_TARGETS'`)).rows;
+        assert.ok(jobs.length >= 1 && jobs.every((j) => j.payload.env.ADG_SNMP_TARGETS === "(removed)"), JSON.stringify(jobs.map((j) => j.payload.env)));
         const job = (await q(`SELECT payload FROM jobs WHERE id = (SELECT job_id FROM snmp_polls ORDER BY requested_at DESC LIMIT 1)`)).rows[0].payload;
         assert.ok(job.scriptText === S.LINUX_SNMP_SCRIPT || job.scriptText === S.WINDOWS_SNMP_SCRIPT, "a fixed script");
-        assert.equal(job.env.RIQ_TOOL, S.SNMP_KIND);
+        assert.equal(job.env.ADG_TOOL, S.SNMP_KIND);
     });
     await test("a low supply raises an alert on the poller device (WARN under 10%, CRIT under 3%), and it ends when the supply is replaced", async () => {
         const poll = async (out2) => { scenario = (ips) => out(ips.flatMap(out2)); assert.equal((await send("POST", `/devices/${printer.id}/poll`, {})).status, 200); await waitDevice(printer.id, (d) => !d.polling && d.lastPolledAt); await sleep(300); };

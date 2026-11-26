@@ -45,11 +45,11 @@ export function CustomersOverview({ onOpen, onCount }: { onOpen: (name: string) 
     // A customer or device was added, moved or removed elsewhere on the page.
     React.useEffect(() => {
         const refresh = () => void load();
-        window.addEventListener("remoteiq:customers-changed", refresh);
-        window.addEventListener("remoteiq:devices-changed", refresh);
+        window.addEventListener("adgrmm:customers-changed", refresh);
+        window.addEventListener("adgrmm:devices-changed", refresh);
         return () => {
-            window.removeEventListener("remoteiq:customers-changed", refresh);
-            window.removeEventListener("remoteiq:devices-changed", refresh);
+            window.removeEventListener("adgrmm:customers-changed", refresh);
+            window.removeEventListener("adgrmm:devices-changed", refresh);
         };
     }, [load]);
 

@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
-# RemoteIQ installer.
+# ADG RMM installer.
 #
-#   curl -fsSL https://github.com/RemoteIQ-RMM/RemoteIQ-RMM/releases/latest/download/install.sh | sudo bash
+#   curl -fsSL https://github.com/adgrmm/adgrmm/releases/latest/download/install.sh | sudo bash
 #
-# Installs RemoteIQ on this machine (Ubuntu 22.04/24.04 or Debian 12, x86_64) and walks you through the first setup:
+# Installs ADG RMM on this machine (Ubuntu 22.04/24.04 or Debian 12, x86_64) and walks you through the first setup:
 # where it runs, its web address and HTTPS, the database, your administrator account, company name, email sending,
 # the customer portal and a first customer with the agent install command.
 #
@@ -11,28 +11,28 @@
 #   install.sh upgrade        move to the latest release (or --version X.Y.Z), with a database backup and rollback
 #   install.sh status         what is running and whether it is healthy;  status --logs  also writes a support bundle
 #   install.sh reconfigure    change the web address or the portal address after installing
-#   install.sh uninstall      stop and remove RemoteIQ; you choose whether to keep your data
+#   install.sh uninstall      stop and remove ADG RMM; you choose whether to keep your data
 #   install.sh help
 #
 # Options: --mode docker|native   --version X.Y.Z   --force (upgrade: reinstall the same version)   --no-color
-# Environment: RIQ_RELEASE_BASE (download from your own web server instead of GitHub), GITHUB_TOKEN (private repository),
-#              RIQ_REPO (owner/name), RIQ_HOME (install folder, default /opt/remoteiq).
+# Environment: ADG_RELEASE_BASE (download from your own web server instead of GitHub), GITHUB_TOKEN (private repository),
+#              ADG_REPO (owner/name), ADG_HOME (install folder, default /opt/adgrmm).
 #
 # Everything is inside functions and main runs last, so a download that stops half way runs nothing.
 
 set -Eeuo pipefail
 
-RIQ_REPO_GIVEN="${RIQ_REPO:-}"
-RIQ_REPO="${RIQ_REPO:-RemoteIQ-RMM/RemoteIQ-RMM}"
-RIQ_RELEASE_BASE="${RIQ_RELEASE_BASE:-}"
-RIQ_HOME="${RIQ_HOME:-/opt/remoteiq}"
-ASSET="remoteiq-linux-x64.tar.gz"
-PLACEHOLDER="riq-public-url.invalid"
-COOKIE_PLACEHOLDER="riq-cookie-placeholder"
-INTERNAL_PLACEHOLDER="http://riq-backend:3001"
+ADG_REPO_GIVEN="${ADG_REPO:-}"
+ADG_REPO="${ADG_REPO:-adgrmm/adgrmm}"
+ADG_RELEASE_BASE="${ADG_RELEASE_BASE:-}"
+ADG_HOME="${ADG_HOME:-/opt/adgrmm}"
+ASSET="adgrmm-linux-x64.tar.gz"
+PLACEHOLDER="adg-public-url.invalid"
+COOKIE_PLACEHOLDER="adg-cookie-placeholder"
+INTERNAL_PLACEHOLDER="http://adg-backend:3001"
 EDGE_PORT_DEFAULT=8080
-CONF="$RIQ_HOME/install.conf"
-LOG="/var/log/remoteiq-install.log"
+CONF="$ADG_HOME/install.conf"
+LOG="/var/log/adgrmm-install.log"
 TTY="/dev/tty"
 USE_COLOR=1
 WANT_MODE=""
@@ -68,7 +68,7 @@ quiet() {
 
 on_error() {
     local code=$? line=$1
-    rm -f "$RIQ_HOME/config/first-run.json" 2>/dev/null || true
+    rm -f "$ADG_HOME/config/first-run.json" 2>/dev/null || true
     printf '\n%s✗ The installer stopped (line %s, exit %s).%s\n' "$R" "$line" "$code" "$N" >&2
     [ -f "$LOG" ] && printf '%sThe log is in %s. Run the installer again after fixing the cause; it picks up where it left off.%s\n' "$D" "$LOG" "$N" >&2
     exit "$code"
@@ -131,7 +131,7 @@ valid_host()    { valid_domain "$1" || [[ "$1" =~ ^[0-9]{1,3}(\.[0-9]{1,3}){3}$ 
 valid_email()   { [[ "$1" =~ ^[^[:space:]@]+@[^[:space:]@]+\.[^[:space:]@]{2,}$ ]]; }
 valid_port()    { [[ "$1" =~ ^[0-9]{1,5}$ ]] && [ "$1" -ge 1 ] && [ "$1" -le 65535 ]; }
 valid_nonempty(){ [ -n "$1" ]; }
-# 3000 and 3001 are the web app and the API inside RemoteIQ; the proxy has to forward to a different port.
+# 3000 and 3001 are the web app and the API inside ADG RMM; the proxy has to forward to a different port.
 valid_edge_port(){ valid_port "$1" && [ "$1" != 3000 ] && [ "$1" != 3001 ]; }
 valid_name()    { [ -n "$1" ] && [ "${#1}" -le 120 ]; }
 
@@ -139,7 +139,7 @@ valid_name()    { [ -n "$1" ] && [ "${#1}" -le 120 ]; }
 
 conf_get() { [ -f "$CONF" ] && sed -n "s/^$1=\(.*\)$/\1/p" "$CONF" | tail -n 1 || true; }
 conf_set() {
-    mkdir -p "$RIQ_HOME"; touch "$CONF"; chmod 600 "$CONF"
+    mkdir -p "$ADG_HOME"; touch "$CONF"; chmod 600 "$CONF"
     local k="$1" v="$2" tmp
     tmp="$(mktemp)"
     grep -v "^$k=" "$CONF" >"$tmp" || true
@@ -151,8 +151,8 @@ conf_set() {
 
 preflight() {
     [ "$(id -u)" = 0 ] || die "Run this as root: sudo bash install.sh"
-    [ "$(uname -s)" = Linux ] || die "RemoteIQ installs on Linux."
-    [ "$(uname -m)" = x86_64 ] || die "RemoteIQ needs an x86_64 (64-bit Intel/AMD) server; this one is $(uname -m)."
+    [ "$(uname -s)" = Linux ] || die "ADG RMM installs on Linux."
+    [ "$(uname -m)" = x86_64 ] || die "ADG RMM needs an x86_64 (64-bit Intel/AMD) server; this one is $(uname -m)."
     [ -r /etc/os-release ] || die "Cannot tell which Linux this is."
     # shellcheck disable=SC1091
     . /etc/os-release
@@ -164,10 +164,10 @@ preflight() {
     command -v apt-get >/dev/null 2>&1 || die "apt-get is missing."
     local mem_kb disk_kb
     mem_kb="$(awk '/MemTotal/ {print $2}' /proc/meminfo)"
-    [ "${mem_kb:-0}" -ge 1700000 ] || warn "This server has less than 2 GB of memory. RemoteIQ will run, but slowly."
-    mkdir -p "$RIQ_HOME"
-    disk_kb="$(df -Pk "$RIQ_HOME" | awk 'NR==2 {print $4}')"
-    [ "${disk_kb:-0}" -ge 6000000 ] || die "Less than 6 GB of free disk space in $RIQ_HOME. Free some space and try again."
+    [ "${mem_kb:-0}" -ge 1700000 ] || warn "This server has less than 2 GB of memory. ADG RMM will run, but slowly."
+    mkdir -p "$ADG_HOME"
+    disk_kb="$(df -Pk "$ADG_HOME" | awk 'NR==2 {print $4}')"
+    [ "${disk_kb:-0}" -ge 6000000 ] || die "Less than 6 GB of free disk space in $ADG_HOME. Free some space and try again."
     touch "$LOG" && chmod 600 "$LOG"
 }
 
@@ -175,7 +175,7 @@ port_in_use() { ss -ltn "( sport = :$1 )" 2>/dev/null | awk 'NR>1' | grep -q . ;
 
 check_connectivity() {
     local url
-    if [ -n "$RIQ_RELEASE_BASE" ]; then url="$RIQ_RELEASE_BASE"; else url="https://github.com"; fi
+    if [ -n "$ADG_RELEASE_BASE" ]; then url="$ADG_RELEASE_BASE"; else url="https://github.com"; fi
     curl -fsSI --max-time 15 -o /dev/null "$url" >/dev/null 2>&1 || curl -sI --max-time 15 -o /dev/null "$url" >/dev/null 2>&1 || die "Cannot reach $url. Check this server's internet access (and any proxy)."
 }
 
@@ -193,17 +193,17 @@ base_packages() {
 # Prints the download address of one release file (the latest release, or the one asked for).
 asset_url() {
     local file="$1" ver="${2:-}"
-    if [ -n "$RIQ_RELEASE_BASE" ]; then printf '%s/%s' "${RIQ_RELEASE_BASE%/}" "$file"; return; fi
+    if [ -n "$ADG_RELEASE_BASE" ]; then printf '%s/%s' "${ADG_RELEASE_BASE%/}" "$file"; return; fi
     if [ -n "${GITHUB_TOKEN:-}" ]; then
-        local api="https://api.github.com/repos/$RIQ_REPO/releases/latest" json id
-        [ -n "$ver" ] && api="https://api.github.com/repos/$RIQ_REPO/releases/tags/v$ver"
-        json="$(curl -fsSL -H "Authorization: Bearer $GITHUB_TOKEN" -H "Accept: application/vnd.github+json" "$api")" || die "GitHub did not return the release (check GITHUB_TOKEN and $RIQ_REPO)."
+        local api="https://api.github.com/repos/$ADG_REPO/releases/latest" json id
+        [ -n "$ver" ] && api="https://api.github.com/repos/$ADG_REPO/releases/tags/v$ver"
+        json="$(curl -fsSL -H "Authorization: Bearer $GITHUB_TOKEN" -H "Accept: application/vnd.github+json" "$api")" || die "GitHub did not return the release (check GITHUB_TOKEN and $ADG_REPO)."
         id="$(printf '%s\n' "$json" | awk -v want="$file" '/"url": "https:\/\/api.github.com\/repos\/.*\/releases\/assets\/[0-9]+"/ {match($0, /assets\/[0-9]+/); last=substr($0, RSTART+7, RLENGTH-7)} /"name": "/ {n=$0; sub(/.*"name": "/, "", n); sub(/".*/, "", n); if (n == want) {print last; exit}}')"
         [ -n "$id" ] || die "The release has no file called $file."
-        printf 'https://api.github.com/repos/%s/releases/assets/%s' "$RIQ_REPO" "$id"
+        printf 'https://api.github.com/repos/%s/releases/assets/%s' "$ADG_REPO" "$id"
         return
     fi
-    if [ -n "$ver" ]; then printf 'https://github.com/%s/releases/download/v%s/%s' "$RIQ_REPO" "$ver" "$file"; else printf 'https://github.com/%s/releases/latest/download/%s' "$RIQ_REPO" "$file"; fi
+    if [ -n "$ver" ]; then printf 'https://github.com/%s/releases/download/v%s/%s' "$ADG_REPO" "$ver" "$file"; else printf 'https://github.com/%s/releases/latest/download/%s' "$ADG_REPO" "$file"; fi
 }
 
 download() {
@@ -219,13 +219,13 @@ download() {
 fetch_release() {
     local want="${1:-}" tmp ver sums
     tmp="$(mktemp -d)"
-    title "Downloading RemoteIQ"
+    title "Downloading ADG RMM"
     download "$(asset_url version.txt "$want")" "$tmp/version.txt" >>"$LOG" 2>&1 || die "Could not find a release to download. If the repository is private, set GITHUB_TOKEN."
     ver="$(tr -d '[:space:]' <"$tmp/version.txt")"
     [[ "$ver" =~ ^[0-9A-Za-z._+-]+$ ]] || die "The release has an unexpected version: $ver"
     [ -z "$want" ] || [ "$want" = "$ver" ] || die "Asked for $want but the release says $ver."
     RELEASE_VERSION="$ver"
-    RELEASE_DIR="$RIQ_HOME/releases/$ver"
+    RELEASE_DIR="$ADG_HOME/releases/$ver"
     if [ -f "$RELEASE_DIR/.ready" ]; then ok "Version $ver is already downloaded"; rm -rf "$tmp"; return; fi
     printf '  Version %s%s%s\n' "$B" "$ver" "$N"
     quiet "Downloading the bundle (this is a few hundred MB)" download "$(asset_url "$ASSET" "$ver")" "$tmp/$ASSET"
@@ -234,9 +234,9 @@ fetch_release() {
     [ -n "$sums" ] || die "SHA256SUMS does not list $ASSET."
     [ "$(sha256sum "$tmp/$ASSET" | awk '{print $1}')" = "$sums" ] || die "The download is damaged or has been tampered with: the checksum does not match."
     ok "Checksum matches"
-    rm -rf "$RELEASE_DIR"; mkdir -p "$RIQ_HOME/releases"
+    rm -rf "$RELEASE_DIR"; mkdir -p "$ADG_HOME/releases"
     quiet "Unpacking" tar -xzf "$tmp/$ASSET" -C "$tmp"
-    mv "$tmp/remoteiq" "$RELEASE_DIR"
+    mv "$tmp/adgrmm" "$RELEASE_DIR"
     rm -rf "$tmp"
     [ -x "$RELEASE_DIR/runtime/bin/node" ] || die "The bundle is incomplete (no Node.js runtime)."
 }
@@ -265,7 +265,7 @@ apply_placeholders() {
 
 wizard() {
     need_tty
-    title "RemoteIQ setup"
+    title "ADG RMM setup"
     say "I will ask a few questions, install everything, then finish the first configuration for you."
     say "${D}Press Enter to accept the answer in [brackets]. Nothing is changed until you confirm.${N}"
     rule
@@ -273,7 +273,7 @@ wizard() {
     # --- how to run it
     if [ -z "$WANT_MODE" ]; then
         local def=2; command -v docker >/dev/null 2>&1 && def=1
-        ask_choice "How should RemoteIQ run on this server?" "$def" \
+        ask_choice "How should ADG RMM run on this server?" "$def" \
             "Docker (containers; easiest to upgrade and remove)" \
             "Native (system services; no Docker needed)"
         if [ "$REPLY_VALUE" = 1 ]; then MODE=docker; else MODE=native; fi
@@ -283,11 +283,11 @@ wizard() {
 
     # --- address and HTTPS
     title "Web address"
-    say "The address people type to reach RemoteIQ, for example rmm.example.com. Its DNS record must point at this server."
+    say "The address people type to reach ADG RMM, for example rmm.example.com. Its DNS record must point at this server."
     ask_valid "Web address (domain name)" "$(conf_get DOMAIN)" valid_host "Enter a domain name like rmm.example.com."
     DOMAIN="$REPLY_VALUE"
 
-    ask_choice "How should RemoteIQ be reached over HTTPS?" "$([ -n "$(conf_get TLS)" ] && echo "$(conf_get TLS)" || echo 1)" \
+    ask_choice "How should ADG RMM be reached over HTTPS?" "$([ -n "$(conf_get TLS)" ] && echo "$(conf_get TLS)" || echo 1)" \
         "Set it up for me: Caddy gets a free Let's Encrypt certificate (ports 80 and 443 must be free and the DNS record must already point here)" \
         "I already have a reverse proxy (Nginx Proxy Manager, nginx, Traefik...): just listen on a port" \
         "Set it up for me with a self-signed certificate (testing only: browsers will warn)"
@@ -296,7 +296,7 @@ wizard() {
         1) PUBLIC_URL="https://$DOMAIN"; BIND_EDGE="127.0.0.1"; EDGE_PORT="$EDGE_PORT_DEFAULT"; ACME_EMAIL="" ;;
         3) PUBLIC_URL="https://$DOMAIN"; BIND_EDGE="127.0.0.1"; EDGE_PORT="$EDGE_PORT_DEFAULT"; ACME_EMAIL="" ;;
         2)
-            ask_valid "Port for your proxy to forward to" "${EDGE_PORT_DEFAULT}" valid_edge_port "Use a port other than 3000 and 3001 (RemoteIQ uses those inside). 8080 is a good choice."
+            ask_valid "Port for your proxy to forward to" "${EDGE_PORT_DEFAULT}" valid_edge_port "Use a port other than 3000 and 3001 (ADG RMM uses those inside). 8080 is a good choice."
             EDGE_PORT="$REPLY_VALUE"
             ask_yn "Does your proxy serve $DOMAIN over HTTPS (not plain http)?" y && PUBLIC_URL="https://$DOMAIN" || PUBLIC_URL="http://$DOMAIN"
             [ "$PUBLIC_URL" = "http://$DOMAIN" ] && warn "Over plain http the browser will not keep the sign-in. HTTPS is needed outside a quick test."
@@ -326,11 +326,11 @@ wizard() {
         DB_MODE=external
         ask_valid "Database host" "" valid_host "Enter a host name or address."; DB_HOST="$REPLY_VALUE"
         ask_valid "Database port" "5432" valid_port "Enter a port number."; DB_PORT="$REPLY_VALUE"
-        ask_valid "Database name" "remoteiq" valid_nonempty "Enter a name."; DB_NAME="$REPLY_VALUE"
-        ask_valid "Database user" "remoteiq" valid_nonempty "Enter a user name."; DB_USER="$REPLY_VALUE"
+        ask_valid "Database name" "adgrmm" valid_nonempty "Enter a name."; DB_NAME="$REPLY_VALUE"
+        ask_valid "Database user" "adgrmm" valid_nonempty "Enter a user name."; DB_USER="$REPLY_VALUE"
         ask_secret "Database password"; DB_PASSWORD="$REPLY_VALUE"
         if ask_yn "Does it require an SSL connection?" n; then DB_SSL=true; else DB_SSL=false; fi
-        say "${D}The database must be empty (or a RemoteIQ one) and this user needs to be able to create the citext and pgcrypto extensions.${N}"
+        say "${D}The database must be empty (or a ADG RMM one) and this user needs to be able to create the citext and pgcrypto extensions.${N}"
     fi
 
     # --- company and administrator
@@ -350,7 +350,7 @@ wizard() {
 
     # --- email
     title "Email"
-    say "RemoteIQ sends invitations, password resets, alerts and reports by email."
+    say "ADG RMM sends invitations, password resets, alerts and reports by email."
     SMTP_HOST=""; SMTP_PORT=""; SMTP_SECURITY=""; SMTP_USER=""; SMTP_PASSWORD=""; SMTP_FROM=""
     if ask_yn "Set up email sending now?" y; then
         ask_valid "SMTP server" "" valid_host "Enter a host name."; SMTP_HOST="$REPLY_VALUE"
@@ -371,7 +371,7 @@ wizard() {
     PORTAL_DOMAIN=""
     if ask_yn "Turn on the customer portal now?" n; then
         ask_valid "Portal address" "portal.${DOMAIN#*.}" valid_domain "Enter a domain name like portal.example.com."; PORTAL_DOMAIN="$REPLY_VALUE"
-        [ "$PORTAL_DOMAIN" != "$DOMAIN" ] || { warn "The portal needs a different address than RemoteIQ itself."; PORTAL_DOMAIN=""; }
+        [ "$PORTAL_DOMAIN" != "$DOMAIN" ] || { warn "The portal needs a different address than ADG RMM itself."; PORTAL_DOMAIN=""; }
     else
         info "Skipped. Set it later in Administration > Client Portal."
     fi
@@ -407,8 +407,8 @@ wizard() {
     ask_yn "Install now?" y || die "Cancelled. Nothing was changed."
 
     conf_set MODE "$MODE"; conf_set DOMAIN "$DOMAIN"; conf_set TLS "$TLS"; conf_set PUBLIC_URL "$PUBLIC_URL"
-    [ -z "$RIQ_RELEASE_BASE" ] || conf_set RELEASE_BASE "$RIQ_RELEASE_BASE"
-    [ -z "$RIQ_REPO_GIVEN" ] || conf_set REPO "$RIQ_REPO_GIVEN"
+    [ -z "$ADG_RELEASE_BASE" ] || conf_set RELEASE_BASE "$ADG_RELEASE_BASE"
+    [ -z "$ADG_REPO_GIVEN" ] || conf_set REPO "$ADG_REPO_GIVEN"
     conf_set EDGE_PORT "$EDGE_PORT"; conf_set BIND_EDGE "$BIND_EDGE"; conf_set ACME_EMAIL "${ACME_EMAIL:-}"
     conf_set DB_MODE "$DB_MODE"; conf_set COMPANY "$COMPANY"; conf_set ADMIN_EMAIL "$ADMIN_EMAIL"; conf_set PORTAL_DOMAIN "$PORTAL_DOMAIN"
     if [ "$DB_MODE" = external ]; then conf_set DB_HOST "$DB_HOST"; conf_set DB_PORT "$DB_PORT"; conf_set DB_NAME "$DB_NAME"; conf_set DB_USER "$DB_USER"; conf_set DB_PASSWORD "$DB_PASSWORD"; conf_set DB_SSL "$DB_SSL"; fi
@@ -419,22 +419,22 @@ wizard() {
 random_hex() { openssl rand -hex "${1:-32}"; }
 
 make_secrets() {
-    mkdir -p "$RIQ_HOME/secrets" "$RIQ_HOME/config"
-    chmod 700 "$RIQ_HOME/secrets"
-    [ -f "$RIQ_HOME/secrets/data-encryption.key" ] || { random_hex 48 >"$RIQ_HOME/secrets/data-encryption.key"; }
-    chmod 600 "$RIQ_HOME/secrets/data-encryption.key"
+    mkdir -p "$ADG_HOME/secrets" "$ADG_HOME/config"
+    chmod 700 "$ADG_HOME/secrets"
+    [ -f "$ADG_HOME/secrets/data-encryption.key" ] || { random_hex 48 >"$ADG_HOME/secrets/data-encryption.key"; }
+    chmod 600 "$ADG_HOME/secrets/data-encryption.key"
     local k
     for k in JWT_SECRET ADMIN_API_KEY ENROLLMENT_SECRET DB_LOCAL_PASSWORD; do
         [ -n "$(conf_get "$k")" ] || conf_set "$k" "$(random_hex 32)"
     done
-    # Each installation signs people in with a cookie of its own name, so it can share a domain with another RemoteIQ.
-    [ -n "$(conf_get COOKIE_NAME)" ] || conf_set COOKIE_NAME "riq_$(random_hex 4)"
+    # Each installation signs people in with a cookie of its own name, so it can share a domain with another ADG RMM.
+    [ -n "$(conf_get COOKIE_NAME)" ] || conf_set COOKIE_NAME "adg_$(random_hex 4)"
 }
 
 database_url() {
     local host port name user pass ssl=""
     if [ "$DB_MODE" = local ]; then
-        name=remoteiq; user=remoteiq; pass="$(conf_get DB_LOCAL_PASSWORD)"; port="$(conf_get DB_LOCAL_PORT)"; port="${port:-5432}"
+        name=adgrmm; user=adgrmm; pass="$(conf_get DB_LOCAL_PASSWORD)"; port="$(conf_get DB_LOCAL_PORT)"; port="${port:-5432}"
         if [ "$MODE" = docker ]; then host=postgres; port=5432; else host=127.0.0.1; fi
     else
         host="$(conf_get DB_HOST)"; port="$(conf_get DB_PORT)"; name="$(conf_get DB_NAME)"; user="$(conf_get DB_USER)"; pass="$(conf_get DB_PASSWORD)"
@@ -447,13 +447,13 @@ database_url() {
 }
 
 write_backend_env() {
-    local mode="$1" file="$RIQ_HOME/config/remoteiq.env" origins keys data pkg uploads
+    local mode="$1" file="$ADG_HOME/config/adgrmm.env" origins keys data pkg uploads
     origins="$PUBLIC_URL"
     [ -n "${PORTAL_DOMAIN:-}" ] && origins="$origins,https://$PORTAL_DOMAIN"
-    if [ "$mode" = docker ]; then keys=/secrets; data=/data/var; pkg=/opt/remoteiq/agent-packages; else keys="$RIQ_HOME/secrets"; data="$RIQ_HOME/data/var"; pkg="$RIQ_HOME/current/agent-packages"; fi
+    if [ "$mode" = docker ]; then keys=/secrets; data=/data/var; pkg=/opt/adgrmm/agent-packages; else keys="$ADG_HOME/secrets"; data="$ADG_HOME/data/var"; pkg="$ADG_HOME/current/agent-packages"; fi
     local ssl=false; [ "$(conf_get DB_SSL)" = true ] && ssl=true
     {
-        echo "# Written by the RemoteIQ installer. Edit with care; 'install.sh upgrade' keeps this file."
+        echo "# Written by the ADG RMM installer. Edit with care; 'install.sh upgrade' keeps this file."
         echo "NODE_ENV=production"
         echo "PORT=3001"
         echo "BIND_HOST=$([ "$mode" = docker ] && echo 0.0.0.0 || echo 127.0.0.1)"
@@ -480,7 +480,7 @@ write_backend_env() {
         echo "AUDIT_RETENTION_DAYS=365"
         echo "CHECK_RUNS_RETENTION_DAYS=14"
     } >"$file"
-    chown root:"$([ "$mode" = native ] && echo remoteiq || echo root)" "$file" 2>/dev/null || true
+    chown root:"$([ "$mode" = native ] && echo adgrmm || echo root)" "$file" 2>/dev/null || true
     chmod 640 "$file"
 }
 
@@ -499,30 +499,30 @@ install_docker_engine() {
     systemctl enable --now docker >>"$LOG" 2>&1 || true
 }
 
-dc() { docker compose -f "$RIQ_HOME/docker-compose.yml" --env-file "$RIQ_HOME/config/compose.env" "$@"; }
+dc() { docker compose -f "$ADG_HOME/docker-compose.yml" --env-file "$ADG_HOME/config/compose.env" "$@"; }
 
 write_compose() {
     local ver="$1" edge_publish tls_block="" pg_block="" depends=""
-    mkdir -p "$RIQ_HOME/data/uploads" "$RIQ_HOME/data/config" "$RIQ_HOME/data/var" "$RIQ_HOME/data/caddy" "$RIQ_HOME/data/caddy-config"
-    chown -R 1000:1000 "$RIQ_HOME/data/uploads" "$RIQ_HOME/data/config" "$RIQ_HOME/data/var" "$RIQ_HOME/secrets"
+    mkdir -p "$ADG_HOME/data/uploads" "$ADG_HOME/data/config" "$ADG_HOME/data/var" "$ADG_HOME/data/caddy" "$ADG_HOME/data/caddy-config"
+    chown -R 1000:1000 "$ADG_HOME/data/uploads" "$ADG_HOME/data/config" "$ADG_HOME/data/var" "$ADG_HOME/secrets"
     if [ "$TLS" = 2 ]; then edge_publish="\"$BIND_EDGE:$EDGE_PORT:8080\""; else edge_publish="\"127.0.0.1:$EDGE_PORT:8080\""; fi
     {
-        echo "name: remoteiq"
+        echo "name: adgrmm"
         echo "services:"
         if [ "$DB_MODE" = local ]; then
-            mkdir -p "$RIQ_HOME/data/postgres"
+            mkdir -p "$ADG_HOME/data/postgres"
             cat <<YAML
   postgres:
     image: postgres:16
     restart: unless-stopped
     environment:
-      POSTGRES_USER: remoteiq
-      POSTGRES_DB: remoteiq
+      POSTGRES_USER: adgrmm
+      POSTGRES_DB: adgrmm
       POSTGRES_PASSWORD: \${POSTGRES_PASSWORD}
     volumes:
-      - $RIQ_HOME/data/postgres:/var/lib/postgresql/data
+      - $ADG_HOME/data/postgres:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U remoteiq -d remoteiq"]
+      test: ["CMD-SHELL", "pg_isready -U adgrmm -d adgrmm"]
       interval: 5s
       timeout: 5s
       retries: 30
@@ -532,41 +532,41 @@ YAML
         condition: service_healthy"
         fi
         cat <<YAML
-  riq-backend:
-    image: remoteiq-backend:\${RIQ_VERSION}
+  adg-backend:
+    image: adgrmm-backend:\${ADG_VERSION}
     restart: unless-stopped
-    env_file: $RIQ_HOME/config/remoteiq.env
+    env_file: $ADG_HOME/config/adgrmm.env
 $depends
     ports:
       - "127.0.0.1:3001:3001"
     volumes:
-      - $RIQ_HOME/data/uploads:/app/public/uploads
-      - $RIQ_HOME/data/config:/app/config
-      - $RIQ_HOME/data/var:/data/var
-      - $RIQ_HOME/secrets:/secrets
-      - $RIQ_HOME/current/agent-packages:/opt/remoteiq/agent-packages:ro
-      - $RIQ_HOME/config:/config:ro
-  riq-frontend:
-    image: remoteiq-frontend:\${RIQ_VERSION}
+      - $ADG_HOME/data/uploads:/app/public/uploads
+      - $ADG_HOME/data/config:/app/config
+      - $ADG_HOME/data/var:/data/var
+      - $ADG_HOME/secrets:/secrets
+      - $ADG_HOME/current/agent-packages:/opt/adgrmm/agent-packages:ro
+      - $ADG_HOME/config:/config:ro
+  adg-frontend:
+    image: adgrmm-frontend:\${ADG_VERSION}
     restart: unless-stopped
     environment:
-      BACKEND_INTERNAL_URL: http://riq-backend:3001
+      BACKEND_INTERNAL_URL: http://adg-backend:3001
     depends_on:
-      - riq-backend
-  riq-edge:
-    image: remoteiq-backend:\${RIQ_VERSION}
+      - adg-backend
+  adg-edge:
+    image: adgrmm-backend:\${ADG_VERSION}
     restart: unless-stopped
-    command: ["node", "/opt/riq/tools/edge.cjs"]
+    command: ["node", "/opt/adg/tools/edge.cjs"]
     environment:
       EDGE_HOST: 0.0.0.0
       EDGE_PORT: "8080"
-      WEB_UPSTREAM: http://riq-frontend:3000
-      API_UPSTREAM: http://riq-backend:3001
+      WEB_UPSTREAM: http://adg-frontend:3000
+      API_UPSTREAM: http://adg-backend:3001
       EDGE_PROTO: $([ "${PUBLIC_URL%%:*}" = https ] && echo https || echo http)
     ports:
       - $edge_publish
     depends_on:
-      - riq-frontend
+      - adg-frontend
 YAML
         if [ "$TLS" != 2 ]; then
             cat <<YAML
@@ -578,19 +578,19 @@ YAML
       - "443:443"
       - "443:443/udp"
     volumes:
-      - $RIQ_HOME/config/Caddyfile:/etc/caddy/Caddyfile:ro
-      - $RIQ_HOME/data/caddy:/data
-      - $RIQ_HOME/data/caddy-config:/config
+      - $ADG_HOME/config/Caddyfile:/etc/caddy/Caddyfile:ro
+      - $ADG_HOME/data/caddy:/data
+      - $ADG_HOME/data/caddy-config:/config
     depends_on:
-      - riq-edge
+      - adg-edge
 YAML
         fi
-    } >"$RIQ_HOME/docker-compose.yml"
+    } >"$ADG_HOME/docker-compose.yml"
     {
-        echo "RIQ_VERSION=$ver"
+        echo "ADG_VERSION=$ver"
         echo "POSTGRES_PASSWORD=$(conf_get DB_LOCAL_PASSWORD)"
-    } >"$RIQ_HOME/config/compose.env"
-    chmod 600 "$RIQ_HOME/config/compose.env"
+    } >"$ADG_HOME/config/compose.env"
+    chmod 600 "$ADG_HOME/config/compose.env"
 }
 
 emit_caddyfile() {
@@ -611,13 +611,13 @@ emit_caddyfile() {
 docker_install() {
     local ver="$1" dir="$2"
     title "Building the containers"
-    quiet "Building the API image" docker build -q -f "$dir/docker/Dockerfile.backend" -t "remoteiq-backend:$ver" "$dir"
-    quiet "Building the web app image" docker build -q -f "$dir/docker/Dockerfile.frontend" -t "remoteiq-frontend:$ver" "$dir"
-    ln -sfn "$dir" "$RIQ_HOME/current"
+    quiet "Building the API image" docker build -q -f "$dir/docker/Dockerfile.backend" -t "adgrmm-backend:$ver" "$dir"
+    quiet "Building the web app image" docker build -q -f "$dir/docker/Dockerfile.frontend" -t "adgrmm-frontend:$ver" "$dir"
+    ln -sfn "$dir" "$ADG_HOME/current"
     write_backend_env docker
     write_compose "$ver"
-    [ "$TLS" = 2 ] || emit_caddyfile "$RIQ_HOME/config/Caddyfile" "riq-edge:8080"
-    title "Starting RemoteIQ"
+    [ "$TLS" = 2 ] || emit_caddyfile "$ADG_HOME/config/Caddyfile" "adg-edge:8080"
+    title "Starting ADG RMM"
     [ "$DB_MODE" = local ] && quiet "Fetching the database image" docker pull -q postgres:16
     [ "$TLS" = 2 ] || quiet "Fetching the HTTPS proxy image" docker pull -q caddy:2
     quiet "Starting the services" dc up -d
@@ -639,12 +639,12 @@ install_postgres_native() {
     local pass; pass="$(conf_get DB_LOCAL_PASSWORD)"
     runuser -u postgres -- psql -p "$pgport" -v ON_ERROR_STOP=1 -q >>"$LOG" 2>&1 <<SQL
 DO \$\$ BEGIN
-  IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'remoteiq') THEN CREATE ROLE remoteiq LOGIN; END IF;
+  IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'adgrmm') THEN CREATE ROLE adgrmm LOGIN; END IF;
 END \$\$;
-ALTER ROLE remoteiq WITH PASSWORD '$pass';
-SELECT 'CREATE DATABASE remoteiq OWNER remoteiq' WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'remoteiq')\gexec
+ALTER ROLE adgrmm WITH PASSWORD '$pass';
+SELECT 'CREATE DATABASE adgrmm OWNER adgrmm' WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'adgrmm')\gexec
 SQL
-    runuser -u postgres -- psql -p "$pgport" -v ON_ERROR_STOP=1 -q -d remoteiq -c 'CREATE EXTENSION IF NOT EXISTS citext; CREATE EXTENSION IF NOT EXISTS pgcrypto;' >>"$LOG" 2>&1
+    runuser -u postgres -- psql -p "$pgport" -v ON_ERROR_STOP=1 -q -d adgrmm -c 'CREATE EXTENSION IF NOT EXISTS citext; CREATE EXTENSION IF NOT EXISTS pgcrypto;' >>"$LOG" 2>&1
     ok "Database ready"
 }
 
@@ -660,38 +660,38 @@ install_caddy_native() {
 }
 
 native_user_and_dirs() {
-    id remoteiq >/dev/null 2>&1 || useradd --system --home-dir "$RIQ_HOME" --shell /usr/sbin/nologin remoteiq
-    mkdir -p "$RIQ_HOME/data/uploads" "$RIQ_HOME/data/config" "$RIQ_HOME/data/var" "$RIQ_HOME/backups" "$RIQ_HOME/secrets"
-    chown -R remoteiq:remoteiq "$RIQ_HOME/data" "$RIQ_HOME/secrets"
-    chown root:remoteiq "$RIQ_HOME/config"; chmod 750 "$RIQ_HOME/config"
+    id adgrmm >/dev/null 2>&1 || useradd --system --home-dir "$ADG_HOME" --shell /usr/sbin/nologin adgrmm
+    mkdir -p "$ADG_HOME/data/uploads" "$ADG_HOME/data/config" "$ADG_HOME/data/var" "$ADG_HOME/backups" "$ADG_HOME/secrets"
+    chown -R adgrmm:adgrmm "$ADG_HOME/data" "$ADG_HOME/secrets"
+    chown root:adgrmm "$ADG_HOME/config"; chmod 750 "$ADG_HOME/config"
 }
 
 link_release_data() {
     local dir="$1"
     rm -rf "$dir/backend/public/uploads" "$dir/backend/config"
     mkdir -p "$dir/backend/public"
-    ln -sfn "$RIQ_HOME/data/uploads" "$dir/backend/public/uploads"
-    ln -sfn "$RIQ_HOME/data/config" "$dir/backend/config"
+    ln -sfn "$ADG_HOME/data/uploads" "$dir/backend/public/uploads"
+    ln -sfn "$ADG_HOME/data/config" "$dir/backend/config"
 }
 
 migrate_native() {
     local dir="$1"
-    quiet "Preparing the database (migrations)" runuser -u remoteiq -- bash -c "set -a; . '$RIQ_HOME/config/remoteiq.env'; set +a; cd '$dir/backend' && '$dir/runtime/bin/node' node_modules/prisma/build/index.js migrate deploy"
+    quiet "Preparing the database (migrations)" runuser -u adgrmm -- bash -c "set -a; . '$ADG_HOME/config/adgrmm.env'; set +a; cd '$dir/backend' && '$dir/runtime/bin/node' node_modules/prisma/build/index.js migrate deploy"
 }
 
 write_units() {
-    cat >/etc/systemd/system/remoteiq-backend.service <<UNIT
+    cat >/etc/systemd/system/adgrmm-backend.service <<UNIT
 [Unit]
-Description=RemoteIQ API
+Description=ADG RMM API
 After=network-online.target postgresql.service
 Wants=network-online.target
 
 [Service]
-User=remoteiq
-Group=remoteiq
-WorkingDirectory=$RIQ_HOME/current/backend
-EnvironmentFile=$RIQ_HOME/config/remoteiq.env
-ExecStart=$RIQ_HOME/current/runtime/bin/node dist/main.js
+User=adgrmm
+Group=adgrmm
+WorkingDirectory=$ADG_HOME/current/backend
+EnvironmentFile=$ADG_HOME/config/adgrmm.env
+ExecStart=$ADG_HOME/current/runtime/bin/node dist/main.js
 Restart=on-failure
 RestartSec=3
 NoNewPrivileges=true
@@ -701,18 +701,18 @@ LimitNOFILE=65536
 [Install]
 WantedBy=multi-user.target
 UNIT
-    cat >/etc/systemd/system/remoteiq-frontend.service <<UNIT
+    cat >/etc/systemd/system/adgrmm-frontend.service <<UNIT
 [Unit]
-Description=RemoteIQ web app
-After=remoteiq-backend.service
-Wants=remoteiq-backend.service
+Description=ADG RMM web app
+After=adgrmm-backend.service
+Wants=adgrmm-backend.service
 
 [Service]
-User=remoteiq
-Group=remoteiq
-WorkingDirectory=$RIQ_HOME/current/frontend
+User=adgrmm
+Group=adgrmm
+WorkingDirectory=$ADG_HOME/current/frontend
 Environment=NODE_ENV=production PORT=3000 HOSTNAME=127.0.0.1 NEXT_TELEMETRY_DISABLED=1 BACKEND_INTERNAL_URL=http://127.0.0.1:3001
-ExecStart=$RIQ_HOME/current/runtime/bin/node server.js
+ExecStart=$ADG_HOME/current/runtime/bin/node server.js
 Restart=on-failure
 RestartSec=3
 NoNewPrivileges=true
@@ -721,17 +721,17 @@ PrivateTmp=true
 [Install]
 WantedBy=multi-user.target
 UNIT
-    cat >/etc/systemd/system/remoteiq-edge.service <<UNIT
+    cat >/etc/systemd/system/adgrmm-edge.service <<UNIT
 [Unit]
-Description=RemoteIQ edge router
-After=remoteiq-frontend.service
-Wants=remoteiq-frontend.service
+Description=ADG RMM edge router
+After=adgrmm-frontend.service
+Wants=adgrmm-frontend.service
 
 [Service]
-User=remoteiq
-Group=remoteiq
+User=adgrmm
+Group=adgrmm
 Environment=EDGE_HOST=$BIND_EDGE EDGE_PORT=$EDGE_PORT WEB_UPSTREAM=http://127.0.0.1:3000 API_UPSTREAM=http://127.0.0.1:3001 EDGE_PROTO=$([ "${PUBLIC_URL%%:*}" = https ] && echo https || echo http)
-ExecStart=$RIQ_HOME/current/runtime/bin/node $RIQ_HOME/current/tools/edge.cjs
+ExecStart=$ADG_HOME/current/runtime/bin/node $ADG_HOME/current/tools/edge.cjs
 Restart=on-failure
 RestartSec=3
 NoNewPrivileges=true
@@ -749,7 +749,7 @@ native_install() {
     [ "$DB_MODE" = local ] && install_postgres_native
     [ "$TLS" = 2 ] || install_caddy_native
     link_release_data "$dir"
-    ln -sfn "$dir" "$RIQ_HOME/current"
+    ln -sfn "$dir" "$ADG_HOME/current"
     # Hosts mapping is not needed: the web app is told the API's address directly.
     write_backend_env native
     migrate_native "$dir"
@@ -759,8 +759,8 @@ native_install() {
         quiet "Starting Caddy" systemctl restart caddy
         systemctl enable caddy >>"$LOG" 2>&1 || true
     fi
-    title "Starting RemoteIQ"
-    quiet "Starting the services" systemctl enable --now remoteiq-backend remoteiq-frontend remoteiq-edge
+    title "Starting ADG RMM"
+    quiet "Starting the services" systemctl enable --now adgrmm-backend adgrmm-frontend adgrmm-edge
 }
 
 # ------------------------------------------------------------------ after the services are up
@@ -779,7 +779,7 @@ open_firewall() {
 
 wait_healthy() {
     local i
-    printf '  Waiting for RemoteIQ to start '
+    printf '  Waiting for ADG RMM to start '
     for i in $(seq 1 90); do
         if curl -fsS --max-time 3 http://127.0.0.1:3001/healthz >/dev/null 2>&1; then printf ' %sup%s\n' "$G" "$N"; return 0; fi
         printf '.'; sleep 2
@@ -801,16 +801,16 @@ wait_web() {
 run_tool() {
     local cmd="$1" answers="$2"
     if [ "$MODE" = docker ]; then
-        dc exec -T riq-backend node /opt/riq/tools/riq-admin.cjs "$cmd" "/config/$(basename "$answers")"
+        dc exec -T adg-backend node /opt/adg/tools/adg-admin.cjs "$cmd" "/config/$(basename "$answers")"
     else
-        RIQ_BACKEND_DIR="$RIQ_HOME/current/backend" "$RIQ_HOME/current/runtime/bin/node" "$RIQ_HOME/current/tools/riq-admin.cjs" "$cmd" "$answers"
+        ADG_BACKEND_DIR="$ADG_HOME/current/backend" "$ADG_HOME/current/runtime/bin/node" "$ADG_HOME/current/tools/adg-admin.cjs" "$cmd" "$answers"
     fi
 }
 
 json_escape() { printf '%s' "$1" | sed -e 's/\\/\\\\/g' -e 's/"/\\"/g' -e 's/\t/\\t/g' | tr -d '\n\r'; }
 
 first_run_setup() {
-    local answers="$RIQ_HOME/config/first-run.json" db_url api_base="http://127.0.0.1:3001"
+    local answers="$ADG_HOME/config/first-run.json" db_url api_base="http://127.0.0.1:3001"
     db_url="$(database_url)"
     umask 077
     cat >"$answers" <<JSON
@@ -867,12 +867,12 @@ show_tool_line() {
 }
 
 summary() {
-    title "RemoteIQ is installed"
+    title "ADG RMM is installed"
     rule
     printf '  Open              %s%s%s\n' "$B" "$PUBLIC_URL" "$N"
     printf '  Sign in with      %s\n' "$ADMIN_EMAIL"
     [ -n "${PORTAL_DOMAIN:-}" ] && printf '  Customer portal   https://%s\n' "$PORTAL_DOMAIN"
-    printf '  Installed in      %s (%s)\n' "$RIQ_HOME" "$([ "$MODE" = docker ] && echo Docker || echo "systemd services")"
+    printf '  Installed in      %s (%s)\n' "$ADG_HOME" "$([ "$MODE" = docker ] && echo Docker || echo "systemd services")"
     rule
     if [ "$TLS" = 2 ]; then
         say "Point your reverse proxy at ${B}http://$([ "$BIND_EDGE" = 0.0.0.0 ] && echo "THIS-SERVER-ADDRESS" || echo 127.0.0.1):$EDGE_PORT${N} for ${B}$DOMAIN${N}"
@@ -893,14 +893,14 @@ summary() {
         rule
     fi
     say "${B}Back up these two files somewhere safe, away from this server:${N}"
-    say "  $RIQ_HOME/secrets/data-encryption.key"
-    say "  $RIQ_HOME/secrets/job-signing.pem   ${D}(created the first time the server starts a job)${N}"
+    say "  $ADG_HOME/secrets/data-encryption.key"
+    say "  $ADG_HOME/secrets/job-signing.pem   ${D}(created the first time the server starts a job)${N}"
     say "${D}Without them, stored passwords and encrypted backups cannot be read, and agents must be reinstalled.${N}"
     rule
     say "Useful commands:"
-    say "  sudo bash $RIQ_HOME/install.sh status       health check (add --logs for a support bundle)"
-    say "  sudo bash $RIQ_HOME/install.sh upgrade      move to the latest release"
-    say "  sudo bash $RIQ_HOME/install.sh uninstall    remove RemoteIQ"
+    say "  sudo bash $ADG_HOME/install.sh status       health check (add --logs for a support bundle)"
+    say "  sudo bash $ADG_HOME/install.sh upgrade      move to the latest release"
+    say "  sudo bash $ADG_HOME/install.sh uninstall    remove ADG RMM"
     say "${D}Install log: $LOG${N}"
 }
 
@@ -909,7 +909,7 @@ summary() {
 cmd_install() {
     preflight
     if [ "$(conf_get INSTALLED)" = 1 ]; then
-        die "RemoteIQ is already installed here ($(conf_get VERSION)). Use: upgrade, status or uninstall."
+        die "ADG RMM is already installed here ($(conf_get VERSION)). Use: upgrade, status or uninstall."
     fi
     if [ -n "$(conf_get MODE)" ]; then warn "A previous install did not finish. Your earlier answers are offered as defaults."; fi
     check_connectivity
@@ -925,10 +925,10 @@ cmd_install() {
     fetch_release "$WANT_VERSION"
     apply_placeholders "$RELEASE_DIR" "$MODE"
     # A piped script has no file of its own, so the copy that ships in the release is kept for later commands.
-    if [ -s "$RELEASE_DIR/install.sh" ]; then cp "$RELEASE_DIR/install.sh" "$RIQ_HOME/install.sh"; chmod 700 "$RIQ_HOME/install.sh"; fi
+    if [ -s "$RELEASE_DIR/install.sh" ]; then cp "$RELEASE_DIR/install.sh" "$ADG_HOME/install.sh"; chmod 700 "$ADG_HOME/install.sh"; fi
 
     if [ "$MODE" = docker ]; then docker_install "$RELEASE_VERSION" "$RELEASE_DIR"; else native_install "$RELEASE_VERSION" "$RELEASE_DIR"; fi
-    wait_healthy || die "The API did not start. See: $([ "$MODE" = docker ] && echo "docker compose -f $RIQ_HOME/docker-compose.yml logs riq-backend" || echo "journalctl -u remoteiq-backend -n 100")"
+    wait_healthy || die "The API did not start. See: $([ "$MODE" = docker ] && echo "docker compose -f $ADG_HOME/docker-compose.yml logs adg-backend" || echo "journalctl -u adgrmm-backend -n 100")"
     wait_web || warn "The web app is slow to start; setup continues."
     open_firewall
 
@@ -943,7 +943,7 @@ preflight_ports() {
     if [ "$TLS" != 2 ]; then
         for p in 80 443; do port_in_use "$p" && die "Port $p is already in use on this server, and the built-in HTTPS needs it. Stop what is using it (ss -ltnp | grep :$p) or choose the 'I already have a reverse proxy' option."; done
     fi
-    case "$EDGE_PORT" in 3000|3001) die "Port $EDGE_PORT is used inside RemoteIQ. Choose another port for the proxy, such as 8080." ;; esac
+    case "$EDGE_PORT" in 3000|3001) die "Port $EDGE_PORT is used inside ADG RMM. Choose another port for the proxy, such as 8080." ;; esac
     port_in_use "$EDGE_PORT" && die "Port $EDGE_PORT is already in use."
     port_in_use 3001 && die "Port 3001 is already in use."
     port_in_use 3000 && [ "$MODE" = native ] && die "Port 3000 is already in use."
@@ -951,28 +951,28 @@ preflight_ports() {
 }
 
 load_state() {
-    [ -f "$CONF" ] || die "RemoteIQ is not installed here (no $CONF)."
+    [ -f "$CONF" ] || die "ADG RMM is not installed here (no $CONF)."
     MODE="$(conf_get MODE)"; DOMAIN="$(conf_get DOMAIN)"; TLS="$(conf_get TLS)"; PUBLIC_URL="$(conf_get PUBLIC_URL)"
     EDGE_PORT="$(conf_get EDGE_PORT)"; BIND_EDGE="$(conf_get BIND_EDGE)"; ACME_EMAIL="$(conf_get ACME_EMAIL)"; DB_MODE="$(conf_get DB_MODE)"
     PORTAL_DOMAIN="$(conf_get PORTAL_DOMAIN)"; CURRENT_VERSION="$(conf_get VERSION)"
     # Upgrades come from where the installation came from, unless told otherwise.
-    [ -n "$RIQ_RELEASE_BASE" ] || RIQ_RELEASE_BASE="$(conf_get RELEASE_BASE)"
-    if [ -z "$RIQ_REPO_GIVEN" ] && [ -n "$(conf_get REPO)" ]; then RIQ_REPO="$(conf_get REPO)"; fi
+    [ -n "$ADG_RELEASE_BASE" ] || ADG_RELEASE_BASE="$(conf_get RELEASE_BASE)"
+    if [ -z "$ADG_REPO_GIVEN" ] && [ -n "$(conf_get REPO)" ]; then ADG_REPO="$(conf_get REPO)"; fi
 }
 
 cmd_upgrade() {
     preflight; load_state; check_connectivity
     [ "$(conf_get INSTALLED)" = 1 ] || die "The installation did not finish; run the installer again first."
     local old_dir new_dir ts dump
-    old_dir="$(readlink -f "$RIQ_HOME/current")"
+    old_dir="$(readlink -f "$ADG_HOME/current")"
     fetch_release "$WANT_VERSION"
-    if [ "$RELEASE_VERSION" = "$CURRENT_VERSION" ] && [ "$FORCE" != 1 ]; then ok "RemoteIQ $CURRENT_VERSION is already the latest."; return 0; fi
+    if [ "$RELEASE_VERSION" = "$CURRENT_VERSION" ] && [ "$FORCE" != 1 ]; then ok "ADG RMM $CURRENT_VERSION is already the latest."; return 0; fi
     new_dir="$RELEASE_DIR"
     if [ "$RELEASE_VERSION" = "$CURRENT_VERSION" ]; then say "Reinstalling ${B}$CURRENT_VERSION${N}"; else say "Upgrading ${B}$CURRENT_VERSION${N} to ${B}$RELEASE_VERSION${N}"; fi
     ask_yn_or_default() { if [ -r "$TTY" ]; then ask_yn "$1" y; else return 0; fi; }
     ask_yn_or_default "Continue? A database backup is taken first." || { say "Cancelled."; return 0; }
 
-    ts="$(date +%Y%m%d-%H%M%S)"; mkdir -p "$RIQ_HOME/backups"; dump="$RIQ_HOME/backups/before-$RELEASE_VERSION-$ts.dump"
+    ts="$(date +%Y%m%d-%H%M%S)"; mkdir -p "$ADG_HOME/backups"; dump="$ADG_HOME/backups/before-$RELEASE_VERSION-$ts.dump"
     backup_database "$dump" || die "The database backup failed, so nothing was changed."
     ok "Database backed up to $dump"
 
@@ -980,27 +980,27 @@ cmd_upgrade() {
     if [ "$RECONFIGURE" = 1 ]; then
         write_backend_env "$MODE"
         if [ "$TLS" != 2 ]; then
-            if [ "$MODE" = docker ]; then emit_caddyfile "$RIQ_HOME/config/Caddyfile" "riq-edge:8080"; else emit_caddyfile /etc/caddy/Caddyfile "127.0.0.1:$EDGE_PORT"; fi
+            if [ "$MODE" = docker ]; then emit_caddyfile "$ADG_HOME/config/Caddyfile" "adg-edge:8080"; else emit_caddyfile /etc/caddy/Caddyfile "127.0.0.1:$EDGE_PORT"; fi
         fi
     fi
     if [ "$MODE" = docker ]; then
-        quiet "Building the API image" docker build -q -f "$new_dir/docker/Dockerfile.backend" -t "remoteiq-backend:$RELEASE_VERSION" "$new_dir"
-        quiet "Building the web app image" docker build -q -f "$new_dir/docker/Dockerfile.frontend" -t "remoteiq-frontend:$RELEASE_VERSION" "$new_dir"
-        ln -sfn "$new_dir" "$RIQ_HOME/current"
+        quiet "Building the API image" docker build -q -f "$new_dir/docker/Dockerfile.backend" -t "adgrmm-backend:$RELEASE_VERSION" "$new_dir"
+        quiet "Building the web app image" docker build -q -f "$new_dir/docker/Dockerfile.frontend" -t "adgrmm-frontend:$RELEASE_VERSION" "$new_dir"
+        ln -sfn "$new_dir" "$ADG_HOME/current"
         write_compose "$RELEASE_VERSION"
         dc up -d >>"$LOG" 2>&1 || true
         if [ "$RECONFIGURE" = 1 ] && [ "$TLS" != 2 ]; then dc restart caddy >>"$LOG" 2>&1 || true; fi
     else
         link_release_data "$new_dir"
-        ln -sfn "$new_dir" "$RIQ_HOME/current"
+        ln -sfn "$new_dir" "$ADG_HOME/current"
         if ! migrate_native "$new_dir"; then rollback "$old_dir" "$dump"; fi
         write_units
-        systemctl restart remoteiq-backend remoteiq-frontend remoteiq-edge >>"$LOG" 2>&1 || true
+        systemctl restart adgrmm-backend adgrmm-frontend adgrmm-edge >>"$LOG" 2>&1 || true
         if [ "$RECONFIGURE" = 1 ] && [ "$TLS" != 2 ]; then systemctl restart caddy >>"$LOG" 2>&1 || true; fi
     fi
     if wait_healthy && wait_web; then
         conf_set VERSION "$RELEASE_VERSION"
-        ok "RemoteIQ is now $RELEASE_VERSION"
+        ok "ADG RMM is now $RELEASE_VERSION"
         prune_releases
     else
         rollback "$old_dir" "$dump"
@@ -1010,15 +1010,15 @@ cmd_upgrade() {
 rollback() {
     local old_dir="$1" dump="$2"
     warn "The new version did not come up. Going back to $CURRENT_VERSION."
-    ln -sfn "$old_dir" "$RIQ_HOME/current"
+    ln -sfn "$old_dir" "$ADG_HOME/current"
     if [ "$MODE" = docker ]; then
         write_compose "$CURRENT_VERSION"; dc up -d >>"$LOG" 2>&1 || true
     else
-        write_units; systemctl restart remoteiq-backend remoteiq-frontend remoteiq-edge >>"$LOG" 2>&1 || true
+        write_units; systemctl restart adgrmm-backend adgrmm-frontend adgrmm-edge >>"$LOG" 2>&1 || true
     fi
     wait_healthy && ok "Running $CURRENT_VERSION again." || warn "It still is not healthy; see $LOG."
     # The release that failed is not kept.
-    case "${RELEASE_DIR:-}" in "$RIQ_HOME"/releases/*) [ "$RELEASE_DIR" = "$old_dir" ] || rm -rf "$RELEASE_DIR" ;; esac
+    case "${RELEASE_DIR:-}" in "$ADG_HOME"/releases/*) [ "$RELEASE_DIR" = "$old_dir" ] || rm -rf "$RELEASE_DIR" ;; esac
     warn "If the upgrade changed the database, restore the backup with: pg_restore --clean --if-exists -d <database> $dump"
     exit 1
 }
@@ -1029,7 +1029,7 @@ backup_database() {
     # for the moment before the chmod below. The writes after this truncate it and keep that mode.
     ( umask 077; rm -f "$out"; : >"$out" )
     if [ "$DB_MODE" = local ]; then
-        if [ "$MODE" = docker ]; then dc exec -T postgres pg_dump -U remoteiq -Fc remoteiq >"$out"; else runuser -u postgres -- pg_dump -p "$(conf_get DB_LOCAL_PORT)" -Fc remoteiq >"$out"; fi
+        if [ "$MODE" = docker ]; then dc exec -T postgres pg_dump -U adgrmm -Fc adgrmm >"$out"; else runuser -u postgres -- pg_dump -p "$(conf_get DB_LOCAL_PORT)" -Fc adgrmm >"$out"; fi
     else
         command -v pg_dump >/dev/null 2>&1 || { apt_install postgresql-client >>"$LOG" 2>&1 || true; }
         PGPASSWORD="$(conf_get DB_PASSWORD)" pg_dump -Fc -h "$(conf_get DB_HOST)" -p "$(conf_get DB_PORT)" -U "$(conf_get DB_USER)" "$(conf_get DB_NAME)" >"$out"
@@ -1040,21 +1040,21 @@ backup_database() {
 prune_releases() {
     local keep=2 d
     # Keep the current and previous release; older ones and old database backups are removed.
-    ls -1dt "$RIQ_HOME"/releases/*/ 2>/dev/null | tail -n +$((keep + 1)) | while IFS= read -r d; do rm -rf "$d"; done
-    ls -1t "$RIQ_HOME"/backups/*.dump 2>/dev/null | tail -n +6 | while IFS= read -r d; do rm -f "$d"; done
+    ls -1dt "$ADG_HOME"/releases/*/ 2>/dev/null | tail -n +$((keep + 1)) | while IFS= read -r d; do rm -rf "$d"; done
+    ls -1t "$ADG_HOME"/backups/*.dump 2>/dev/null | tail -n +6 | while IFS= read -r d; do rm -f "$d"; done
 }
 
 cmd_reconfigure() {
     preflight; load_state; need_tty
     [ "$(conf_get INSTALLED)" = 1 ] || die "The installation did not finish; run the installer again first."
     title "Change addresses"
-    say "RemoteIQ's web address now is $PUBLIC_URL${PORTAL_DOMAIN:+ and the customer portal is on $PORTAL_DOMAIN}."
+    say "ADG RMM's web address now is $PUBLIC_URL${PORTAL_DOMAIN:+ and the customer portal is on $PORTAL_DOMAIN}."
     ask_valid "Web address (domain name)" "$DOMAIN" valid_host "Enter a domain name like rmm.example.com."
     local newdomain="$REPLY_VALUE" newportal="$PORTAL_DOMAIN"
     ask "Customer portal address (leave empty for none)" "$PORTAL_DOMAIN"
     newportal="$REPLY_VALUE"
     if [ -n "$newportal" ] && ! valid_domain "$newportal"; then die "That is not a valid domain name: $newportal"; fi
-    [ "$newportal" != "$newdomain" ] || die "The portal needs a different address than RemoteIQ itself."
+    [ "$newportal" != "$newdomain" ] || die "The portal needs a different address than ADG RMM itself."
     local scheme="${PUBLIC_URL%%://*}"
     conf_set DOMAIN "$newdomain"; conf_set PUBLIC_URL "$scheme://$newdomain"; conf_set PORTAL_DOMAIN "$newportal"
     ok "Saved. Applying it now (the same version is installed again with the new addresses)."
@@ -1066,7 +1066,7 @@ cmd_reconfigure() {
 
 cmd_status() {
     load_state
-    title "RemoteIQ status"
+    title "ADG RMM status"
     rule
     printf '  Version     %s\n  Mode        %s\n  Address     %s\n' "$(conf_get VERSION)" "$MODE" "$PUBLIC_URL"
     rule
@@ -1075,7 +1075,7 @@ cmd_status() {
         dc ps --format 'table {{.Service}}\t{{.State}}\t{{.Status}}' 2>/dev/null || bad=1
     else
         local s
-        for s in postgresql remoteiq-backend remoteiq-frontend remoteiq-edge $([ "$TLS" = 2 ] || echo caddy); do
+        for s in postgresql adgrmm-backend adgrmm-frontend adgrmm-edge $([ "$TLS" = 2 ] || echo caddy); do
             [ "$s" = postgresql ] && [ "$DB_MODE" != local ] && continue
             if systemctl is-active --quiet "$s"; then ok "$s is running"; else warn "$s is not running"; bad=1; fi
         done
@@ -1089,8 +1089,8 @@ cmd_status() {
     if [ "$api" = 1 ]; then ok "API answers"; else warn "API does not answer on 127.0.0.1:3001"; bad=1; fi
     if curl -fsS --max-time 8 -o /dev/null "http://127.0.0.1:$EDGE_PORT/login" 2>/dev/null; then ok "Web app answers"; else warn "Web app does not answer on port $EDGE_PORT"; bad=1; fi
     if curl -fsS --max-time 10 -o /dev/null "$PUBLIC_URL/login" 2>/dev/null || curl -fsSk --max-time 10 -o /dev/null "$PUBLIC_URL/login" 2>/dev/null; then ok "$PUBLIC_URL is reachable from this server"; else warn "$PUBLIC_URL is not reachable from this server (DNS, firewall, certificate or proxy)"; fi
-    [ -s "$RIQ_HOME/secrets/data-encryption.key" ] && ok "Data encryption key present" || warn "Data encryption key is missing"
-    printf '  Disk free on %s: %s\n' "$RIQ_HOME" "$(df -h "$RIQ_HOME" | awk 'NR==2 {print $4}')"
+    [ -s "$ADG_HOME/secrets/data-encryption.key" ] && ok "Data encryption key present" || warn "Data encryption key is missing"
+    printf '  Disk free on %s: %s\n' "$ADG_HOME" "$(df -h "$ADG_HOME" | awk 'NR==2 {print $4}')"
     [ "$WITH_LOGS" = 1 ] && support_bundle
     return "$bad"
 }
@@ -1100,20 +1100,20 @@ support_bundle() {
     stamp="$(date +%Y%m%d-%H%M%S)"
     # Logs and settings go in here, so the folder and the bundle are created private and under names nobody could prepare in
     # /tmp beforehand (mktemp makes them new, 0700 and 0600).
-    out="$(mktemp -d "/tmp/remoteiq-support-$stamp-XXXXXX")"
-    tarball="$(umask 077; mktemp "/tmp/remoteiq-support-$stamp-XXXXXX.tar.gz" 2>/dev/null || mktemp "/tmp/remoteiq-support-$stamp-XXXXXXXX")"
+    out="$(mktemp -d "/tmp/adgrmm-support-$stamp-XXXXXX")"
+    tarball="$(umask 077; mktemp "/tmp/adgrmm-support-$stamp-XXXXXX.tar.gz" 2>/dev/null || mktemp "/tmp/adgrmm-support-$stamp-XXXXXXXX")"
     {
         echo "version: $(conf_get VERSION)"; echo "mode: $MODE"; echo "os: $(. /etc/os-release; echo "$PRETTY_NAME")"
         echo "kernel: $(uname -r)"; free -m; df -h; uname -a
     } >"$out/system.txt" 2>&1
     # Secrets are not copied: the settings file is included with its values blanked out.
-    sed -E 's/^([A-Z_]*(SECRET|KEY|PASSWORD|URL)[A-Z_]*)=.*/\1=***/' "$RIQ_HOME/config/remoteiq.env" >"$out/remoteiq.env.redacted" 2>/dev/null || true
+    sed -E 's/^([A-Z_]*(SECRET|KEY|PASSWORD|URL)[A-Z_]*)=.*/\1=***/' "$ADG_HOME/config/adgrmm.env" >"$out/adgrmm.env.redacted" 2>/dev/null || true
     sed -E 's/^([A-Z_]*(PASSWORD|SECRET|KEY)[A-Z_]*)=.*/\1=***/' "$CONF" >"$out/install.conf.redacted" 2>/dev/null || true
     if [ "$MODE" = docker ]; then
         dc ps >"$out/containers.txt" 2>&1 || true
-        local s; for s in riq-backend riq-frontend riq-edge postgres caddy; do dc logs --no-color --tail 500 "$s" >"$out/log-$s.txt" 2>&1 || true; done
+        local s; for s in adg-backend adg-frontend adg-edge postgres caddy; do dc logs --no-color --tail 500 "$s" >"$out/log-$s.txt" 2>&1 || true; done
     else
-        local u; for u in remoteiq-backend remoteiq-frontend remoteiq-edge postgresql caddy; do journalctl -u "$u" -n 500 --no-pager >"$out/log-$u.txt" 2>&1 || true; done
+        local u; for u in adgrmm-backend adgrmm-frontend adgrmm-edge postgresql caddy; do journalctl -u "$u" -n 500 --no-pager >"$out/log-$u.txt" 2>&1 || true; done
     fi
     cp "$LOG" "$out/install.log" 2>/dev/null || true
     ( umask 077; tar -czf "$tarball" -C "$(dirname "$out")" "$(basename "$out")" ); rm -rf "$out"
@@ -1124,13 +1124,13 @@ support_bundle() {
 cmd_uninstall() {
     preflight; load_state
     need_tty
-    title "Uninstall RemoteIQ"
-    say "This stops and removes the RemoteIQ services. PostgreSQL, Docker and Caddy packages are left installed."
-    ask_yn "Remove RemoteIQ from this server?" n || { say "Cancelled."; return 0; }
+    title "Uninstall ADG RMM"
+    say "This stops and removes the ADG RMM services. PostgreSQL, Docker and Caddy packages are left installed."
+    ask_yn "Remove ADG RMM from this server?" n || { say "Cancelled."; return 0; }
     local purge=0
     if [ -n "$PURGE" ]; then purge="$PURGE"
     else
-        say "Your data is the database, uploaded files and the two key files in $RIQ_HOME/secrets."
+        say "Your data is the database, uploaded files and the two key files in $ADG_HOME/secrets."
         if ask_yn "Keep your data so you can reinstall later?" y; then purge=0; else purge=1; fi
     fi
     if [ "$purge" = 1 ]; then
@@ -1139,22 +1139,22 @@ cmd_uninstall() {
     fi
     if [ "$MODE" = docker ]; then
         dc down >>"$LOG" 2>&1 || true
-        docker rmi $(docker images -q 'remoteiq-*' 2>/dev/null | sort -u) >>"$LOG" 2>&1 || true
+        docker rmi $(docker images -q 'adgrmm-*' 2>/dev/null | sort -u) >>"$LOG" 2>&1 || true
     else
-        systemctl disable --now remoteiq-edge remoteiq-frontend remoteiq-backend >>"$LOG" 2>&1 || true
-        rm -f /etc/systemd/system/remoteiq-{backend,frontend,edge}.service; systemctl daemon-reload
+        systemctl disable --now adgrmm-edge adgrmm-frontend adgrmm-backend >>"$LOG" 2>&1 || true
+        rm -f /etc/systemd/system/adgrmm-{backend,frontend,edge}.service; systemctl daemon-reload
         [ "$TLS" = 2 ] || { : >/etc/caddy/Caddyfile; systemctl restart caddy >>"$LOG" 2>&1 || true; }
     fi
     if [ "$purge" = 1 ]; then
         if [ "$DB_MODE" = local ] && [ "$MODE" = native ]; then
-            runuser -u postgres -- psql -q -c 'DROP DATABASE IF EXISTS remoteiq;' -c 'DROP ROLE IF EXISTS remoteiq;' >>"$LOG" 2>&1 || true
+            runuser -u postgres -- psql -q -c 'DROP DATABASE IF EXISTS adgrmm;' -c 'DROP ROLE IF EXISTS adgrmm;' >>"$LOG" 2>&1 || true
         fi
-        rm -rf "$RIQ_HOME"
-        id remoteiq >/dev/null 2>&1 && userdel remoteiq >/dev/null 2>&1 || true
-        ok "RemoteIQ and all its data were removed."
+        rm -rf "$ADG_HOME"
+        id adgrmm >/dev/null 2>&1 && userdel adgrmm >/dev/null 2>&1 || true
+        ok "ADG RMM and all its data were removed."
     else
-        rm -rf "$RIQ_HOME/releases" "$RIQ_HOME/current"; conf_set INSTALLED 0
-        ok "RemoteIQ was removed. Your data is still in $RIQ_HOME."
+        rm -rf "$ADG_HOME/releases" "$ADG_HOME/current"; conf_set INSTALLED 0
+        ok "ADG RMM was removed. Your data is still in $ADG_HOME."
     fi
 }
 

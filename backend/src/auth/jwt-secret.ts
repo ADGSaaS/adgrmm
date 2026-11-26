@@ -17,7 +17,7 @@ export function getJwtSecret(): string {
 
     if (!raw || raw.trim().length === 0) {
         throw new Error(
-            "JWT_SECRET is required. RemoteIQ refuses to start without an explicit JWT signing secret.",
+            "JWT_SECRET is required. ADG RMM refuses to start without an explicit JWT signing secret.",
         );
     }
 

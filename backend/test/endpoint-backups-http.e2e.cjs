@@ -3,7 +3,7 @@
 // off until turned on, the schedule starting checks by itself, each outcome (protected, no backup, failing, unreadable answer, offline),
 // alerts that raise and clear, the customer limit, changed thresholds, and the customer's backup report (JSON and spreadsheet).
 // The backend must run with ENDPOINT_BACKUPS_POLLING left on (the schedule is tried first).
-//   RIQ_E2E_ALLOW=1 BASE_URL=http://127.0.0.1:3977 DATABASE_URL=postgres://.../riq_backup_e2e JWT_SECRET=... node test/endpoint-backups-http.e2e.cjs
+//   ADG_E2E_ALLOW=1 BASE_URL=http://127.0.0.1:3977 DATABASE_URL=postgres://.../adg_backup_e2e JWT_SECRET=... node test/endpoint-backups-http.e2e.cjs
 "use strict";
 const { assert, call, runner, setup, uuid } = require("./groupc-helpers.cjs");
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));

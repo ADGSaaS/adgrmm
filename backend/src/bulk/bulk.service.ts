@@ -444,7 +444,7 @@ export class BulkService {
     }
 
     /**
-     * A saved script from the scripts manager on many devices. Parameter values reach the script only as RIQ_<NAME> environment variables,
+     * A saved script from the scripts manager on many devices. Parameter values reach the script only as ADG_<NAME> environment variables,
      * exactly as a single run does, and are never kept in the audit trail (only their names).
      */
     runSavedScript(actor: Actor, req: any, ids: unknown, scriptId: string, supplied: Record<string, string>) {
@@ -485,7 +485,7 @@ export class BulkService {
                 for (const p of Array.isArray(c.parameters) ? c.parameters : []) {
                     const value = String((supplied ?? {})[p.name] ?? p.defaultValue ?? "");
                     if (p.required && !value) throw new BadRequestException(`"${p.label || p.name}" is required.`);
-                    env[`RIQ_${String(p.name).toUpperCase()}`] = value.slice(0, 2000);
+                    env[`ADG_${String(p.name).toUpperCase()}`] = value.slice(0, 2000);
                 }
             });
     }
@@ -497,13 +497,13 @@ export class BulkService {
     recoverAgents(actor: Actor, req: any, ids: unknown) {
         return this.execute(actor, req, "recover-agent", ids, (n) => `Restart the agent on ${this.noun(n)}`, {}, async (ctx) => {
             const agent = this.needAgent(ctx);
-            if (Date.now() - (agent.lastCheckInAt?.getTime() ?? 0) > ONLINE_WINDOW_MS) throw new Skip("It is offline, so it cannot be told to restart from here. Restart the RemoteIQ agent service on the device, or run the installer there again.");
+            if (Date.now() - (agent.lastCheckInAt?.getTime() ?? 0) > ONLINE_WINDOW_MS) throw new Skip("It is offline, so it cannot be told to restart from here. Restart the ADG RMM agent service on the device, or run the installer there again.");
             const windows = ctx.os.toLowerCase().includes("windows");
             const linux = isLinuxOs(ctx.os.toLowerCase() === "linux" ? "linux" : "", ctx.os);
             if (!windows && !linux) throw new Skip("This system is not supported.");
             const job = await this.jobs.createRunScriptJob({
                 agentId: agent.id, language: windows ? "powershell" : "bash", scriptText: windows ? WINDOWS_RECOVER_SCRIPT : LINUX_RECOVER_SCRIPT,
-                env: { RIQ_TOOL: RECOVER_TOOL }, timeoutSec: 120,
+                env: { ADG_TOOL: RECOVER_TOOL }, timeoutSec: 120,
             });
             return { status: "queued", jobId: job.id };
         });

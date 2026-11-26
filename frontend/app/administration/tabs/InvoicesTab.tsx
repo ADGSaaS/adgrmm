@@ -21,10 +21,10 @@ export default function InvoicesTab({ push }: InvoicesTabProps) {
         defaultDiscountPct: 0,
         defaultLateFeePct: 0,
         defaultNotes: "Thank you for your business!",
-        footer: "RemoteIQ • 123 Example St • Anytown, CA 90210",
+        footer: "ADG RMM • 123 Example St • Anytown, CA 90210",
         showCompanyAddress: true,
         attachPdfToEmail: true,
-        emailFrom: "billing@remoteiq.local",
+        emailFrom: "billing@adgrmm.local",
     });
 
     return (

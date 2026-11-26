@@ -15,7 +15,7 @@ export const MIN_PASSWORD = 10;
  * so a portal token is never accepted as a staff token (or the other way round), even by mistake.
  */
 export function portalSecret(): string {
-    return createHmac("sha256", getJwtSecret()).update("remoteiq:client-portal:v1").digest("hex");
+    return createHmac("sha256", getJwtSecret()).update("adgrmm:client-portal:v1").digest("hex");
 }
 
 export function newToken(): string {

@@ -2349,7 +2349,7 @@ model webhook_endpoints {
   url             String
   secret          String
   events          String[]
-  /// auto (from the address), remoteiq, slack, discord or teams
+  /// auto (from the address), adgrmm, slack, discord or teams
   format          String   @default("auto")
   enabled         Boolean  @default(true)
   created_by      String?  @db.Uuid

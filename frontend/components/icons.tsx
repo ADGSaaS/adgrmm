@@ -1,4 +1,4 @@
-//remoteiq-frontend\components\icons.tsx
+//adgrmm-frontend\components\icons.tsx
 
 // --- SVG Icons ---
 // I've moved all the SVG icons from my app.jsx into this file 

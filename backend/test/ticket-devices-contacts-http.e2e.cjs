@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Devices on a ticket and the customer's contact as the person who asked, through the real HTTP API.
 //
-//   RIQ_E2E_ALLOW=1 BASE_URL=http://127.0.0.1:3901 DATABASE_URL=postgres://.../riq_x_e2e JWT_SECRET=... node test/ticket-devices-contacts-http.e2e.cjs
+//   ADG_E2E_ALLOW=1 BASE_URL=http://127.0.0.1:3901 DATABASE_URL=postgres://.../adg_x_e2e JWT_SECRET=... node test/ticket-devices-contacts-http.e2e.cjs
 "use strict";
 const { assert, call, json, runner, setup, uuid } = require("./groupc-helpers.cjs");
 

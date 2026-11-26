@@ -3,7 +3,7 @@ param([string]$Repo, [string]$Out)
 $ErrorActionPreference = 'Stop'
 $dest = Join-Path $Out 'unbundled'
 Remove-Item -Recurse -Force -ErrorAction SilentlyContinue $dest
-& dotnet publish (Join-Path $Repo 'agents/windows/RemoteIQ.Agent/RemoteIQ.Agent.csproj') -c Release -r win-x64 --self-contained true `
+& dotnet publish (Join-Path $Repo 'agents/windows/AdgRmm.Agent/AdgRmm.Agent.csproj') -c Release -r win-x64 --self-contained true `
     -p:Version=1.3.28 -p:PublishSingleFile=false -p:IncludeNativeLibrariesForSelfExtract=false -p:IncludeAllContentForSelfExtract=false -o $dest | Select-Object -Last 2
 Get-ChildItem $dest -Recurse -File | Where-Object { $_.Extension -ne '.pdb' -and $_.FullName -notmatch 'capture-helper' } | ForEach-Object {
     '{0} {1} {2}' -f (Get-FileHash $_.FullName -Algorithm SHA256).Hash, $_.Length, [IO.Path]::GetRelativePath((Resolve-Path $dest).Path, $_.FullName).Replace('\', '/')

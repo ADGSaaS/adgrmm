@@ -197,7 +197,7 @@ function RemoteDesktopUnavailable() {
             <CardHeader>
                 <CardTitle>Remote Desktop (RDP) is not available</CardTitle>
                 <CardDescription>
-                    An RDP program needs a direct network connection to reach the device, and RemoteIQ does not provide one
+                    An RDP program needs a direct network connection to reach the device, and ADG RMM does not provide one
                     yet.
                 </CardDescription>
             </CardHeader>

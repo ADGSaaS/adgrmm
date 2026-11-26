@@ -16,10 +16,10 @@
     <PackageReference Include="System.Diagnostics.PerformanceCounter" Version="8.0.1" />
     <PackageReference Include="Microsoft.Extensions.Hosting.WindowsServices" Version="8.0.1" />
     <Compile Include="..\..\shared\*.cs" LinkBase="Shared" />
-    <Compile Include="..\..\windows\RemoteIQ.Agent\Services\WindowsCheckProbes.cs" Link="WindowsCheckProbes.cs" />
-    <Compile Include="..\..\windows\RemoteIQ.Agent\Services\WindowsUpdatePlatform.cs" Link="WindowsUpdatePlatform.cs" />
-    <Compile Include="..\..\linux\RemoteIQ.Agent.Linux\LinuxCheckProbes.cs" Link="LinuxCheckProbes.cs" />
-    <Compile Include="..\..\linux\RemoteIQ.Agent.Linux\LinuxInit.cs" Link="LinuxInit.cs" />
+    <Compile Include="..\..\windows\AdgRmm.Agent\Services\WindowsCheckProbes.cs" Link="WindowsCheckProbes.cs" />
+    <Compile Include="..\..\windows\AdgRmm.Agent\Services\WindowsUpdatePlatform.cs" Link="WindowsUpdatePlatform.cs" />
+    <Compile Include="..\..\linux\AdgRmm.Agent.Linux\LinuxCheckProbes.cs" Link="LinuxCheckProbes.cs" />
+    <Compile Include="..\..\linux\AdgRmm.Agent.Linux\LinuxInit.cs" Link="LinuxInit.cs" />
     <None Include="samples\*" CopyToOutputDirectory="PreserveNewest" LinkBase="samples" />
   </ItemGroup>
 

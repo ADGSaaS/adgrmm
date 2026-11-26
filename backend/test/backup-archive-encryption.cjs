@@ -15,7 +15,7 @@ const { spawnSync } = require("node:child_process");
 
 require("reflect-metadata");
 
-const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "riq-archive-enc-"));
+const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "adg-archive-enc-"));
 const keyFile = path.join(tmp, "data.key");
 fs.writeFileSync(keyFile, crypto.randomBytes(32).toString("hex"));
 const otherKeyFile = path.join(tmp, "other.key");
@@ -154,7 +154,7 @@ async function check(name, fn) {
             await refuses(tampered((b) => { b[8 + 3] ^= 1; }), "chunk size");
             await refuses(tampered((b) => { b[8 + 4 + 2] ^= 1; }), "salt");
             await refuses(tampered((b) => { b[8 + 4 + 32 + 2] ^= 1; }), "nonce prefix");
-            await refuses(tampered((b) => { b[0] ^= 1; }), "magic", /not an encrypted RemoteIQ archive/);
+            await refuses(tampered((b) => { b[0] ^= 1; }), "magic", /not an encrypted ADG RMM archive/);
         });
 
         await check("reorder: swapping two chunks fails", () =>
@@ -214,7 +214,7 @@ async function check(name, fn) {
             const empty = file("empty");
             fs.writeFileSync(empty, "");
             assert.equal(await archive.isEncryptedArchiveFile(empty), false);
-            await refuses(notEnc, "plain", /not an encrypted RemoteIQ archive/);
+            await refuses(notEnc, "plain", /not an encrypted ADG RMM archive/);
         });
 
         await check("a file already at the output path is neither overwritten nor removed", async () => {
@@ -232,7 +232,7 @@ async function check(name, fn) {
             assert.equal(sha(out), sha(plain));
             const bad = spawnSync(process.execPath, [script, plain, file("x")], { env: process.env, encoding: "utf8" });
             assert.equal(bad.status, 1);
-            assert.match(bad.stderr, /not an encrypted RemoteIQ archive/);
+            assert.match(bad.stderr, /not an encrypted ADG RMM archive/);
         });
 
         // ------ the real worker, writing to a local destination ------

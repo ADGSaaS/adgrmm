@@ -542,11 +542,11 @@ const cap = (s: string, n: number) => (s.length > n ? `${s.slice(0, n)}\n... (${
 
 /** An internal note for the moment a script is sent to the computer: what it is for, how it runs, what it was given, and its full text. */
 export function scriptStartNote(p: { step: string; purpose: string; jobId: string; language: string; env: Record<string, string>; script: string | null; scriptName: string }): string {
-    const params = Object.entries(p.env).filter(([k]) => k !== "RIQ_TOOL").map(([k, v]) => `${k}=${v === "" ? "(empty)" : v}`).join("; ") || "none";
+    const params = Object.entries(p.env).filter(([k]) => k !== "ADG_TOOL").map(([k, v]) => `${k}=${v === "" ? "(empty)" : v}`).join("; ") || "none";
     return [
         `Script sent to the computer: ${p.step}`,
         `Purpose: ${p.purpose}`,
-        `Script: ${p.scriptName} (${p.language}), job ${p.jobId}. It runs on the computer as the RemoteIQ agent, signed, with a time limit.`,
+        `Script: ${p.scriptName} (${p.language}), job ${p.jobId}. It runs on the computer as the ADG RMM agent, signed, with a time limit.`,
         `Given: ${params}`,
         p.script === null ? "Script text: the same as the first check above." : `Script text:\n${p.script.replace(/\s+$/, "")}`,
     ].join("\n");

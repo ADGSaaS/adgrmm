@@ -1,6 +1,6 @@
 // backend/src/system-health/system-health.service.ts
 //
-// Watches the RemoteIQ servers themselves: database, disk, memory, the job queue, backups and restore tests. Every minute it measures, stores the
+// Watches the ADG RMM servers themselves: database, disk, memory, the job queue, backups and restore tests. Every minute it measures, stores the
 // state, keeps a history of changes and tells the Owner (email / Slack / webhook as configured for backups) when something changes state.
 // It also starts the monthly restore test: the newest good backup is restored into a scratch database and checked, and production is never touched.
 import { Injectable, Logger } from "@nestjs/common";
@@ -49,7 +49,7 @@ export class SystemHealthService {
         try { await this.prisma.$queryRaw`SELECT 1`; out.push(databaseCheck(Date.now() - t0)); }
         catch (e: any) { out.push(databaseCheck(null, String(e?.message ?? e).slice(0, 160))); return out; }
 
-        const dir = process.env.BACKUP_DIR || "/var/remoteiq/backups";
+        const dir = process.env.BACKUP_DIR || "/var/adgrmm/backups";
         let free: number | null = null, total: number | null = null, where = dir;
         for (const p of [dir, process.cwd()]) {
             try { const s: any = await (fsp as any).statfs(p); free = Number(s.bavail) * Number(s.bsize); total = Number(s.blocks) * Number(s.bsize); where = p; break; } catch { /* try next */ }

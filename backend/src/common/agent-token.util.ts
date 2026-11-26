@@ -1,4 +1,4 @@
-// remoteiq-minimal-e2e/backend/src/common/agent-token.util.ts
+// adgrmm-minimal-e2e/backend/src/common/agent-token.util.ts
 import { Injectable, CanActivate, ExecutionContext, UnauthorizedException } from "@nestjs/common";
 import type { Request } from "express";
 import { createHash } from "node:crypto";

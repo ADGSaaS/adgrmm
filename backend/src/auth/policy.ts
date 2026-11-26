@@ -1,4 +1,4 @@
-// remoteiq-minimal-e2e/backend/src/auth/policy.ts
+// adgrmm-minimal-e2e/backend/src/auth/policy.ts
 export type PermissionGroup = {
     key: string;
     label: string;

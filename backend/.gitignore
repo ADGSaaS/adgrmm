@@ -1,4 +1,4 @@
-# REMOTEIQ_POSTGRES_LOCAL_DOCKER_V1
+# ADG_POSTGRES_LOCAL_DOCKER_V1
 node_modules/
 dist/
 
@@ -25,7 +25,7 @@ config/database.json
 
 # Local diagnostics and 2FA material must not be committed.
 cookies.txt
-remoteiq-2fa*
+adgrmm-2fa*
 *-dump.txt
 *_debug_bundle.txt
 db-inspect.txt

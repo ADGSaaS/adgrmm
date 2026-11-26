@@ -17,9 +17,9 @@ jobs:
       run:
         working-directory: backend
     env:
-      RIQ_E2E_ALLOW: "1"
+      ADG_E2E_ALLOW: "1"
       BASE_URL: http://127.0.0.1:3901
-      DATABASE_URL: postgres://riq:riq@127.0.0.1:5432/riq_e2e_sec
+      DATABASE_URL: postgres://adg:adg@127.0.0.1:5432/adg_e2e_sec
       JWT_SECRET: e2e-only-not-a-real-secret-e2e-only-not-a-real-secret
       CONSOLE_ORIGIN: http://console.test
       AUTH_COOKIE_NAME: auth_token
@@ -31,8 +31,8 @@ jobs:
           node-version: 22
       - name: Start Postgres
         run: |
-          docker run -d --name riq-pg -p 127.0.0.1:5432:5432 -e POSTGRES_USER=riq -e POSTGRES_PASSWORD=riq -e POSTGRES_DB=riq_e2e_sec postgres:16-alpine
-          until docker exec riq-pg pg_isready -U riq -d riq_e2e_sec >/dev/null 2>&1; do sleep 1; done
+          docker run -d --name adg-pg -p 127.0.0.1:5432:5432 -e POSTGRES_USER=adg -e POSTGRES_PASSWORD=adg -e POSTGRES_DB=adg_e2e_sec postgres:16-alpine
+          until docker exec adg-pg pg_isready -U adg -d adg_e2e_sec >/dev/null 2>&1; do sleep 1; done
           sleep 2
       - name: Build
         run: |
@@ -62,7 +62,7 @@ jobs:
         shell: pwsh
     env:
       AGENT_OS: ${{ matrix.agent_os }}
-      RIQ_E2E_ALLOW: "1"
+      ADG_E2E_ALLOW: "1"
       BASE_URL: http://127.0.0.1:3001
       STATE_DIR: ${{ github.workspace }}/e2e-state
     steps:
@@ -85,7 +85,7 @@ jobs:
         uses: ikalnytskyi/action-setup-postgres@v7
         id: postgres
         with:
-          database: riq_e2e
+          database: adg_e2e
 
       - name: Use Postgres (Windows)
         if: matrix.agent_os == 'windows'
@@ -95,10 +95,10 @@ jobs:
         if: matrix.agent_os == 'linux'
         shell: bash
         run: |
-          docker run -d --name riq-pg -p 127.0.0.1:5432:5432 -e POSTGRES_USER=riq -e POSTGRES_PASSWORD=riq -e POSTGRES_DB=riq_e2e postgres:16-alpine
-          until docker exec riq-pg pg_isready -U riq -d riq_e2e >/dev/null 2>&1; do sleep 1; done
+          docker run -d --name adg-pg -p 127.0.0.1:5432:5432 -e POSTGRES_USER=adg -e POSTGRES_PASSWORD=adg -e POSTGRES_DB=adg_e2e postgres:16-alpine
+          until docker exec adg-pg pg_isready -U adg -d adg_e2e >/dev/null 2>&1; do sleep 1; done
           sleep 2
-          echo "DATABASE_URL=postgres://riq:riq@127.0.0.1:5432/riq_e2e" >> "$GITHUB_ENV"
+          echo "DATABASE_URL=postgres://adg:adg@127.0.0.1:5432/adg_e2e" >> "$GITHUB_ENV"
 
       - name: Build backend
         working-directory: backend
@@ -157,9 +157,9 @@ jobs:
         if: matrix.agent_os == 'windows'
         shell: powershell
         run: |
-          New-Service -Name RemoteIQAgent -BinaryPathName 'C:\Old Build\missing\RemoteIQ.Agent.exe' -DisplayName 'RemoteIQ Agent' -StartupType Manual | Out-Null
-          New-Item -ItemType Directory -Force "$env:ProgramData\RemoteIQ" | Out-Null
-          '{"ApiBaseUrl":"http://localhost:9","AgentId":"stale-agent","AgentKey":"stale-token","DeviceId":""}' | Set-Content "$env:ProgramData\RemoteIQ\agent.config.json"
+          New-Service -Name AdgRmmAgent -BinaryPathName 'C:\Old Build\missing\AdgRmm.Agent.exe' -DisplayName 'ADG RMM Agent' -StartupType Manual | Out-Null
+          New-Item -ItemType Directory -Force "$env:ProgramData\AdgRmm" | Out-Null
+          '{"ApiBaseUrl":"http://localhost:9","AgentId":"stale-agent","AgentKey":"stale-token","DeviceId":""}' | Set-Content "$env:ProgramData\AdgRmm\agent.config.json"
 
       - name: Install (Windows)
         if: matrix.agent_os == 'windows'
@@ -168,7 +168,7 @@ jobs:
           $command = Get-Content "$env:STATE_DIR/install-command.txt" -Raw
           Invoke-Expression $command
           if ($LASTEXITCODE -ne 0) { throw "Installer exited with $LASTEXITCODE" }
-          $svc = Get-Service RemoteIQAgent
+          $svc = Get-Service AdgRmmAgent
           "Service: $($svc.Status) $($svc.StartType)"
           if ($svc.Status -ne 'Running') { throw 'Service is not running' }
 
@@ -177,13 +177,13 @@ jobs:
         shell: bash
         run: |
           bash -c "$(cat "$STATE_DIR/install-command.txt")"
-          systemctl is-enabled remoteiq-agent
-          systemctl is-active remoteiq-agent
+          systemctl is-enabled adgrmm-agent
+          systemctl is-active adgrmm-agent
 
       - name: Check the key is not left in clear text
         shell: bash
         run: |
-          if [ "$AGENT_OS" = windows ]; then f='C:/ProgramData/RemoteIQ/enrollment.json'; else f=/etc/remoteiq/enrollment.json; fi
+          if [ "$AGENT_OS" = windows ]; then f='C:/ProgramData/AdgRmm/enrollment.json'; else f=/etc/adgrmm/enrollment.json; fi
           sudo test ! -e "$f" 2>/dev/null || { test ! -e "$f"; }
 
       - name: Verify the agent
@@ -207,7 +207,7 @@ jobs:
         run: |
           $command = Get-Content "$env:STATE_DIR/install-command.txt" -Raw
           if ($command -notmatch "irm '([^']+)'") { throw 'No URL in the install command' }
-          $file = Join-Path $env:RUNNER_TEMP 'RemoteIQ Installer.ps1'
+          $file = Join-Path $env:RUNNER_TEMP 'ADG RMM Installer.ps1'
           Invoke-WebRequest -Uri $Matches[1] -OutFile $file -UseBasicParsing
           powershell -NoProfile -ExecutionPolicy Bypass -File $file
           if ($LASTEXITCODE -ne 0) { throw "Installer exited with $LASTEXITCODE" }
@@ -226,19 +226,19 @@ jobs:
         if: matrix.agent_os == 'windows'
         shell: powershell
         run: |
-          & "$env:ProgramFiles\RemoteIQ\Agent\uninstall.ps1"
-          if (Get-Service RemoteIQAgent -ErrorAction SilentlyContinue) { throw 'Service still exists' }
-          if (Test-Path "$env:ProgramFiles\RemoteIQ") { throw 'Install folder still exists' }
-          if (Test-Path "$env:ProgramData\RemoteIQ") { throw 'Data folder still exists' }
+          & "$env:ProgramFiles\AdgRmm\Agent\uninstall.ps1"
+          if (Get-Service AdgRmmAgent -ErrorAction SilentlyContinue) { throw 'Service still exists' }
+          if (Test-Path "$env:ProgramFiles\AdgRmm") { throw 'Install folder still exists' }
+          if (Test-Path "$env:ProgramData\AdgRmm") { throw 'Data folder still exists' }
 
       - name: Uninstall (Linux)
         if: matrix.agent_os == 'linux'
         shell: bash
         run: |
-          sudo /opt/remoteiq-agent/uninstall.sh
-          ! systemctl cat remoteiq-agent 2>/dev/null
-          test ! -e /opt/remoteiq-agent
-          sudo test ! -e /etc/remoteiq
+          sudo /opt/adgrmm-agent/uninstall.sh
+          ! systemctl cat adgrmm-agent 2>/dev/null
+          test ! -e /opt/adgrmm-agent
+          sudo test ! -e /etc/adgrmm
 
       - name: Mark the machine as long offline
         working-directory: backend
@@ -271,10 +271,10 @@ jobs:
         run: |
           tail -n 60 "$STATE_DIR/api.log" "$STATE_DIR/api.err.log" | sed -E 's/[A-Za-z0-9_-]{32,}/[redacted]/g' || true
           if [ "$AGENT_OS" = linux ]; then
-            sudo journalctl -u remoteiq-agent -n 60 --no-pager | sed -E 's/[A-Za-z0-9_-]{32,}/[redacted]/g' || true
+            sudo journalctl -u adgrmm-agent -n 60 --no-pager | sed -E 's/[A-Za-z0-9_-]{32,}/[redacted]/g' || true
           else
-            tail -n 60 C:/ProgramData/RemoteIQ/Logs/agent-*.log | sed -E 's/[A-Za-z0-9_-]{32,}/[redacted]/g' || true
-            tail -n 30 C:/ProgramData/RemoteIQ/install.log || true
+            tail -n 60 C:/ProgramData/AdgRmm/Logs/agent-*.log | sed -E 's/[A-Za-z0-9_-]{32,}/[redacted]/g' || true
+            tail -n 30 C:/ProgramData/AdgRmm/install.log || true
           fi
 
       - name: Upload packages

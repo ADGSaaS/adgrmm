@@ -3,7 +3,7 @@ import * as React from "react";
 import TopBar from "@/components/top-bar";
 
 export const metadata = {
-    title: "Account • RemoteIQ",
+    title: "Account • ADG RMM",
 };
 
 export default function AccountLayout({

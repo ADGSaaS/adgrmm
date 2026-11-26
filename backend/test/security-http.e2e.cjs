@@ -5,7 +5,7 @@
 // good result stays), timeouts, the Defender actions, the customer limit, the fleet endpoint (paging, sorting, filters, one row per
 // Windows device), the summary, the bulk action, the Security posture report, and an audit trail without scan data.
 //
-//   RIQ_E2E_ALLOW=1 BASE_URL=http://127.0.0.1:3951 DATABASE_URL=postgres://.../riq_sec_e2e JWT_SECRET=... node test/security-http.e2e.cjs
+//   ADG_E2E_ALLOW=1 BASE_URL=http://127.0.0.1:3951 DATABASE_URL=postgres://.../adg_sec_e2e JWT_SECRET=... node test/security-http.e2e.cjs
 "use strict";
 const path = require("node:path");
 const { assert, call, runner, setup, uuid } = require("./groupc-helpers.cjs");
@@ -81,7 +81,7 @@ async function main() {
         try {
             const rows = (await q(`SELECT j.id, j.payload, a.device_id FROM jobs j JOIN agents a ON a.id = j.agent_id WHERE j.status = 'queued' AND a.device_id = ANY($1::uuid[])`, [devs])).rows;
             for (const r of rows) {
-                const kind = r.payload?.env?.RIQ_TOOL;
+                const kind = r.payload?.env?.ADG_TOOL;
                 if (!kind || !kind.startsWith("security.") || handled.has(r.id)) continue;
                 handled.add(r.id);
                 const sc = scenario.get(r.device_id);
@@ -161,7 +161,7 @@ async function main() {
     // the poller test starts now and is checked at the end: nobody reads this device's page in between
     const pollerDevice = w6;
     scenario.set(pollerDevice.id, { out: text(withProbes({})) });
-    await test("POST scan queues one signed script job: fixed script text, only RIQ_TOOL in the environment, 90 second timeout", async () => {
+    await test("POST scan queues one signed script job: fixed script text, only ADG_TOOL in the environment, 90 second timeout", async () => {
         const r = await post(pollerDevice.id, ops, "/scan");
         assert.equal(r.status, 200);
         const j = await r.json();
@@ -170,7 +170,7 @@ async function main() {
         assert.equal(job.type, "RUN_SCRIPT");
         assert.equal(job.payload.language, "powershell");
         assert.equal(job.payload.scriptText, S.SECURITY_SCAN_SCRIPT);
-        assert.deepEqual(job.payload.env, { RIQ_TOOL: "security.scan" });
+        assert.deepEqual(job.payload.env, { ADG_TOOL: "security.scan" });
         assert.equal(job.payload.timeoutSec, 90);
         const row = (await q(`SELECT pending_job_id FROM device_security_scans WHERE device_id = $1`, [pollerDevice.id])).rows[0];
         assert.equal(row.pending_job_id, j.jobId);
@@ -327,15 +327,15 @@ async function main() {
         let j = await r.json();
         assert.equal(j.pending, false); assert.equal(j.result.before, "1.463.311.0"); assert.equal(j.result.after, "1.463.330.0"); assert.equal(j.result.changed, true);
         let job = (await q(`SELECT payload FROM jobs WHERE id = $1`, [j.jobId])).rows[0].payload;
-        assert.equal(job.scriptText, S.DEFENDER_SCRIPTS.update); assert.deepEqual(job.env, { RIQ_TOOL: "security.defender.update" });
+        assert.equal(job.scriptText, S.DEFENDER_SCRIPTS.update); assert.deepEqual(job.env, { ADG_TOOL: "security.defender.update" });
         j = await (await post(w2.id, ops, "/defender/quick-scan")).json();
         assert.deepEqual(j.result, { scanType: "QuickScan", started: true });
         job = (await q(`SELECT payload FROM jobs WHERE id = $1`, [j.jobId])).rows[0].payload;
-        assert.equal(job.scriptText, S.DEFENDER_SCRIPTS.scan); assert.deepEqual(job.env, { RIQ_TOOL: "security.defender.quick-scan", RIQ_SCAN_TYPE: "QuickScan" });
+        assert.equal(job.scriptText, S.DEFENDER_SCRIPTS.scan); assert.deepEqual(job.env, { ADG_TOOL: "security.defender.quick-scan", ADG_SCAN_TYPE: "QuickScan" });
         j = await (await post(w2.id, ops, "/defender/full-scan")).json();
         assert.deepEqual(j.result, { scanType: "FullScan", started: true });
         job = (await q(`SELECT payload FROM jobs WHERE id = $1`, [j.jobId])).rows[0].payload;
-        assert.deepEqual(job.env, { RIQ_TOOL: "security.defender.full-scan", RIQ_SCAN_TYPE: "FullScan" });
+        assert.deepEqual(job.env, { ADG_TOOL: "security.defender.full-scan", ADG_SCAN_TYPE: "FullScan" });
     });
     await test("a refused action (Defender not running) is a 409 with the device's own reason", async () => {
         scenario.set(w2.id, { out: JSON.stringify({ ok: false, error: "Microsoft Defender is not running on this device, so it cannot scan." }) });
@@ -357,11 +357,11 @@ async function main() {
         let j = await r.json();
         assert.equal(j.pending, false); assert.equal(j.result.action, "firewall-enable"); assert.match(j.result.message, /ufw/);
         let job = (await q(`SELECT payload FROM jobs WHERE id = $1`, [j.jobId])).rows[0].payload;
-        assert.equal(job.language, "bash"); assert.equal(job.scriptText, LA.LINUX_FIREWALL_ENABLE_SCRIPT); assert.deepEqual(job.env, { RIQ_TOOL: "security.linux.firewall-enable" });
+        assert.equal(job.language, "bash"); assert.equal(job.scriptText, LA.LINUX_FIREWALL_ENABLE_SCRIPT); assert.deepEqual(job.env, { ADG_TOOL: "security.linux.firewall-enable" });
         j = await (await post(lin.id, ops, "/linux/malware-scan")).json();
         assert.equal(j.result.state, "clean"); assert.equal(j.result.scannedFiles, 1200);
         job = (await q(`SELECT payload FROM jobs WHERE id = $1`, [j.jobId])).rows[0].payload;
-        assert.equal(job.scriptText, LA.LINUX_MALWARE_SCAN_SCRIPT); assert.deepEqual(job.env, { RIQ_TOOL: "security.linux.malware-scan" });
+        assert.equal(job.scriptText, LA.LINUX_MALWARE_SCAN_SCRIPT); assert.deepEqual(job.env, { ADG_TOOL: "security.linux.malware-scan" });
     });
     await test("they are refused for a Windows device, an offline device and an action that does not exist", async () => {
         assert.equal((await post(w1.id, ops, "/linux/firewall-enable")).status, 400);

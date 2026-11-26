@@ -1,13 +1,13 @@
 // Outbound webhooks to Slack, Discord and Microsoft Teams: the message each service accepts (and nothing else, since they answer anything
 // else with a 400), made from real ticket, alert and monitor events, delivered to local receivers, with text that cannot mention everyone,
 // the format chosen from the address or by hand, and failures that are retried only when retrying could help.
-// Usage, from backend/ after building: DIST=dist RIQ_E2E_ALLOW=1 DATABASE_URL=postgres://.../riq_x_e2e node test/webhook-chat.e2e.cjs
+// Usage, from backend/ after building: DIST=dist ADG_E2E_ALLOW=1 DATABASE_URL=postgres://.../adg_x_e2e node test/webhook-chat.e2e.cjs
 const http = require("node:http");
 const crypto = require("node:crypto");
 const path = require("node:path");
 
-if (process.env.RIQ_E2E_ALLOW !== "1" || !/e2e/.test(process.env.DATABASE_URL || "")) {
-    console.error("Refusing to run: set RIQ_E2E_ALLOW=1 and an e2e-named DATABASE_URL.");
+if (process.env.ADG_E2E_ALLOW !== "1" || !/e2e/.test(process.env.DATABASE_URL || "")) {
+    console.error("Refusing to run: set ADG_E2E_ALLOW=1 and an e2e-named DATABASE_URL.");
     process.exit(2);
 }
 process.env.JWT_SECRET ||= "e2e-only-not-a-real-secret-e2e-only-not-a-real-secret";
@@ -50,8 +50,8 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
     check("Teams: a message with an adaptive card, a bold headline and an Open button", te.type === "message" && te.attachments[0].contentType === "application/vnd.microsoft.card.adaptive" && card.type === "AdaptiveCard" && card.body[0].weight === "Bolder" && card.actions?.[0]?.type === "Action.OpenUrl" && card.actions[0].url === "https://console.example.test/tickets/t1", te);
     const noLink = chat.chatBody("teams", ticketEnv({ url: "javascript:alert(1)" }));
     check("Teams: a link that is not http or https never becomes a button", !noLink.attachments[0].content.actions);
-    check("RemoteIQ's own format is left as it was (no chat body)", chat.chatBody("remoteiq", ticketEnv()) === null);
-    check("the format comes from the address when it is auto, and from the choice when there is one", chat.formatFor("https://hooks.slack.com/services/T/B/x", "auto") === "slack" && chat.formatFor("https://discord.com/api/webhooks/1/x", null) === "discord" && chat.formatFor("https://x.webhook.office.com/webhookb2/y", "auto") === "teams" && chat.formatFor("https://prod-1.westus.logic.azure.com/workflows/z", undefined) === "teams" && chat.formatFor("https://example.com/hook", "auto") === "remoteiq" && chat.formatFor("https://example.com/hook", "slack") === "slack" && chat.formatFor("https://hooks.slack.com/x", "remoteiq") === "remoteiq");
+    check("ADG RMM's own format is left as it was (no chat body)", chat.chatBody("adgrmm", ticketEnv()) === null);
+    check("the format comes from the address when it is auto, and from the choice when there is one", chat.formatFor("https://hooks.slack.com/services/T/B/x", "auto") === "slack" && chat.formatFor("https://discord.com/api/webhooks/1/x", null) === "discord" && chat.formatFor("https://x.webhook.office.com/webhookb2/y", "auto") === "teams" && chat.formatFor("https://prod-1.westus.logic.azure.com/workflows/z", undefined) === "teams" && chat.formatFor("https://example.com/hook", "auto") === "adgrmm" && chat.formatFor("https://example.com/hook", "slack") === "slack" && chat.formatFor("https://hooks.slack.com/x", "adgrmm") === "adgrmm");
     const m = (event, data) => chat.chatMessage({ event, data });
     check("a ticket update says what changed and who changed it", (() => { const x = m("ticket.updated", { ...ticketEnv().data, changes: [{ field: "status", from: "open", to: "in_progress" }, { field: "assignee", from: null, to: "Sam" }], changedBy: "Sam" }); return x.title.startsWith("Ticket updated: #42") && x.lines.join("|").includes("status: open to in_progress") && x.lines.join("|").includes("assignee: none to Sam") && x.lines.join("|").includes("By Sam"); })());
     check("a device offline, a monitor problem and a recovery read as plain sentences", (() => {
@@ -83,7 +83,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
     });
     await new Promise((r) => server.listen(0, "127.0.0.1", r));
     const base = `http://127.0.0.1:${server.address().port}`;
-    const at = (p, event) => received.filter((r) => r.path === p && (!event || r.headers["x-remoteiq-event"] === event));
+    const at = (p, event) => received.filter((r) => r.path === p && (!event || r.headers["x-adg-event"] === event));
     const settle = async () => { await sleep(400); await hooks.work(); await sleep(200); };
 
     const org = await prisma.organizations.upsert({ where: { slug: "default" }, create: { name: "Default Organization", slug: "default" }, update: {} });
@@ -96,12 +96,12 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
     const refuses = async (input) => { try { await hooks.create(org.id, { name: "x", url: `${base}/x`, events: EVENTS, ...input }, null); return false; } catch (e) { return /format/i.test(e.message); } };
     check("a message format that is not one of the five is refused", await refuses({ format: "whatsapp" }));
     const plain = await hooks.create(org.id, { name: "Plain", url: `${base}/plain`, events: EVENTS }, null);
-    check("the format is auto unless chosen, and the list says what it will send (from the address: RemoteIQ's own)", plain.format === "auto" && plain.sends === "remoteiq", plain);
+    check("the format is auto unless chosen, and the list says what it will send (from the address: ADG RMM's own)", plain.format === "auto" && plain.sends === "adgrmm", plain);
     const eps = {};
-    for (const f of ["slack", "teams", "discord", "remoteiq"]) eps[f] = await hooks.create(org.id, { name: `Chat ${f}`, url: `${base}/${f}`, events: EVENTS, format: f }, null);
+    for (const f of ["slack", "teams", "discord", "adgrmm"]) eps[f] = await hooks.create(org.id, { name: `Chat ${f}`, url: `${base}/${f}`, events: EVENTS, format: f }, null);
     check("a chosen format is kept and shown", eps.slack.format === "slack" && eps.slack.sends === "slack" && eps.teams.sends === "teams");
     const lookalike = await hooks.create(org.id, { name: "Lookalike", url: "http://hooks.slack.com.attacker.invalid/x", events: ["ticket.created"] }, null);
-    check("an address that only looks like Slack's (hooks.slack.com.attacker...) is not treated as Slack", lookalike.sends === "remoteiq", lookalike);
+    check("an address that only looks like Slack's (hooks.slack.com.attacker...) is not treated as Slack", lookalike.sends === "adgrmm", lookalike);
 
     const req = { user: { organizationId: org.id, name: "Tester" } };
     const ticketId = await tickets.create({ subject: "Chat <!channel> printer is down", priority: "high", clientId: client.id }, req);
@@ -110,9 +110,9 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
     check("Slack gets a message with text, the ticket in it, and the mention made harmless", /\*New ticket: #\d+ Chat &lt;!channel&gt; printer is down\*/.test(tk("slack").text || "") && !/<!channel>/.test(tk("slack").text || ""), tk("slack"));
     check("Teams gets an adaptive card message", tk("teams").type === "message" && tk("teams").attachments?.[0]?.content?.body?.[0]?.text?.startsWith("New ticket: #"), tk("teams"));
     check("Discord gets content and no mentions", /^\*\*New ticket: #\d+/.test(tk("discord").content || "") && tk("discord").allowed_mentions?.parse?.length === 0, tk("discord"));
-    check("a webhook that asks for RemoteIQ's format, and one left on auto at an ordinary address, still get the signed envelope", tk("remoteiq").event === "ticket.created" && tk("remoteiq").data?.ticket?.id === ticketId && JSON.parse(at("/plain", "ticket.created")[0]?.body || "{}").event === "ticket.created");
-    check("every send is still signed and carries the event name, whatever the message looks like", received.filter((r) => r.path === "/slack").every((r) => /^sha256=[0-9a-f]{64}$/.test(r.headers["x-remoteiq-signature"] || "") && r.headers["x-remoteiq-event"]));
-    check("each webhook got the ticket once", ["slack", "teams", "discord", "remoteiq", "plain"].every((f) => at(`/${f}`, "ticket.created").length === 1));
+    check("a webhook that asks for ADG RMM's format, and one left on auto at an ordinary address, still get the signed envelope", tk("adgrmm").event === "ticket.created" && tk("adgrmm").data?.ticket?.id === ticketId && JSON.parse(at("/plain", "ticket.created")[0]?.body || "{}").event === "ticket.created");
+    check("every send is still signed and carries the event name, whatever the message looks like", received.filter((r) => r.path === "/slack").every((r) => /^sha256=[0-9a-f]{64}$/.test(r.headers["x-adg-signature"] || "") && r.headers["x-adg-event"]));
+    check("each webhook got the ticket once", ["slack", "teams", "discord", "adgrmm", "plain"].every((f) => at(`/${f}`, "ticket.created").length === 1));
 
     await tickets.update(ticketId, { status: "in_progress" }, req);
     await settle();
@@ -129,8 +129,8 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
     await alerts.onCheckRun({ deviceId: device.id, assignmentId, checkName: "Disk C:", status: "OK", severity: null, output: "" });
     await settle();
     check("the resolution reaches Slack", /Alert resolved: /.test(JSON.parse(at("/slack", "alert.resolved")[0]?.body || "{}").text || ""));
-    const raw = JSON.parse(at("/remoteiq", "alert.opened")[0]?.body || "{}");
-    check("the RemoteIQ-format alert still has the alert, the device and (new) a link", raw.data?.alert?.title && raw.data?.device?.name === "CHAT-PC-1" && raw.data?.url === `https://console.example.test/devices/${device.id}`, raw.data);
+    const raw = JSON.parse(at("/adgrmm", "alert.opened")[0]?.body || "{}");
+    check("the AdgRmm-format alert still has the alert, the device and (new) a link", raw.data?.alert?.title && raw.data?.device?.name === "CHAT-PC-1" && raw.data?.url === `https://console.example.test/devices/${device.id}`, raw.data);
 
     await hooks.emit("monitor.failed", { monitor: { id: "m1", kind: "certificate", name: "Acme site", host: "www.acme.example", port: 443, customer: "Acme", url: "https://console.example.test/monitoring/web" }, severity: "failed", detail: "The certificate runs out in 3 days (2027-01-01)." }, org.id);
     await hooks.emit("monitor.recovered", { monitor: { id: "m1", kind: "certificate", name: "Acme site", host: "www.acme.example", port: 443, customer: "Acme", url: "https://console.example.test/monitoring/web" }, severity: "ok", detail: "Valid for 90 more days." }, org.id);
@@ -140,18 +140,18 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
     const t = await hooks.test(org.id, eps.slack.id);
     const testMsg = JSON.parse(at("/slack", "webhook.test")[0]?.body || "{}");
-    check("the test button sends Slack a readable test message", t.ok === true && /Test from RemoteIQ/.test(testMsg.text || "") && (testMsg.text || "").includes("Chat slack"), [t, testMsg]);
+    check("the test button sends Slack a readable test message", t.ok === true && /Test from AdgRmm/.test(testMsg.text || "") && (testMsg.text || "").includes("Chat slack"), [t, testMsg]);
 
     /* ------------------------------ when the service says no ------------------------------ */
     status["/slack"] = 400;
     await hooks.emit("ticket.created", { ticket: { id: "z", number: 1, subject: "rejected", status: "open", priority: "low" } }, org.id);
-    status["/remoteiq"] = 400;
+    status["/adgrmm"] = 400;
     await settle();
     const log = async (id, ev) => (await prisma.webhook_deliveries.findMany({ where: { endpoint_id: id, event: ev }, orderBy: { created_at: "desc" } }));
     const rej = (await log(eps.slack.id, "ticket.created"))[0];
     check("a chat service that rejects the message (400) is not retried, and what it said is in the log", rej.status === "failed" && rej.attempts === 1 && /status 400: Cannot send an empty message/.test(rej.last_error || ""), rej);
-    const rem = (await log(eps.remoteiq.id, "ticket.created"))[0];
-    check("RemoteIQ's own format keeps its old rule: a failure is tried again later", rem.status === "pending" && rem.attempts >= 1 || rem.status === "delivered", rem);
+    const rem = (await log(eps.adgrmm.id, "ticket.created"))[0];
+    check("ADG RMM's own format keeps its old rule: a failure is tried again later", rem.status === "pending" && rem.attempts >= 1 || rem.status === "delivered", rem);
     status["/teams"] = 429;
     await hooks.emit("ticket.created", { ticket: { id: "y", number: 2, subject: "busy", status: "open", priority: "low" } }, org.id);
     await settle();

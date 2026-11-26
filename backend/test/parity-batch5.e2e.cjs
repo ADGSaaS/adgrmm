@@ -5,7 +5,7 @@
 //   node test/parity-batch5.e2e.cjs seed     (before the backends start)
 //   node test/parity-batch5.e2e.cjs run      (once both are up)
 //
-// Required env: RIQ_E2E_ALLOW=1, JWT_SECRET, BASE_A, BASE_B, DB_A, DB_B.
+// Required env: ADG_E2E_ALLOW=1, JWT_SECRET, BASE_A, BASE_B, DB_A, DB_B.
 // It writes test rows, so it refuses any database whose name lacks "e2e".
 "use strict";
 
@@ -24,8 +24,8 @@ const safe = (url) => {
         return false;
     }
 };
-if (process.env.RIQ_E2E_ALLOW !== "1" || !SECRET || !safe(DB_A) || !safe(DB_B)) {
-    console.error("Refusing to run: set RIQ_E2E_ALLOW=1, JWT_SECRET, and e2e-named DB_A and DB_B.");
+if (process.env.ADG_E2E_ALLOW !== "1" || !SECRET || !safe(DB_A) || !safe(DB_B)) {
+    console.error("Refusing to run: set ADG_E2E_ALLOW=1, JWT_SECRET, and e2e-named DB_A and DB_B.");
     process.exit(2);
 }
 

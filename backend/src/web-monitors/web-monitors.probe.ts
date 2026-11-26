@@ -57,7 +57,7 @@ export async function readCertificate(host: string, port: number, timeoutMs = 10
 }
 
 let bootstrap: { at: number; map: Map<string, string[]> } | null = null;
-const UA = "RemoteIQ-monitor/1.0 (domain expiry check)";
+const UA = "AdgRmm-monitor/1.0 (domain expiry check)";
 
 /** The registry's own RDAP address for a name's last label, from IANA's published list (kept for a day). Empty when it cannot be found. */
 async function registryBases(host: string): Promise<string[]> {

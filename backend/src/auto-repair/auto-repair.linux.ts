@@ -1,8 +1,8 @@
 // backend/src/auto-repair/auto-repair.linux.ts
 //
 // The two scripts the automatic repair runs on a Linux computer (the agent's own signed script jobs, run by bash). Like the Windows ones they are fixed
-// text: what to look at or repair comes in as environment variables (RIQ_CHECKS, RIQ_FIX), never pasted into the script. The first only reads. The
-// second only does what is written here for the problems it is asked about, and says for each one whether it worked. RIQ_DRYRUN=1 changes nothing.
+// text: what to look at or repair comes in as environment variables (ADG_CHECKS, ADG_FIX), never pasted into the script. The first only reads. The
+// second only does what is written here for the problems it is asked about, and says for each one whether it worked. ADG_DRYRUN=1 changes nothing.
 // Output protocol is the same as on Windows: ISSUE id|detail, INFO key|value, DONE; FIXED id|text, FAILED id|text.
 
 export const LINUX_DIAGNOSE_KIND = "auto-repair.linux.diagnose";
@@ -10,7 +10,7 @@ export const LINUX_REPAIR_KIND = "auto-repair.linux.repair";
 
 export const LINUX_DIAGNOSE_SCRIPT = String.raw`#!/bin/bash
 export LC_ALL=C
-checks=",${'$'}{RIQ_CHECKS// /},"
+checks=",${'$'}{ADG_CHECKS// /},"
 clean() { printf '%s' "$1" | tr '\r\n|' '   ' | cut -c1-300; }
 issue() { echo "ISSUE $1|$(clean "$2")"; }
 info() { echo "INFO $1|$(clean "$2")"; }
@@ -72,13 +72,13 @@ export const LINUX_SAFE_UNITS = "cups|NetworkManager|systemd-resolved|systemd-ti
 
 export const LINUX_REPAIR_SCRIPT = String.raw`#!/bin/bash
 export LC_ALL=C
-dry=0; [ "$RIQ_DRYRUN" = "1" ] && dry=1
+dry=0; [ "$ADG_DRYRUN" = "1" ] && dry=1
 clean() { printf '%s' "$1" | tr '\r\n|' '   ' | cut -c1-300; }
 fixed() { echo "FIXED $1|$(clean "$2")"; }
 failed() { echo "FAILED $1|$(clean "$2")"; }
 safe='^(${LINUX_SAFE_UNITS})\.service$'
 
-for id in $(echo "$RIQ_FIX" | tr ',' ' '); do
+for id in $(echo "$ADG_FIX" | tr ',' ' '); do
   case "$id" in
     linux-low-disk)
       before=$(df -P -k / | awk 'NR==2 {print $4}')

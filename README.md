@@ -1,15 +1,15 @@
-# RemoteIQ
+# ADG RMM
 
-RemoteIQ is an all-in-one platform for managed service providers (MSPs): remote monitoring and management (RMM), a service desk, documentation, billing and client-facing tools in one product.
+ADG RMM is an all-in-one platform for managed service providers (MSPs): remote monitoring and management (RMM), a service desk, documentation, billing and client-facing tools in one product.
 
-This repository holds all of RemoteIQ: the API, the web dashboard, the agents and the installer.
+This repository holds all of ADG RMM: the API, the web dashboard, the agents and the installer.
 
 | Part | Where | What it is |
 |---|---|---|
 | **Web dashboard** | [`frontend/`](frontend/) | Next.js app the technicians and customers use. Talks to the API only |
 | **Backend API** | [`backend/`](backend/) | NestJS service with a PostgreSQL database. Serves the dashboard's API, talks to agents over HTTPS and WebSocket, and brokers remote sessions |
-| **Windows agent** | [`agents/windows/RemoteIQ.Agent`](agents/windows/RemoteIQ.Agent) | .NET 8 Windows service that runs on managed devices |
-| **Windows capture helper** | [`agents/windows/RemoteIQ.CaptureHelper`](agents/windows/RemoteIQ.CaptureHelper) | Small helper the agent starts in the user's session to capture the screen, inject input, and host the chat window for Remote Console |
+| **Windows agent** | [`agents/windows/AdgRmm.Agent`](agents/windows/AdgRmm.Agent) | .NET 8 Windows service that runs on managed devices |
+| **Windows capture helper** | [`agents/windows/AdgRmm.CaptureHelper`](agents/windows/AdgRmm.CaptureHelper) | Small helper the agent starts in the user's session to capture the screen, inject input, and host the chat window for Remote Console |
 | **Linux agent** | [`agents/linux/`](agents/linux) | .NET 8 agent for Linux devices |
 | **Shared agent code** | [`agents/shared/`](agents/shared) | Checks, update logic and session-start verification used by both agents |
 | **Native WebRTC** | [`native/`](native) | Native WebRTC library project for the agent |
@@ -44,7 +44,7 @@ This repository holds all of RemoteIQ: the API, the web dashboard, the agents an
 
 ```
                        ┌─────────────────────┐
-  Technician browser ──►  RemoteIQ frontend   │  Next.js dashboard (frontend/)
+  Technician browser ──►  ADG RMM frontend   │  Next.js dashboard (frontend/)
                        └──────────┬──────────┘
                                   │ /api/*  (proxied)
                                   ▼
@@ -180,9 +180,9 @@ A .NET 8 Windows service running as **LocalSystem**, because scripts and patchin
 - **Checks and scripts, patching, remote shell, file browsing and Remote Console** are all served by the same service.
 - **Updates itself** from the packages the backend serves; see [`docs/agent-updates.md`](docs/agent-updates.md).
 - Secrets at rest are protected with machine-level DPAPI. Optional TLS certificate pinning is available (`PinnedSpkiSha256`).
-- Logs: `%ProgramData%\RemoteIQ\Logs\agent-*.log`. Config: `%ProgramData%\RemoteIQ\agent.config.json`.
+- Logs: `%ProgramData%\AdgRmm\Logs\agent-*.log`. Config: `%ProgramData%\AdgRmm\agent.config.json`.
 
-More detail, including the agent's REST and WebSocket endpoints, is in [`agents/windows/RemoteIQ.Agent/README.md`](agents/windows/RemoteIQ.Agent/README.md).
+More detail, including the agent's REST and WebSocket endpoints, is in [`agents/windows/AdgRmm.Agent/README.md`](agents/windows/AdgRmm.Agent/README.md).
 
 ### Windows capture helper
 
@@ -216,8 +216,8 @@ Browser-based remote control of a Windows device, over WebRTC.
 The version number is compiled into the agent and written to each package's `version.json`. When cutting a release, raise it in all of these together:
 
 - `agents/build-packages.ps1` (the `-Version` default)
-- `agents/windows/RemoteIQ.Agent/RemoteIQ.Agent.csproj`
-- `agents/linux/RemoteIQ.Agent.Linux/RemoteIQ.Agent.Linux.csproj`
+- `agents/windows/AdgRmm.Agent/AdgRmm.Agent.csproj`
+- `agents/linux/AdgRmm.Agent.Linux/AdgRmm.Agent.Linux.csproj`
 - `agents/tools/compare-build.ps1`
 
 Then either build locally:
@@ -231,9 +231,9 @@ or let CI build a clean, reproducible copy: push a tag named `agent-build-<commi
 Copy the result into the backend's `AGENT_PKG_DIR`, keeping this layout, and **include the `version.json` files**:
 
 ```
-windows/remoteiq-agent-windows.zip
+windows/adgrmm-agent-windows.zip
 windows/version.json
-linux/remoteiq-agent-linux-x64.tar.gz
+linux/adgrmm-agent-linux-x64.tar.gz
 linux/version.json
 ```
 
@@ -308,7 +308,7 @@ Things to know:
 | [`docs/remote-console-unattended.md`](docs/remote-console-unattended.md) | How Remote Console works at the sign-in screen, and its security |
 | [`docs/security-keys.md`](docs/security-keys.md) | The two key files and how to back them up |
 | [`backend/docs/postgres-dr-promotion.md`](backend/docs/postgres-dr-promotion.md) | Promoting a database backup |
-| [`agents/windows/RemoteIQ.Agent/README.md`](agents/windows/RemoteIQ.Agent/README.md) | The Windows agent in detail |
+| [`agents/windows/AdgRmm.Agent/README.md`](agents/windows/AdgRmm.Agent/README.md) | The Windows agent in detail |
 
 ---
 

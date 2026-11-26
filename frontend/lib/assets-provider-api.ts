@@ -23,7 +23,7 @@ export const assetProvider = {
         const res = await fetch(`${base}/api/assets/export?format=${format}`, { credentials: "include" });
         if (!res.ok) throw new Error(`The export failed (${res.status}).`);
         const blob = await res.blob();
-        const name = /filename="([^"]+)"/.exec(res.headers.get("content-disposition") ?? "")?.[1] ?? `remoteiq-assets.${format}`;
+        const name = /filename="([^"]+)"/.exec(res.headers.get("content-disposition") ?? "")?.[1] ?? `adgrmm-assets.${format}`;
         const a = document.createElement("a");
         a.href = URL.createObjectURL(blob);
         a.download = name;

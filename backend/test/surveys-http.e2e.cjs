@@ -4,7 +4,7 @@
 // alerts, the portal, the ticket page and the results. A small SMTP server catches the mail.
 //
 // Start the backend with SURVEY_WORK_MS=1500 and PUBLIC_CONSOLE_URL=http://console.test, then:
-//   RIQ_E2E_ALLOW=1 BASE_URL=http://127.0.0.1:3931 DATABASE_URL=postgres://.../riq_x_e2e JWT_SECRET=... node test/surveys-http.e2e.cjs
+//   ADG_E2E_ALLOW=1 BASE_URL=http://127.0.0.1:3931 DATABASE_URL=postgres://.../adg_x_e2e JWT_SECRET=... node test/surveys-http.e2e.cjs
 "use strict";
 const net = require("node:net");
 const crypto = require("node:crypto");
@@ -62,7 +62,7 @@ async function waitFor(fn, what, ms = 20000) {
 }
 
 // The same key and format the server uses, so the test can make a genuine-but-expired link.
-const surveyKey = () => crypto.createHmac("sha256", process.env.JWT_SECRET).update("remoteiq:ticket-survey:v1").digest("hex");
+const surveyKey = () => crypto.createHmac("sha256", process.env.JWT_SECRET).update("adgrmm:ticket-survey:v1").digest("hex");
 const sign = (id, exp) => `${id}.${exp}.${crypto.createHmac("sha256", surveyKey()).update(`survey:${id}:${exp}`).digest("base64url")}`;
 
 let ipN = 20;
@@ -85,8 +85,8 @@ async function main() {
 
     for (const p of ["alerts", "invites", "password_resets", "reports", "tickets"]) {
         await q(`INSERT INTO email_settings (purpose, enabled, smtp_host, smtp_port, smtp_username, smtp_use_tls, smtp_use_ssl, smtp_from_address)
-                 VALUES ($1, true, '127.0.0.1', $2, '', false, false, 'riq@example.test')
-                 ON CONFLICT (purpose) DO UPDATE SET enabled = true, smtp_host = '127.0.0.1', smtp_port = $2, smtp_username = '', smtp_password = NULL, smtp_use_tls = false, smtp_use_ssl = false, smtp_from_address = 'riq@example.test'`, [p, sink.port]);
+                 VALUES ($1, true, '127.0.0.1', $2, '', false, false, 'adg@example.test')
+                 ON CONFLICT (purpose) DO UPDATE SET enabled = true, smtp_host = '127.0.0.1', smtp_port = $2, smtp_username = '', smtp_password = NULL, smtp_use_tls = false, smtp_use_ssl = false, smtp_from_address = 'adg@example.test'`, [p, sink.port]);
     }
     await q(`DELETE FROM email_templates WHERE key IN ('survey_request','survey_low_score')`);
     await q(`DELETE FROM survey_settings`);

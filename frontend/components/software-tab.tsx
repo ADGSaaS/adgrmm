@@ -1,4 +1,4 @@
-// remoteiq-frontend/components/software-tab.tsx
+// adgrmm-frontend/components/software-tab.tsx
 "use client";
 
 import * as React from "react";

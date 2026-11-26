@@ -1,4 +1,4 @@
-// remoteiq-minimal-e2e/backend/src/remote-desktop/rdp-tunnel.framing.ts
+// adgrmm-minimal-e2e/backend/src/remote-desktop/rdp-tunnel.framing.ts
 
 import { TextDecoder, TextEncoder } from "node:util";
 

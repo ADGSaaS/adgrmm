@@ -53,12 +53,12 @@ function FormatSelect({ id, value, address, onChange }: { id?: string; value: We
 /** The same guess the server makes from the address, only to label "Automatic". */
 function webhookFormatGuess(raw: string): WebhookFormat {
     let u: URL;
-    try { u = new URL(raw); } catch { return "remoteiq"; }
+    try { u = new URL(raw); } catch { return "adgrmm"; }
     const h = u.hostname.toLowerCase();
     if (h === "hooks.slack.com" || h.endsWith(".slack.com")) return "slack";
     if ((h === "discord.com" || h === "discordapp.com" || h.endsWith(".discord.com")) && /^\/api\/webhooks\//i.test(u.pathname)) return "discord";
     if (h.endsWith(".webhook.office.com") || h === "outlook.office.com" || h.endsWith(".logic.azure.com") || h.endsWith(".powerplatform.com")) return "teams";
-    return "remoteiq";
+    return "adgrmm";
 }
 
 function AddChannelDialog({ open, onOpenChange, onAdded }: { open: boolean; onOpenChange: (v: boolean) => void; onAdded: () => void }) {
@@ -109,7 +109,7 @@ function AddChannelDialog({ open, onOpenChange, onAdded }: { open: boolean; onOp
                         <DialogHeader>
                             <DialogTitle>Save this signing secret</DialogTitle>
                             <DialogDescription>
-                                It will not be shown again. Use it to check the <code>X-RemoteIQ-Signature</code> header, an HMAC-SHA256 of the timestamp header, a dot, and the body.
+                                It will not be shown again. Use it to check the <code>X-ADG-Signature</code> header, an HMAC-SHA256 of the timestamp header, a dot, and the body.
                             </DialogDescription>
                         </DialogHeader>
                         <code className="block break-all rounded bg-muted p-2 text-xs">{secret}</code>
@@ -149,14 +149,14 @@ function AddChannelDialog({ open, onOpenChange, onAdded }: { open: boolean; onOp
                                 required
                                 value={target}
                                 onChange={(e) => setTarget(e.target.value)}
-                                placeholder={kind === "email" ? "alerts@example.com, oncall@example.com" : "https://example.com/hooks/remoteiq"}
+                                placeholder={kind === "email" ? "alerts@example.com, oncall@example.com" : "https://example.com/hooks/adgrmm"}
                             />
                         </div>
                         {kind === "webhook" ? (
                             <div className="grid gap-2">
                                 <Label htmlFor="channel-format">Message format</Label>
                                 <FormatSelect id="channel-format" value={format} address={target} onChange={setFormat} />
-                                <p className="text-xs text-muted-foreground">Chat services only accept their own format. Automatic picks Slack, Discord or Teams from the address, and anything else gets RemoteIQ&apos;s own signed JSON.</p>
+                                <p className="text-xs text-muted-foreground">Chat services only accept their own format. Automatic picks Slack, Discord or Teams from the address, and anything else gets ADG RMM&apos;s own signed JSON.</p>
                             </div>
                         ) : null}
                         <div className="grid gap-2">

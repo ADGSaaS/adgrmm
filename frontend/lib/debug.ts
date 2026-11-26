@@ -5,7 +5,7 @@ let _enabled = false;
 // Read once; you can toggle at runtime via localStorage + reload
 if (typeof window !== "undefined") {
     try {
-        _enabled = !!window.localStorage.getItem("remoteiq.debug");
+        _enabled = !!window.localStorage.getItem("adgrmm.debug");
     } catch {
         _enabled = false;
     }
@@ -20,11 +20,11 @@ export function isDebugEnabled() {
 }
 
 export function dlog(...args: any[]) {
-    if (_enabled) console.debug("[RemoteIQ]", ...args);
+    if (_enabled) console.debug("[ADG RMM]", ...args);
 }
 
 export function dgroup(label: string) {
-    if (_enabled) console.groupCollapsed(`[RemoteIQ] ${label}`);
+    if (_enabled) console.groupCollapsed(`[ADG RMM] ${label}`);
 }
 
 export function dgroupEnd() {

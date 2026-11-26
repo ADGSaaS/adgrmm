@@ -1,6 +1,6 @@
 // backend/src/automation/builtin-scripts.ts
 //
-// The catalog of scripts RemoteIQ ships in the scripts manager (see builtin-scripts.windows.ts and builtin-scripts.linux.ts for the rules every
+// The catalog of scripts ADG RMM ships in the scripts manager (see builtin-scripts.windows.ts and builtin-scripts.linux.ts for the rules every
 // one follows). BuiltinScriptsService copies them into the scripts table; this file only holds the data and two small helpers.
 import { createHash } from "node:crypto";
 import { LINUX_SCRIPTS } from "./builtin-scripts.linux";

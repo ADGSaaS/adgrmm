@@ -1,11 +1,11 @@
-// ClamAV on a Linux device: what RemoteIQ remembers after an action (installed or not, signatures refreshed, the last malware scan and what it
+// ClamAV on a Linux device: what ADG RMM remembers after an action (installed or not, signatures refreshed, the last malware scan and what it
 // found), shown through the device view, kept when a later scan does not finish, and also learned when the answer comes late (job lookup).
 // Throwaway database only (name has "e2e"). Needs the migration 20261128010000_linux_av_state applied.
 "use strict";
 const crypto = require("node:crypto");
 const path = require("node:path");
 
-if (process.env.RIQ_E2E_ALLOW !== "1" || !/e2e/.test(process.env.DATABASE_URL || "")) { console.error("Refusing to run: set RIQ_E2E_ALLOW=1 and an e2e-named DATABASE_URL."); process.exit(2); }
+if (process.env.ADG_E2E_ALLOW !== "1" || !/e2e/.test(process.env.DATABASE_URL || "")) { console.error("Refusing to run: set ADG_E2E_ALLOW=1 and an e2e-named DATABASE_URL."); process.exit(2); }
 process.env.JWT_SECRET ||= "e2e-only-not-a-real-secret-e2e-only-not-a-real-secret";
 process.env.DATA_ENCRYPTION_KEY ||= "e2e-only-data-key";
 process.env.IMAP_POLL_ENABLED = "false"; process.env.SECURITY_SCANS_AUTOMATION_ENABLED = "false"; process.env.SECURITY_SCANS_POLLER_ENABLED = "false"; process.env.NODE_ENV = "development";
@@ -39,7 +39,7 @@ const check = (name, ok, extra) => { ok ? passed++ : failed++; console.log(`${ok
         for (let i = 0; i < 100 && !job; i++) {
             await new Promise((r) => setTimeout(r, 100));
             job = (await prisma.jobs.findMany({ where: { agent_id: agent.id }, orderBy: { created_at: "desc" }, take: 1 }))[0];
-            if (job && !String(job.payload?.env?.RIQ_TOOL ?? "").startsWith("security.linux.")) job = null;
+            if (job && !String(job.payload?.env?.ADG_TOOL ?? "").startsWith("security.linux.")) job = null;
         }
         await prisma.jobs.update({ where: { id: job.id }, data: { status: "succeeded", finished_at: new Date() } });
         await prisma.job_results.upsert({ where: { job_id: job.id }, create: { job_id: job.id, exit_code: 0, stdout, stderr, duration_ms: 5n }, update: { stdout, stderr } });
@@ -75,7 +75,7 @@ const check = (name, ok, extra) => { ok ? passed++ : failed++; console.log(`${ok
     // a malware scan that was still running when asked: the late answer is learned through the job lookup
     const p = security.linuxAction(d, "malware-scan");
     let job = null;
-    for (let i = 0; i < 100 && !job; i++) { await new Promise((r) => setTimeout(r, 100)); job = (await prisma.jobs.findMany({ where: { agent_id: agent.id }, orderBy: { created_at: "desc" }, take: 1 }))[0]; if (job && job.payload?.env?.RIQ_TOOL !== "security.linux.malware-scan") job = null; }
+    for (let i = 0; i < 100 && !job; i++) { await new Promise((r) => setTimeout(r, 100)); job = (await prisma.jobs.findMany({ where: { agent_id: agent.id }, orderBy: { created_at: "desc" }, take: 1 }))[0]; if (job && job.payload?.env?.ADG_TOOL !== "security.linux.malware-scan") job = null; }
     p.catch(() => {});
     await prisma.jobs.update({ where: { id: job.id }, data: { status: "succeeded", finished_at: new Date() } });
     await prisma.job_results.upsert({ where: { job_id: job.id }, create: { job_id: job.id, exit_code: 0, stdout: "R clean 999 3\n", stderr: "", duration_ms: 5n }, update: { stdout: "R clean 999 3\n", stderr: "" } });

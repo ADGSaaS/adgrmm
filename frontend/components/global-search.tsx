@@ -216,7 +216,7 @@ export default function GlobalSearch() {
                 <input
                     ref={inputRef}
                     type="search"
-                    name="riq-global-search"
+                    name="adg-global-search"
                     autoComplete="off"
                     data-lpignore="true"
                     data-1p-ignore="true"
@@ -276,7 +276,7 @@ export default function GlobalSearch() {
                         <Search className="pointer-events-none absolute left-3 top-3.5 h-4 w-4 text-muted-foreground" aria-hidden="true" />
                         <input
                             type="search"
-                            name="riq-global-search"
+                            name="adg-global-search"
                             autoComplete="off"
                             data-lpignore="true"
                             data-1p-ignore="true"

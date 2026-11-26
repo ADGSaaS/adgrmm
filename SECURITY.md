@@ -1,6 +1,6 @@
 # Security policy
 
-RemoteIQ manages computers and customer data, so security problems matter. Thank you for reporting them responsibly.
+ADG RMM manages computers and customer data, so security problems matter. Thank you for reporting them responsibly.
 
 ## Supported versions
 
@@ -25,14 +25,14 @@ Please do not test against systems you do not own, access data that is not yours
 
 We will acknowledge your report as soon as we can, look into it, and tell you what we decide. When a fix is released we will say so in the release notes, and we are glad to credit you if you want that.
 
-## Running RemoteIQ safely
+## Running ADG RMM safely
 
-If you host RemoteIQ yourself:
+If you host ADG RMM yourself:
 
 - Use HTTPS only. The sign-in cookie is marked secure.
-- Back up `/opt/remoteiq/secrets/` (the data key and the job signing key) somewhere that does not also hold your database backups.
+- Back up `/opt/adgrmm/secrets/` (the data key and the job signing key) somewhere that does not also hold your database backups.
 - Set `ADMIN_API_KEY` only if you need it, and make it long and random (at least 24 characters). The server refuses weak values.
 - Set `FRONTEND_ORIGINS` to your real console address. In production the server refuses to start without it.
-- Keep RemoteIQ up to date: `sudo bash /opt/remoteiq/install.sh upgrade`.
+- Keep ADG RMM up to date: `sudo bash /opt/adgrmm/install.sh upgrade`.
 - Treat a site install key like a password. Anyone with it can enroll devices into that site. Revoke keys you no longer use under Administration, Install keys.
 - Give technicians only the customers they need (Administration, Customer access). A technician limited to some customers cannot reach the others.

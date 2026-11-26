@@ -7,6 +7,6 @@ import { Public } from "../auth/public.decorator";
 export class HealthController {
   @Get("/healthz")
   health() {
-    return { ok: true, service: "remoteiq-backend", time: new Date().toISOString() };
+    return { ok: true, service: "adgrmm-backend", time: new Date().toISOString() };
   }
 }

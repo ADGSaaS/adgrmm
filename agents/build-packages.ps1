@@ -3,9 +3,9 @@
 #   pwsh agents/build-packages.ps1 [-OutDir <folder>] [-Version 1.0.0]
 #
 # Output, matching the backend's expected layout:
-#   <OutDir>/windows/remoteiq-agent-windows.zip
+#   <OutDir>/windows/adgrmm-agent-windows.zip
 #   <OutDir>/windows/version.json
-#   <OutDir>/linux/remoteiq-agent-linux-x64.tar.gz
+#   <OutDir>/linux/adgrmm-agent-linux-x64.tar.gz
 #   <OutDir>/linux/version.json
 #
 # version.json is how the backend knows what it can offer agents for self-update. It holds the
@@ -41,28 +41,28 @@ function Write-VersionFile([string]$Package) {
 
 # Windows
 $win = Join-Path $work 'windows'
-Publish-Agent (Join-Path $PSScriptRoot 'windows/RemoteIQ.Agent/RemoteIQ.Agent.csproj') 'win-x64' $win
-Copy-Item (Join-Path $PSScriptRoot 'windows/RemoteIQ.Agent/scripts/uninstall.ps1') $win
+Publish-Agent (Join-Path $PSScriptRoot 'windows/AdgRmm.Agent/AdgRmm.Agent.csproj') 'win-x64' $win
+Copy-Item (Join-Path $PSScriptRoot 'windows/AdgRmm.Agent/scripts/uninstall.ps1') $win
 Get-ChildItem $win -Filter *.pdb | Remove-Item
 Get-ChildItem $win -Filter 'appsettings*.json' | Remove-Item
-$winZip = Join-Path $OutDir 'windows/remoteiq-agent-windows.zip'
+$winZip = Join-Path $OutDir 'windows/adgrmm-agent-windows.zip'
 Remove-Item -ErrorAction SilentlyContinue $winZip
 Compress-Archive -Path (Join-Path $win '*') -DestinationPath $winZip
 Write-VersionFile $winZip
 
 # Linux
 $linux = Join-Path $work 'linux'
-Publish-Agent (Join-Path $PSScriptRoot 'linux/RemoteIQ.Agent.Linux/RemoteIQ.Agent.Linux.csproj') 'linux-x64' $linux
+Publish-Agent (Join-Path $PSScriptRoot 'linux/AdgRmm.Agent.Linux/AdgRmm.Agent.Linux.csproj') 'linux-x64' $linux
 Copy-Item (Join-Path $PSScriptRoot 'linux/scripts/uninstall.sh') $linux
 # The same package carries a second program built for musl (Alpine and others). The installer, and the agent when it updates itself,
 # keep the one that runs on that machine under the name the service starts, so the package, its hash and the release slots stay one.
 $linuxMusl = Join-Path $work 'linux-musl'
-Publish-Agent (Join-Path $PSScriptRoot 'linux/RemoteIQ.Agent.Linux/RemoteIQ.Agent.Linux.csproj') 'linux-musl-x64' $linuxMusl
-Copy-Item (Join-Path $linuxMusl 'remoteiq-agent') (Join-Path $linux 'remoteiq-agent-musl')
+Publish-Agent (Join-Path $PSScriptRoot 'linux/AdgRmm.Agent.Linux/AdgRmm.Agent.Linux.csproj') 'linux-musl-x64' $linuxMusl
+Copy-Item (Join-Path $linuxMusl 'adgrmm-agent') (Join-Path $linux 'adgrmm-agent-musl')
 Get-ChildItem $linux -Filter *.pdb | Remove-Item
-$linuxTar = Join-Path $OutDir 'linux/remoteiq-agent-linux-x64.tar.gz'
+$linuxTar = Join-Path $OutDir 'linux/adgrmm-agent-linux-x64.tar.gz'
 Push-Location $linux
-& tar -czf package.tar.gz remoteiq-agent remoteiq-agent-musl uninstall.sh
+& tar -czf package.tar.gz adgrmm-agent adgrmm-agent-musl uninstall.sh
 $tarExit = $LASTEXITCODE
 Pop-Location
 if ($tarExit -ne 0) { throw "tar failed" }

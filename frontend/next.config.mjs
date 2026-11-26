@@ -7,7 +7,7 @@ const backend = (process.env.BACKEND_INTERNAL_URL || process.env.NEXT_PUBLIC_API
 
 const nextConfig = {
   // The packaged install runs the small self-contained server this produces.
-  ...(process.env.RIQ_STANDALONE === "1" ? { output: "standalone" } : {}),
+  ...(process.env.ADG_STANDALONE === "1" ? { output: "standalone" } : {}),
   // Only HTTP rewrites (no ws://)
   async rewrites() {
     return [

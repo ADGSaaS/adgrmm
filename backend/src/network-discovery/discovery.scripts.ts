@@ -1,6 +1,6 @@
 // Network discovery: what a managed device (the "scanner") can see on its own network, found by a fixed signed script job.
 //   - Windows runs PowerShell, Linux runs bash; a macOS variant is another script with the same output lines, so nothing else changes.
-//   - The script takes only RIQ_RANGES (private IPv4 ranges, comma separated; empty means the subnets of the scanner's own cards,
+//   - The script takes only ADG_RANGES (private IPv4 ranges, comma separated; empty means the subnets of the scanner's own cards,
 //     never wider than a /24 each). The ranges are checked here AND in the script: private addresses only, at most 1024 per range.
 //   - It does a ping sweep, reads the neighbour (ARP) table for MAC addresses and for hosts that did not answer a ping, asks the
 //     name server for names, and tries a short FIXED list of TCP ports on the hosts that answered. It sends no payload, never logs in,
@@ -69,7 +69,7 @@ private() { case "$1" in 10.*|192.168.*) return 0;; 172.*) local s; s=$(echo "$1
 over() { [ $(( $(date +%s) - T0 )) -gt $BUDGET ]; }
 
 # ---- the ranges: given, or the subnets of this machine's own cards (a /24 at most each, no virtual bridges)
-RANGES=$(printf '%s' "$RIQ_RANGES" | tr ',' ' ' | tr -cd '0-9./ ')
+RANGES=$(printf '%s' "$ADG_RANGES" | tr ',' ' ' | tr -cd '0-9./ ')
 if [ -z "$RANGES" ] && have ip; then
   RANGES=$(ip -4 -o addr show scope global 2>/dev/null | awk '{print $2, $4}' | grep -Ev '^(docker|br-|veth|virbr|cni|flannel|cali|vxlan|lxcbr|lxdbr|tun|tap|kube|cilium|weave|wg|tailscale|zt|ppp|gre|sit|ipip)' | while read -r IFACE CIDR; do
     A=$(echo "$CIDR" | cut -d/ -f1); P=$(echo "$CIDR" | cut -d/ -f2)
@@ -113,8 +113,8 @@ if have ip; then ip -4 -o addr show 2>/dev/null | awk '{print $4}' | cut -d/ -f1
 # ---- names a DNS server does not know: ask the host itself. NetBIOS (UDP 137, Windows, many NAS boxes and printers) and mDNS (UDP 5353,
 # Apple, Linux with Avahi, many printers and cameras). Both are one read-only question ("what is your name?"), no login, nothing is changed.
 NBPORT=137; MDNSPORT=5353
-[ -n "$RIQ_NB_PORT" ] && NBPORT=$(printf '%s' "$RIQ_NB_PORT" | tr -cd '0-9')
-[ -n "$RIQ_MDNS_PORT" ] && MDNSPORT=$(printf '%s' "$RIQ_MDNS_PORT" | tr -cd '0-9')
+[ -n "$ADG_NB_PORT" ] && NBPORT=$(printf '%s' "$ADG_NB_PORT" | tr -cd '0-9')
+[ -n "$ADG_MDNS_PORT" ] && MDNSPORT=$(printf '%s' "$ADG_MDNS_PORT" | tr -cd '0-9')
 A30=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
 udpask() {
   ( exec 4<>"/dev/udp/$1/$2" 2>/dev/null || exit 0; cat >&4; timeout 1 dd bs=1500 count=1 <&4 2>/dev/null | od -An -tx1 -v ) 2>/dev/null
@@ -168,7 +168,7 @@ probe() {
   IP=$1
   MAC=$(awk -v ip="$IP" '$1==ip {print $2; exit}' "$W/arp"); [ -n "$MAC" ] || MAC="-"
   NAME="-"; SRC="-"
-  if [ "$RIQ_NO_DNS" != "1" ]; then
+  if [ "$ADG_NO_DNS" != "1" ]; then
     NAME=$(timeout 2 getent hosts "$IP" 2>/dev/null | awk '{print $2; exit}' | tr -cd 'A-Za-z0-9._-' | cut -c1-63); [ -n "$NAME" ] || NAME="-"
   fi
   [ "$NAME" != "-" ] && SRC=dns
@@ -182,7 +182,7 @@ probe() {
   echo "H $IP $MAC $NAME $OPEN $SRC" > "$W/h.$IP"
 }
 export -f probe udpask nbquery lab mdnsquery nbparse mdnsparse
-export W PORTS NBPORT MDNSPORT A30 AWKLIB RIQ_NO_DNS
+export W PORTS NBPORT MDNSPORT A30 AWKLIB ADG_NO_DNS
 xargs -P 24 -I{} bash -c 'probe "$1"' _ {} < "$W/alive"
 cat "$W"/h.* 2>/dev/null
 echo "E $(( $(date +%s) - T0 ))"
@@ -200,7 +200,7 @@ function IsPrivate([string]$ip) { $n = ToInt $ip; ($n -ge (ToInt '10.0.0.0') -an
 $vpnWords = 'TAP-Windows|Wintun|WireGuard|OpenVPN|Tailscale|ZeroTier|VPN|AnyConnect|Fortinet|GlobalProtect|PANGP|Juniper|SonicWall|Teredo|ISATAP'
 $vpnIf = @(Get-NetAdapter | Where-Object { $_.InterfaceDescription -match $vpnWords -or $_.Name -match $vpnWords } | ForEach-Object { $_.ifIndex })
 $ranges = @()
-$given = [string]$env:RIQ_RANGES
+$given = [string]$env:ADG_RANGES
 if ($given.Trim()) { $ranges = @($given -split '[,\s]+' | Where-Object { $_ -match '^\d{1,3}(\.\d{1,3}){3}/\d{1,2}$' }) }
 else {
   $ranges = @(Get-NetIPAddress -AddressFamily IPv4 | Where-Object { $_.InterfaceAlias -notmatch 'vEthernet|VirtualBox|VMware|Hyper-V|Loopback|Docker|WSL|Bluetooth' -and $_.IPAddress -notlike '169.254.*' -and $_.IPAddress -notlike '127.*' -and ($vpnIf -notcontains $_.InterfaceIndex) -and (IsPrivate $_.IPAddress) } | ForEach-Object {
@@ -241,12 +241,12 @@ Get-NetNeighbor -AddressFamily IPv4 | Where-Object { $_.State -in 'Reachable', '
 }
 
 # the scanner itself is not one of the hosts it found
-if ($env:RIQ_INCLUDE_SELF -ne '1') { foreach ($o in @(Get-NetIPAddress -AddressFamily IPv4 | ForEach-Object { $_.IPAddress })) { [void]$alive.Remove($o) } }
+if ($env:ADG_INCLUDE_SELF -ne '1') { foreach ($o in @(Get-NetIPAddress -AddressFamily IPv4 | ForEach-Object { $_.IPAddress })) { [void]$alive.Remove($o) } }
 
 # ---- names a DNS server does not know: ask the host itself. NetBIOS (UDP 137, Windows, many NAS boxes and printers) and mDNS (UDP 5353,
 # Apple, Linux with Avahi, many printers and cameras). Both are one read-only question ("what is your name?"), no login, nothing is changed.
-$nbPort = 137; if ($env:RIQ_NB_PORT -match '^\d{1,5}$') { $nbPort = [int]$env:RIQ_NB_PORT }
-$mdnsPort = 5353; if ($env:RIQ_MDNS_PORT -match '^\d{1,5}$') { $mdnsPort = [int]$env:RIQ_MDNS_PORT }
+$nbPort = 137; if ($env:ADG_NB_PORT -match '^\d{1,5}$') { $nbPort = [int]$env:ADG_NB_PORT }
+$mdnsPort = 5353; if ($env:ADG_MDNS_PORT -match '^\d{1,5}$') { $mdnsPort = [int]$env:ADG_MDNS_PORT }
 function SkipName([byte[]]$d, [int]$p) { while ($p -lt $d.Length) { $l = $d[$p]; if ($l -eq 0) { return $p + 1 }; if (($l -band 0xC0) -eq 0xC0) { return $p + 2 }; $p += $l + 1 }; return $d.Length }
 function ReadName([byte[]]$d, [int]$p) {
   $parts = @(); $hops = 0
@@ -316,7 +316,7 @@ $rows = @()
 foreach ($ip in @($alive | Sort-Object { ToInt $_ })) {
   if ($sw.Elapsed.TotalSeconds -gt 200) { break }
   $name = '-'; $src = '-'
-  if ($env:RIQ_NO_DNS -ne '1') {
+  if ($env:ADG_NO_DNS -ne '1') {
     try {
       $dns = [Net.Dns]::GetHostEntryAsync($ip)
       if ($dns.Wait(1500) -and $dns.Status -eq 'RanToCompletion') { $n = ([string]$dns.Result.HostName) -replace '[^A-Za-z0-9._-]', ''; if ($n -and $n -ne $ip) { $name = $n.Substring(0, [math]::Min(63, $n.Length)); $src = 'dns' } }

@@ -55,7 +55,7 @@ export function useTicketTimer(ticketId: string | undefined) {
                 if (action === "stop") setSnap({ running: false, seconds: 0, startedAt: null, receivedAt: Date.now() });
                 else take(r);
                 // The header badge looks again at once.
-                window.dispatchEvent(new Event("riq:timer-changed"));
+                window.dispatchEvent(new Event("adg:timer-changed"));
                 return r as T;
             } catch (e) {
                 let message = e instanceof Error ? e.message : "Something went wrong.";

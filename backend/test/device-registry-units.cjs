@@ -148,8 +148,8 @@ check("scripts: fixed text, no typed values, the blocklist and mask are in them,
         assert.ok(s.includes(R.MASK_NAME_SOURCE), `${k} has the mask`);
         assert.ok(!s.includes("`"), "no backticks");
     }
-    assert.ok(R.REGISTRY_SCRIPTS.key.includes("$env:RIQ_REG_PATH") && R.REGISTRY_SCRIPTS.search.includes("$env:RIQ_REG_PATH"), "the path comes from the environment");
-    assert.ok(R.REGISTRY_SCRIPTS.search.includes("$env:RIQ_REG_TEXT"), "the search text comes from the environment");
+    assert.ok(R.REGISTRY_SCRIPTS.key.includes("$env:ADG_REG_PATH") && R.REGISTRY_SCRIPTS.search.includes("$env:ADG_REG_PATH"), "the path comes from the environment");
+    assert.ok(R.REGISTRY_SCRIPTS.search.includes("$env:ADG_REG_TEXT"), "the search text comes from the environment");
     assert.ok(R.REGISTRY_SCRIPTS.key.includes("DoNotExpandEnvironmentNames"));
     assert.ok(R.REGISTRY_SCRIPTS.key.includes("OpenBaseKey"));
     assert.ok(R.REGISTRY_SCRIPTS.search.includes("IndexOf($text, [StringComparison]::OrdinalIgnoreCase)"), "plain substring, no -like / -match on the text");

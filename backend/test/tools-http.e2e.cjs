@@ -3,7 +3,7 @@
 // bulk command, bulk script, bulk patch and recover-agents tools (each handed to the bulk engine in groups of 500 and kept as batches), the
 // server maintenance clean-up with real old rows, and clearing the cache.
 //
-//   RIQ_E2E_ALLOW=1 BASE_URL=http://127.0.0.1:3977 DATABASE_URL=postgres://.../riq_tools_e2e JWT_SECRET=... node test/tools-http.e2e.cjs
+//   ADG_E2E_ALLOW=1 BASE_URL=http://127.0.0.1:3977 DATABASE_URL=postgres://.../adg_tools_e2e JWT_SECRET=... node test/tools-http.e2e.cjs
 "use strict";
 const path = require("node:path");
 const { assert, call, runner, setup, uuid } = require("./groupc-helpers.cjs");
@@ -120,7 +120,7 @@ async function main() {
     let bashScript, psScript, both;
     await test("a saved script runs with its parameters as environment variables; a script that does not fit a system is skipped there", async () => {
         bashScript = (await q(`INSERT INTO automations (organization_id, name, type, script, configuration) VALUES ($1,$2,'script',$3,$4) RETURNING id`,
-            [org, `${tag} bash`, "echo $RIQ_TARGET", JSON.stringify({ language: "bash", timeoutSec: 60, parameters: [{ name: "target", label: "Target", required: true }, { name: "mode", defaultValue: "fast" }] })])).rows[0].id;
+            [org, `${tag} bash`, "echo $ADG_TARGET", JSON.stringify({ language: "bash", timeoutSec: 60, parameters: [{ name: "target", label: "Target", required: true }, { name: "mode", defaultValue: "fast" }] })])).rows[0].id;
         psScript = (await q(`INSERT INTO automations (organization_id, name, type, script, configuration) VALUES ($1,$2,'script',$3,$4) RETURNING id`,
             [org, `${tag} ps`, "Write-Output ok", JSON.stringify({ language: "powershell", timeoutSec: 60, parameters: [] })])).rows[0].id;
         assert.equal((await T("script", ops, { scope: clientA, scriptId: bashScript, parameters: {} })).status, 400, "a required parameter is missing");
@@ -130,7 +130,7 @@ async function main() {
         const byId = Object.fromEntries(items.map((i) => [i.deviceId, i]));
         assert.equal(byId[l1.id].status, "queued"); assert.equal(byId[w1.id].status, "skipped");
         const j = (await jobsOf(l1.agent))[0];
-        assert.equal(j.payload.env.RIQ_TARGET, "host-9"); assert.equal(j.payload.env.RIQ_MODE, "slow");
+        assert.equal(j.payload.env.ADG_TARGET, "host-9"); assert.equal(j.payload.env.ADG_MODE, "slow");
         const runs = await q(`SELECT count(*)::int AS n FROM script_runs WHERE automation_id = $1`, [bashScript]);
         assert.equal(runs.rows[0].n, 1, "the run is in the script history");
         const audit = await q(`SELECT details::text AS d FROM audit_events WHERE action = 'device.bulk.run-saved-script' ORDER BY created_at DESC LIMIT 1`);
@@ -155,7 +155,7 @@ async function main() {
         const res = await ok("recover-agents", ops, { scope: clientA });
         assert.equal(res.requested, 4); assert.equal(res.succeeded, 3); assert.equal(res.skipped, 1);
         const jw = (await jobsOf(w1.agent))[0], jl = (await jobsOf(l1.agent))[0];
-        assert.equal(jw.payload.language, "powershell"); assert.equal(jw.payload.scriptText, R.WINDOWS_RECOVER_SCRIPT); assert.equal(jw.payload.env.RIQ_TOOL, "agent.recover");
+        assert.equal(jw.payload.language, "powershell"); assert.equal(jw.payload.scriptText, R.WINDOWS_RECOVER_SCRIPT); assert.equal(jw.payload.env.ADG_TOOL, "agent.recover");
         assert.equal(jl.payload.language, "bash"); assert.equal(jl.payload.scriptText, R.LINUX_RECOVER_SCRIPT);
         const items = (await call(`/api/bulk/batches/${res.batches[0].batchId}`, { token: ops.token }).then((r) => r.json())).items;
         const off = items.find((i) => i.deviceId === offline.id);

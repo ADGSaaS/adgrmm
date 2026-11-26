@@ -82,13 +82,13 @@ export default function LoginPage() {
     // Form state
     const [email, setEmail] = React.useState(() => {
         if (typeof window !== "undefined") {
-            return localStorage.getItem("riq_last_email") ?? "";
+            return localStorage.getItem("adg_last_email") ?? "";
         }
         return "";
     });
     const [password, setPassword] = React.useState("");
     const [remember, setRemember] = React.useState(
-        () => (typeof window !== "undefined" ? localStorage.getItem("riq_remember") === "1" : false),
+        () => (typeof window !== "undefined" ? localStorage.getItem("adg_remember") === "1" : false),
     );
     const [isLoading, setIsLoading] = React.useState(false);
     const [error, setError] = React.useState<string | null>(null);
@@ -148,10 +148,10 @@ export default function LoginPage() {
     React.useEffect(() => {
         if (typeof window === "undefined") return;
         if (remember) {
-            localStorage.setItem("riq_remember", "1");
-            if (email) localStorage.setItem("riq_last_email", email);
+            localStorage.setItem("adg_remember", "1");
+            if (email) localStorage.setItem("adg_last_email", email);
         } else {
-            localStorage.removeItem("riq_remember");
+            localStorage.removeItem("adg_remember");
             // Optional: keep last email for convenience
         }
     }, [remember, email]);
@@ -201,12 +201,12 @@ export default function LoginPage() {
             if (body && typeof body === "object" && body.status === "2fa_required" && body.challengeToken) {
                 setChallengeToken(body.challengeToken);
                 setTimeout(() => otpRef.current?.focus(), 30);
-                if (remember) localStorage.setItem("riq_last_email", payload.email);
+                if (remember) localStorage.setItem("adg_last_email", payload.email);
                 return; // stay on the page and render OTP form
             }
 
             // Regular login success
-            if (remember) localStorage.setItem("riq_last_email", payload.email);
+            if (remember) localStorage.setItem("adg_last_email", payload.email);
             router.replace(nextPath);
         } catch (err: any) {
             setError(String(err?.message ?? err) || "Login failed");
@@ -292,12 +292,12 @@ export default function LoginPage() {
                         {logoLight || logoDark ? (
                             <picture>
                                 {logoDark ? <source srcSet={logoDark} media="(prefers-color-scheme: dark)" /> : null}
-                                <img src={effectiveLogo} alt="RemoteIQ" className="h-7 w-auto rounded-sm" />
+                                <img src={effectiveLogo} alt="ADG RMM" className="h-7 w-auto rounded-sm" />
                             </picture>
                         ) : (
                             <Shield className="h-6 w-6" />
                         )}
-                        <CardTitle className="text-2xl">RemoteIQ</CardTitle>
+                        <CardTitle className="text-2xl">ADG RMM</CardTitle>
                     </div>
                     <CardDescription>
                         {challengeToken ? "Two-factor authentication required" : "Sign in to your account to continue"}

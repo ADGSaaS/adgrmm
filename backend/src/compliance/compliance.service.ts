@@ -52,7 +52,7 @@ export class ComplianceService {
         const all = sections.flatMap((s) => s.items);
         return {
             generatedAt: new Date().toISOString(),
-            notice: "This is a check of settings and device data that RemoteIQ holds. It is not an audit or certification, and it does not measure compliance with SOC 2, HIPAA, ISO 27001 or any other framework.",
+            notice: "This is a check of settings and device data that ADG RMM holds. It is not an audit or certification, and it does not measure compliance with SOC 2, HIPAA, ISO 27001 or any other framework.",
             summary: { pass: all.filter((i) => i.status === "pass").length, warn: all.filter((i) => i.status === "warn").length, fail: all.filter((i) => i.status === "fail").length, info: all.filter((i) => i.status === "info").length },
             sections,
         };

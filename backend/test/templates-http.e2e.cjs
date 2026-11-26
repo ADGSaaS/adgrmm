@@ -3,7 +3,7 @@
 // system emails (portal invitation and reset, alert, invoice): saved wording is what is really sent, a test email goes
 // out with sample values, and the built-in wording is back after a reset. A small SMTP server in this test catches the mail.
 //
-//   RIQ_E2E_ALLOW=1 BASE_URL=http://127.0.0.1:3901 DATABASE_URL=postgres://.../riq_x_e2e JWT_SECRET=... node test/templates-http.e2e.cjs
+//   ADG_E2E_ALLOW=1 BASE_URL=http://127.0.0.1:3901 DATABASE_URL=postgres://.../adg_x_e2e JWT_SECRET=... node test/templates-http.e2e.cjs
 "use strict";
 const net = require("node:net");
 const { assert, call, json, runner, setup, uuid } = require("./groupc-helpers.cjs");
@@ -68,8 +68,8 @@ async function main() {
     const savedMail = (await q(`SELECT * FROM email_settings`)).rows;
     for (const p of ["alerts", "invites", "password_resets", "reports", "tickets"]) {
         await q(`INSERT INTO email_settings (purpose, enabled, smtp_host, smtp_port, smtp_username, smtp_use_tls, smtp_use_ssl, smtp_from_address)
-                 VALUES ($1, true, '127.0.0.1', $2, '', false, false, 'riq@example.test')
-                 ON CONFLICT (purpose) DO UPDATE SET enabled = true, smtp_host = '127.0.0.1', smtp_port = $2, smtp_username = '', smtp_password = NULL, smtp_use_tls = false, smtp_use_ssl = false, smtp_from_address = 'riq@example.test'`, [p, sink.port]);
+                 VALUES ($1, true, '127.0.0.1', $2, '', false, false, 'adg@example.test')
+                 ON CONFLICT (purpose) DO UPDATE SET enabled = true, smtp_host = '127.0.0.1', smtp_port = $2, smtp_username = '', smtp_password = NULL, smtp_use_tls = false, smtp_use_ssl = false, smtp_from_address = 'adg@example.test'`, [p, sink.port]);
     }
     await q(`DELETE FROM email_templates`);
     await q(`DELETE FROM ticket_templates`);
@@ -254,8 +254,8 @@ async function main() {
         const r = await json(`/api/notifications/channels/${ch.id}/test`, { method: "POST", token: admin.token });
         assert.equal(r.ok, true, r.message);
         const t = text(mailSince(before)[0].raw);
-        assert.match(t, /Subject: ALERT Test: Test notification from RemoteIQ/);
-        assert.match(t, /\r\nTest notification from RemoteIQ\r\n\r\nIf this arrived, this channel works\.$/);
+        assert.match(t, /Subject: ALERT Test: Test notification from AdgRmm/);
+        assert.match(t, /\r\nTest notification from AdgRmm\r\n\r\nIf this arrived, this channel works\.$/);
         await call(`/api/notifications/channels/${ch.id}`, { method: "DELETE", token: admin.token });
     });
 

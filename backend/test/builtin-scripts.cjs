@@ -18,7 +18,7 @@ const run = (cmd, args, o = {}) => spawnSync(cmd, args, { encoding: "utf8", maxB
 
 const bash = SCRIPTS.filter((s) => s.language === "bash");
 const ps = SCRIPTS.filter((s) => s.language === "powershell");
-const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "riq-builtin-"));
+const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "adg-builtin-"));
 
 console.log("the catalog");
 check("35 to 45 scripts, roughly 60% PowerShell, with unique names and keys", () => {
@@ -43,16 +43,16 @@ check("each script has a name, a description, a valid language, a sane timeout a
         assert.ok(s.name.toLowerCase().includes(s.language === "bash" ? "linux" : "windows"), `${s.key}: the name says which system it is for`);
     }
 });
-check("parameter names are valid and unique, and every RIQ_ variable a script reads is declared (and the other way round)", () => {
+check("parameter names are valid and unique, and every ADG_ variable a script reads is declared (and the other way round)", () => {
     for (const s of SCRIPTS) {
         const seen = new Set();
         for (const p of s.parameters) {
             assert.match(p.name, /^[A-Za-z][A-Za-z0-9_]{0,63}$/, `${s.key}: ${p.name}`);
             assert.ok(!seen.has(p.name.toLowerCase()), `${s.key}: duplicate ${p.name}`); seen.add(p.name.toLowerCase());
-            assert.ok(s.script.includes(`RIQ_${p.name.toUpperCase()}`), `${s.key}: parameter ${p.name} is never read`);
+            assert.ok(s.script.includes(`ADG_${p.name.toUpperCase()}`), `${s.key}: parameter ${p.name} is never read`);
         }
-        const used = new Set([...s.script.matchAll(/RIQ_([A-Z][A-Z0-9_]*)/g)].map((m) => m[1].toLowerCase()));
-        for (const u of used) assert.ok(seen.has(u), `${s.key}: reads RIQ_${u.toUpperCase()} but does not declare it`);
+        const used = new Set([...s.script.matchAll(/ADG_([A-Z][A-Z0-9_]*)/g)].map((m) => m[1].toLowerCase()));
+        for (const u of used) assert.ok(seen.has(u), `${s.key}: reads ADG_${u.toUpperCase()} but does not declare it`);
     }
 });
 check("text safety: no dollar-brace, no double curly braces, no backtick, ASCII only, no carriage returns", () => {
@@ -73,7 +73,7 @@ check("no parameter is ever built into code: no eval, no iex, no shell -c with a
             assert.ok(!/xargs[^\n]*\{\}/.test(s.script), `${s.key}: xargs {}`);
         } else {
             assert.ok(!/Invoke-Expression|\biex\b|Invoke-Command|-EncodedCommand|\bcmd(\.exe)?\s+\/c/i.test(s.script), `${s.key}: runs a string as code`);
-            for (const m of s.script.matchAll(/^.*\$env:RIQ_\w+.*$/gm)) {
+            for (const m of s.script.matchAll(/^.*\$env:ADG_\w+.*$/gm)) {
                 const line = m[0];
                 assert.ok(!/(Start-Process|&\s*"|&\s*\$)/.test(line), `${s.key}: a parameter on a line that starts a program: ${line.trim()}`);
             }
@@ -87,14 +87,14 @@ check("anything that changes the device needs Confirm = YES, and clean-ups and a
         assert.equal(changes, hasConfirm, `${s.key}: confirm parameter and name disagree`);
         if (changes) {
             assert.equal(s.parameters.find((p) => p.name === "confirm").defaultValue, "NO", s.key);
-            assert.ok(/RIQ_CONFIRM\s*(-cne|-ceq)\s*'YES'|"\$RIQ_CONFIRM"\s*(!=|=)\s*"YES"/.test(s.script), `${s.key}: never compares Confirm with YES`);
+            assert.ok(/ADG_CONFIRM\s*(-cne|-ceq)\s*'YES'|"\$ADG_CONFIRM"\s*(!=|=)\s*"YES"/.test(s.script), `${s.key}: never compares Confirm with YES`);
         }
         const dry = s.parameters.find((p) => p.name === "dry_run");
         if (dry) { assert.equal(dry.defaultValue, "yes", s.key); assert.ok(changes, `${s.key}: a dry run on something that cannot change anything`); }
     }
 });
 check("Confirm and Dry run are compared case-SENSITIVELY (PowerShell -eq ignores case, so only -ceq and -cne are allowed): 'yes' must not count as YES", () => {
-    for (const s of ps) assert.ok(!/RIQ_(CONFIRM|DRY_RUN)\s+-(eq|ne)\b/i.test(s.script), `${s.key}: a case-insensitive comparison`);
+    for (const s of ps) assert.ok(!/ADG_(CONFIRM|DRY_RUN)\s+-(eq|ne)\b/i.test(s.script), `${s.key}: a case-insensitive comparison`);
 });
 check("the hash helper ignores line endings", () => { assert.equal(C.textHash("a\r\nb"), C.textHash("a\nb")); assert.notEqual(C.textHash("a"), C.textHash("b")); });
 
@@ -127,12 +127,12 @@ const ALLOWED = {
 const allowedOf = (key) => ALLOWED[key] ?? [0];
 const envFor = (s, plat, extra = {}) => {
     const env = {};
-    for (const p of s.parameters) env[`RIQ_${p.name.toUpperCase()}`] = p.defaultValue ?? "";
-    if (s.key.endsWith("restart-service")) env.RIQ_SERVICE = plat === "win" ? "Spooler" : "cron";
-    if (s.key.endsWith("test-connection")) env.RIQ_HOST = "localhost";
-    if (s.key === "win-disk-usage") env.RIQ_PATH = path.join(tmp, "ps");
-    if (s.key === "win-event-errors") env.RIQ_HOURS = "1";
-    if (s.key === "win-recent-logons") env.RIQ_DAYS = "1";
+    for (const p of s.parameters) env[`ADG_${p.name.toUpperCase()}`] = p.defaultValue ?? "";
+    if (s.key.endsWith("restart-service")) env.ADG_SERVICE = plat === "win" ? "Spooler" : "cron";
+    if (s.key.endsWith("test-connection")) env.ADG_HOST = "localhost";
+    if (s.key === "win-disk-usage") env.ADG_PATH = path.join(tmp, "ps");
+    if (s.key === "win-event-errors") env.ADG_HOURS = "1";
+    if (s.key === "win-recent-logons") env.ADG_DAYS = "1";
     return { ...env, ...extra };
 };
 
@@ -144,7 +144,7 @@ else {
     const mkdirBash = path.join(tmp, "bash"); fs.mkdirSync(mkdirBash);
     for (const s of bash) fs.writeFileSync(path.join(mkdirBash, `${s.key}.sh`), s.script, { mode: 0o755 });
     const box = (tag, image, prep) => {
-        const n = `riq-bi-${tag}-${Date.now()}`; names.push(n);
+        const n = `adg-bi-${tag}-${Date.now()}`; names.push(n);
         assert.equal(dk("run", "-d", "--name", n, image, "sleep", "1800").status, 0);
         if (prep) dk("exec", n, "bash", "-c", prep);
         assert.equal(dk("cp", mkdirBash, `${n}:/w`).status, 0);
@@ -173,16 +173,16 @@ else {
         const by = (k) => bash.find((s) => s.key === k);
         const gone = (f) => dk("exec", n, "bash", "-c", `test ! -e ${f}`).status === 0;
         const evil = [
-            ["lin-restart-service", { RIQ_SERVICE: "x; touch /tmp/pwned1" }, "/tmp/pwned1"],
-            ["lin-restart-service", { RIQ_SERVICE: "$(touch /tmp/pwned2)", RIQ_CONFIRM: "YES" }, "/tmp/pwned2"],
-            ["lin-test-connection", { RIQ_HOST: "localhost; touch /tmp/pwned3" }, "/tmp/pwned3"],
-            ["lin-test-connection", { RIQ_HOST: "$(touch /tmp/pwned4)" }, "/tmp/pwned4"],
-            ["lin-test-connection", { RIQ_HOST: "localhost", RIQ_PORT: "22; touch /tmp/pwned5" }, "/tmp/pwned5"],
-            ["lin-disk-usage", { RIQ_PATH: "/tmp; touch /tmp/pwned6" }, "/tmp/pwned6"],
-            ["lin-disk-usage", { RIQ_PATH: "$(touch /tmp/pwned7)" }, "/tmp/pwned7"],
-            ["lin-top-processes", { RIQ_COUNT: "5; touch /tmp/pwned8" }, "/tmp/pwned8"],
-            ["lin-journal-errors", { RIQ_HOURS: "1; touch /tmp/pwned9" }, "/tmp/pwned9"],
-            ["lin-clean-caches", { RIQ_DAYS: "1; touch /tmp/pwned10", RIQ_DRY_RUN: "no", RIQ_CONFIRM: "YES" }, "/tmp/pwned10"],
+            ["lin-restart-service", { ADG_SERVICE: "x; touch /tmp/pwned1" }, "/tmp/pwned1"],
+            ["lin-restart-service", { ADG_SERVICE: "$(touch /tmp/pwned2)", ADG_CONFIRM: "YES" }, "/tmp/pwned2"],
+            ["lin-test-connection", { ADG_HOST: "localhost; touch /tmp/pwned3" }, "/tmp/pwned3"],
+            ["lin-test-connection", { ADG_HOST: "$(touch /tmp/pwned4)" }, "/tmp/pwned4"],
+            ["lin-test-connection", { ADG_HOST: "localhost", ADG_PORT: "22; touch /tmp/pwned5" }, "/tmp/pwned5"],
+            ["lin-disk-usage", { ADG_PATH: "/tmp; touch /tmp/pwned6" }, "/tmp/pwned6"],
+            ["lin-disk-usage", { ADG_PATH: "$(touch /tmp/pwned7)" }, "/tmp/pwned7"],
+            ["lin-top-processes", { ADG_COUNT: "5; touch /tmp/pwned8" }, "/tmp/pwned8"],
+            ["lin-journal-errors", { ADG_HOURS: "1; touch /tmp/pwned9" }, "/tmp/pwned9"],
+            ["lin-clean-caches", { ADG_DAYS: "1; touch /tmp/pwned10", ADG_DRY_RUN: "no", ADG_CONFIRM: "YES" }, "/tmp/pwned10"],
         ];
         for (const [key, env, file] of evil) {
             check(`${key} with ${Object.keys(env).join("/")} = ${Object.values(env)[0].slice(0, 28)}: refused or harmless, nothing is run`, () => {
@@ -192,40 +192,40 @@ else {
             });
         }
         check("restart service: a bad name exits 2, and a real one without Confirm does not restart it", () => {
-            assert.equal(exec(n, "lin-restart-service", { RIQ_SERVICE: "bad name!", RIQ_CONFIRM: "YES" }).status, 2);
-            assert.equal(exec(n, "lin-restart-service", { RIQ_SERVICE: "" }).status, 2);
+            assert.equal(exec(n, "lin-restart-service", { ADG_SERVICE: "bad name!", ADG_CONFIRM: "YES" }).status, 2);
+            assert.equal(exec(n, "lin-restart-service", { ADG_SERVICE: "" }).status, 2);
         });
         check("test connection: no host exits 2, a bad port exits 2", () => {
             assert.equal(exec(n, "lin-test-connection", {}).status, 2);
-            assert.equal(exec(n, "lin-test-connection", { RIQ_HOST: "localhost", RIQ_PORT: "99999" }).status, 2);
-            assert.equal(exec(n, "lin-test-connection", { RIQ_HOST: "-oProxyCommand=x" }).status, 2);
+            assert.equal(exec(n, "lin-test-connection", { ADG_HOST: "localhost", ADG_PORT: "99999" }).status, 2);
+            assert.equal(exec(n, "lin-test-connection", { ADG_HOST: "-oProxyCommand=x" }).status, 2);
         });
         check("test connection: a port that is open answers open, a closed one fails", () => {
             dk("exec", "-d", n, "bash", "-c", "exec 3<>/dev/null; (while true; do sleep 1; done) & (python3 -m http.server 8099 >/dev/null 2>&1 || true) &");
-            const closed = exec(n, "lin-test-connection", { RIQ_HOST: "127.0.0.1", RIQ_PORT: "9" });
+            const closed = exec(n, "lin-test-connection", { ADG_HOST: "127.0.0.1", ADG_PORT: "9" });
             assert.equal(closed.status, 1); assert.match(closed.stdout, /closed or filtered/);
         });
         check("clean caches: the default run, and one with Dry run=no but no Confirm, only report and leave the package cache alone", () => {
             dk("exec", n, "bash", "-c", "apt-get update -qq >/dev/null 2>&1; apt-get install -y -qq --download-only cowsay >/dev/null 2>&1; ls /var/cache/apt/archives/*.deb 2>/dev/null | wc -l > /tmp/before.txt");
             const before = dk("exec", n, "cat", "/tmp/before.txt").stdout.trim();
-            for (const env of [{}, { RIQ_DRY_RUN: "no" }, { RIQ_CONFIRM: "YES" }]) {
+            for (const env of [{}, { ADG_DRY_RUN: "no" }, { ADG_CONFIRM: "YES" }]) {
                 const r = exec(n, "lin-clean-caches", envFor(by("lin-clean-caches"), "lin", env));
                 assert.match(r.stdout, /DRY RUN/); assert.equal(dk("exec", n, "bash", "-c", "ls /var/cache/apt/archives/*.deb 2>/dev/null | wc -l").stdout.trim(), before);
             }
         });
         check("clean caches: a lower-case 'yes' is not YES (still a dry run)", () => {
-            const r = exec(n, "lin-clean-caches", envFor(by("lin-clean-caches"), "lin", { RIQ_DRY_RUN: "no", RIQ_CONFIRM: "yes" }));
+            const r = exec(n, "lin-clean-caches", envFor(by("lin-clean-caches"), "lin", { ADG_DRY_RUN: "no", ADG_CONFIRM: "yes" }));
             assert.match(r.stdout, /DRY RUN/);
         });
         check("clean caches: Dry run=no AND Confirm=YES really cleans the package cache", () => {
-            const r = exec(n, "lin-clean-caches", envFor(by("lin-clean-caches"), "lin", { RIQ_DRY_RUN: "no", RIQ_CONFIRM: "YES" }));
+            const r = exec(n, "lin-clean-caches", envFor(by("lin-clean-caches"), "lin", { ADG_DRY_RUN: "no", ADG_CONFIRM: "YES" }));
             assert.equal(r.status, 0, r.stdout + r.stderr); assert.match(r.stdout, /apt cache cleaned/);
             assert.equal(dk("exec", n, "bash", "-c", "ls /var/cache/apt/archives/*.deb 2>/dev/null | wc -l").stdout.trim(), "0");
         });
         check("restart service: with Confirm=YES it restarts a real init-script service (cron), and says so", () => {
             dk("exec", n, "bash", "-c", "DEBIAN_FRONTEND=noninteractive apt-get install -y -qq cron >/dev/null 2>&1; service cron start >/dev/null 2>&1; true");
             // no systemd in a plain container: the script must say so instead of pretending
-            const r = exec(n, "lin-restart-service", { RIQ_SERVICE: "cron", RIQ_CONFIRM: "YES" });
+            const r = exec(n, "lin-restart-service", { ADG_SERVICE: "cron", ADG_CONFIRM: "YES" });
             assert.ok([1, 2].includes(r.status), `${r.status} ${r.stdout}`);
             assert.match(r.stdout + r.stderr, /neither systemd nor OpenRC|no service named/);
         });
@@ -249,12 +249,12 @@ else {
     check("injection through parameters changes nothing and is refused with exit 2", () => {
         const marker = path.join(tmp, "pwned.txt");
         const attempts = [
-            ["win-restart-service", { RIQ_SERVICE: `x'; New-Item '${marker}'; '` }],
-            ["win-restart-service", { RIQ_SERVICE: "$(New-Item '" + marker + "')" }],
-            ["win-test-connection", { RIQ_HOST: `localhost'; New-Item '${marker}'; '` }],
-            ["win-test-connection", { RIQ_HOST: "localhost", RIQ_PORT: `80; New-Item '${marker}'` }],
-            ["win-disk-usage", { RIQ_PATH: `C:\\'; New-Item '${marker}'; '` }],
-            ["win-top-processes", { RIQ_COUNT: `5; New-Item '${marker}'` }],
+            ["win-restart-service", { ADG_SERVICE: `x'; New-Item '${marker}'; '` }],
+            ["win-restart-service", { ADG_SERVICE: "$(New-Item '" + marker + "')" }],
+            ["win-test-connection", { ADG_HOST: `localhost'; New-Item '${marker}'; '` }],
+            ["win-test-connection", { ADG_HOST: "localhost", ADG_PORT: `80; New-Item '${marker}'` }],
+            ["win-disk-usage", { ADG_PATH: `C:\\'; New-Item '${marker}'; '` }],
+            ["win-top-processes", { ADG_COUNT: `5; New-Item '${marker}'` }],
         ];
         for (const [key, e] of attempts) {
             const s = ps.find((x) => x.key === key);
@@ -264,7 +264,7 @@ else {
         }
     });
     check("restart service and every other change refuse to act without Confirm=YES", () => {
-        const r = run(psExe, ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", path.join(psDir, "win-restart-service.ps1")], { env: { ...process.env, RIQ_SERVICE: "Spooler", RIQ_CONFIRM: "yes" } });
+        const r = run(psExe, ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", path.join(psDir, "win-restart-service.ps1")], { env: { ...process.env, ADG_SERVICE: "Spooler", ADG_CONFIRM: "yes" } });
         assert.equal(r.status, 0); assert.match(r.stdout, /Nothing was changed/);
     });
     check("clean temp files, against a stand-in Windows folder and user profiles (nothing real is touched): dry runs, lower-case yes and a missing Confirm delete nothing, and the real run deletes only old files", () => {
@@ -275,14 +275,14 @@ else {
         const oldB = plant(path.join(users, "bob", "AppData", "Local", "Temp", "sub"), "old-b.tmp", 90), newB = plant(path.join(users, "bob", "AppData", "Local", "Temp"), "new-b.tmp", 2);
         fs.mkdirSync(path.join(users, "Public"), { recursive: true });
         const s = ps.find((x) => x.key === "win-clean-temp");
-        const base = { ...process.env, ...envFor(s, "win", { RIQ_DAYS: "30" }), WINDIR: win, PUBLIC: path.join(users, "Public") };
+        const base = { ...process.env, ...envFor(s, "win", { ADG_DAYS: "30" }), WINDIR: win, PUBLIC: path.join(users, "Public") };
         const go = (e) => run(psExe, ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", path.join(psDir, "win-clean-temp.ps1")], { env: { ...base, ...e }, timeout: 300_000 });
-        for (const e of [{}, { RIQ_DRY_RUN: "no" }, { RIQ_CONFIRM: "YES" }, { RIQ_DRY_RUN: "no", RIQ_CONFIRM: "yes" }, { RIQ_DRY_RUN: "NO", RIQ_CONFIRM: "YES" }, { RIQ_DRY_RUN: "no", RIQ_CONFIRM: "NO" }]) {
+        for (const e of [{}, { ADG_DRY_RUN: "no" }, { ADG_CONFIRM: "YES" }, { ADG_DRY_RUN: "no", ADG_CONFIRM: "yes" }, { ADG_DRY_RUN: "NO", ADG_CONFIRM: "YES" }, { ADG_DRY_RUN: "no", ADG_CONFIRM: "NO" }]) {
             const r = go(e);
             assert.match(r.stdout, /Found 2 files older than 30 days/, r.stdout + r.stderr); assert.match(r.stdout, /DRY RUN/, JSON.stringify(e));
             for (const f of [oldA, newA, oldB, newB]) assert.ok(fs.existsSync(f), `deleted on ${JSON.stringify(e)}: ${f}`);
         }
-        const r = go({ RIQ_DRY_RUN: "no", RIQ_CONFIRM: "YES" });
+        const r = go({ ADG_DRY_RUN: "no", ADG_CONFIRM: "YES" });
         assert.match(r.stdout, /Deleted 2 files\. 0 could not be deleted/, r.stdout + r.stderr);
         assert.ok(!fs.existsSync(oldA) && !fs.existsSync(oldB), "the old files are gone");
         assert.ok(fs.existsSync(newA) && fs.existsSync(newB), "the recent files stayed");

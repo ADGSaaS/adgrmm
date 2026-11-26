@@ -1,12 +1,12 @@
 // Scheduled network discovery and the alerts for new hosts, against a real database, in-process (the timers are switched off and the
 // test calls the scheduler and the reader itself). A fake agent finishes the scan jobs with scripted output.
 // Needs the migrations 20261121010000 and 20261121020000 applied to the throwaway database.
-//   RIQ_E2E_ALLOW=1 DATABASE_URL=postgres://.../riq_x_e2e JWT_SECRET=... node test/network-discovery-schedules.e2e.cjs
+//   ADG_E2E_ALLOW=1 DATABASE_URL=postgres://.../adg_x_e2e JWT_SECRET=... node test/network-discovery-schedules.e2e.cjs
 "use strict";
 const path = require("node:path");
 const crypto = require("node:crypto");
 
-if (process.env.RIQ_E2E_ALLOW !== "1" || !/e2e/.test(process.env.DATABASE_URL || "")) { console.error("Refusing to run: set RIQ_E2E_ALLOW=1 and an e2e-named DATABASE_URL."); process.exit(2); }
+if (process.env.ADG_E2E_ALLOW !== "1" || !/e2e/.test(process.env.DATABASE_URL || "")) { console.error("Refusing to run: set ADG_E2E_ALLOW=1 and an e2e-named DATABASE_URL."); process.exit(2); }
 process.env.JWT_SECRET ||= "e2e-only-not-a-real-secret-e2e-only-not-a-real-secret";
 process.env.DATA_ENCRYPTION_KEY ||= "e2e-only-data-key";
 process.env.IMAP_POLL_ENABLED = "false";

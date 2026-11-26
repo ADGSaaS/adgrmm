@@ -9,10 +9,10 @@ const POLL_MS = 4000;
 // Long enough for a download, the swap, a restart, and the rollback window if the new version fails.
 const GIVE_UP_MS = 8 * 60_000;
 const OUTCOME_TOAST_MS = 12_000;
-const STORAGE_KEY = "remoteiq.agentUpdates";
+const STORAGE_KEY = "adgrmm.agentUpdates";
 
 /** Tells open device lists to reload, so they show the new version. */
-export const AGENT_UPDATED_EVENT = "remoteiq:agent-updated";
+export const AGENT_UPDATED_EVENT = "adgrmm:agent-updated";
 
 type TrackedUpdate = {
     deviceId: string;

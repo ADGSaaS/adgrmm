@@ -239,7 +239,7 @@ export class RemoteDesktopController {
         ].join("\r\n");
 
         res.setHeader("Content-Type", "application/x-rdp; charset=utf-8");
-        res.setHeader("Content-Disposition", `attachment; filename="remoteiq-${sid}.rdp"`);
+        res.setHeader("Content-Disposition", `attachment; filename="adgrmm-${sid}.rdp"`);
         res.status(200).send(rdp);
     }
 }

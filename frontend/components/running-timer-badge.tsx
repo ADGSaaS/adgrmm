@@ -39,11 +39,11 @@ export default function RunningTimerBadge() {
         document.addEventListener("visibilitychange", onVisible);
         // Starting or stopping a timer on this page tells the badge at once.
         const onChanged = () => void look();
-        window.addEventListener("riq:timer-changed", onChanged);
+        window.addEventListener("adg:timer-changed", onChanged);
         return () => {
             window.clearInterval(poll);
             document.removeEventListener("visibilitychange", onVisible);
-            window.removeEventListener("riq:timer-changed", onChanged);
+            window.removeEventListener("adg:timer-changed", onChanged);
         };
     }, [allowed, look]);
 

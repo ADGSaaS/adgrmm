@@ -92,7 +92,7 @@ async function main() {
         assert.equal(g.enabled, true); assert.equal(g.selfHealing, true);
     });
     await test("approving a custom repair is for the Owner only", async () => {
-        const r = await call("/api/admin/auto-repair/playbooks", { method: "POST", token: admin.token, body: { title: `${tag} pb`, plain: "x", signs: "", fixText: "", ifItReturns: "", categories: ["Printing"], appWords: [], checkService: null, checkMetric: null, detectScript: "Write-Output 'RIQ_FOUND=0'", fixScript: "", risk: "low" } });
+        const r = await call("/api/admin/auto-repair/playbooks", { method: "POST", token: admin.token, body: { title: `${tag} pb`, plain: "x", signs: "", fixText: "", ifItReturns: "", categories: ["Printing"], appWords: [], checkService: null, checkMetric: null, detectScript: "Write-Output 'ADG_FOUND=0'", fixScript: "", risk: "low" } });
         assert.ok([200, 201, 400].includes(r.status), `playbook create ${r.status}`);
         if (r.status < 300) {
             const pb = await json(r);

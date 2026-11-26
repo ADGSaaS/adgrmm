@@ -3,7 +3,7 @@
 // audit), what it turns off (the built-in asset endpoints answer "managed in <name>", expiry still lists passwords), recording a found host or
 // an SNMP device as an asset, the export, the customer limit, and that nothing is deleted by switching either way. The database needs the
 // migrations 20261121010000, 20261121030000 and 20261121040000 applied.
-//   RIQ_E2E_ALLOW=1 SNMP_POLLER_ENABLED=false BASE_URL=http://127.0.0.1:3951 DATABASE_URL=postgres://.../riq_x_e2e JWT_SECRET=... DATA_ENCRYPTION_KEY=... node test/assets-provider-http.e2e.cjs
+//   ADG_E2E_ALLOW=1 SNMP_POLLER_ENABLED=false BASE_URL=http://127.0.0.1:3951 DATABASE_URL=postgres://.../adg_x_e2e JWT_SECRET=... DATA_ENCRYPTION_KEY=... node test/assets-provider-http.e2e.cjs
 "use strict";
 const { assert, call, runner, setup, uuid } = require("./groupc-helpers.cjs");
 
@@ -106,7 +106,7 @@ async function main() {
         assert.ok(j.count >= 4 && j.assets.every((a) => "id" in a && "customerId" in a && "deviceId" in a && "serialNumber" in a));
         assert.ok(j.assets.some((a) => a.serialNumber === "SN-1"));
         const csvRes = await get("/api/assets/export?format=csv");
-        assert.match(csvRes.headers.get("content-type"), /text\/csv/); assert.match(csvRes.headers.get("content-disposition"), /remoteiq-assets-.*\.csv/);
+        assert.match(csvRes.headers.get("content-type"), /text\/csv/); assert.match(csvRes.headers.get("content-disposition"), /adgrmm-assets-.*\.csv/);
         const csv = await csvRes.text();
         assert.ok(csv.split("\r\n")[0].startsWith("id,customerId,customer,deviceId,name,kind"));
         assert.ok(csv.includes(`"'=HYPERLINK(""http://evil"")"`), "the formula is quoted as text");
@@ -128,7 +128,7 @@ async function main() {
         await expectOff(await send("POST", `/api/network-discovery/hosts/${otherHost}/asset`, undefined, owner), "add found host");
         await expectOff(await send("POST", `/api/snmp/devices/${switchDev}/asset`, undefined, owner), "add snmp device");
     });
-    await test("nothing is deleted by switching, and the rest of RemoteIQ carries on (passwords still expire, the host list still works)", async () => {
+    await test("nothing is deleted by switching, and the rest of ADG RMM carries on (passwords still expire, the host list still works)", async () => {
         assert.equal((await q(`SELECT count(*)::int AS n FROM assets`)).rows[0].n, countBefore);
         const exp = await get("/api/docs/expiring?days=3650", reader); assert.equal(exp.status, 200);
         assert.ok((await exp.json()).items.every((i) => i.type !== "asset"), "no asset in the expiry list");

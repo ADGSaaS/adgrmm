@@ -18,8 +18,8 @@ import {
 import { verifyTurnstile } from "./turnstile";
 
 /** Switches that let a server administrator undo these settings without being able to sign in. */
-export const envIgnoresAllowlist = () => ["1", "true", "yes", "on"].includes(String(process.env.RIQ_IGNORE_IP_ALLOWLIST ?? "").trim().toLowerCase());
-export const envDisablesCaptcha = () => ["1", "true", "yes", "on"].includes(String(process.env.RIQ_DISABLE_CAPTCHA ?? "").trim().toLowerCase());
+export const envIgnoresAllowlist = () => ["1", "true", "yes", "on"].includes(String(process.env.ADG_IGNORE_IP_ALLOWLIST ?? "").trim().toLowerCase());
+export const envDisablesCaptcha = () => ["1", "true", "yes", "on"].includes(String(process.env.ADG_DISABLE_CAPTCHA ?? "").trim().toLowerCase());
 
 export type SecurityPolicyAdmin = Omit<SecurityPolicy, "turnstileSecret"> & {
     hasTurnstileSecret: boolean;
@@ -135,7 +135,7 @@ export class SecurityPolicyService {
             }
             // Cloudflare rejects a wrong secret key even for a made-up token, so a typo is found now and not when nobody can sign in.
             if (secretChanged || !cur.captchaEnabled || next.turnstileSiteKey !== cur.turnstileSiteKey) {
-                const r = await verifyTurnstile(decryptSecret(next.turnstileSecret), "riq-key-check", null);
+                const r = await verifyTurnstile(decryptSecret(next.turnstileSecret), "adg-key-check", null);
                 if (r.kind === "misconfigured") {
                     throw new BadRequestException(`Cloudflare did not accept the secret key (${r.codes.join(", ")}). Check it in the Cloudflare dashboard under Turnstile.`);
                 }
@@ -216,8 +216,8 @@ export class SecurityPolicyService {
             return fail(HttpStatus.BAD_REQUEST, "captcha_failed", "The CAPTCHA check failed. Reload the check and try again.");
         }
         if (r.kind === "misconfigured") {
-            this.log.error(`Turnstile refused the secret key (${r.codes.join(", ")}). Nobody can sign in until it is fixed in Security Policies, or RIQ_DISABLE_CAPTCHA=1 is set on the server.`);
-            return fail(HttpStatus.SERVICE_UNAVAILABLE, "captcha_misconfigured", "Sign-in is blocked because the CAPTCHA is set up wrongly on the server. A server administrator can switch it off with RIQ_DISABLE_CAPTCHA=1.");
+            this.log.error(`Turnstile refused the secret key (${r.codes.join(", ")}). Nobody can sign in until it is fixed in Security Policies, or ADG_DISABLE_CAPTCHA=1 is set on the server.`);
+            return fail(HttpStatus.SERVICE_UNAVAILABLE, "captcha_misconfigured", "Sign-in is blocked because the CAPTCHA is set up wrongly on the server. A server administrator can switch it off with ADG_DISABLE_CAPTCHA=1.");
         }
         this.log.warn(`Turnstile could not be reached (${r.detail}).`);
         return fail(HttpStatus.SERVICE_UNAVAILABLE, "captcha_unavailable", "The CAPTCHA service could not be reached, so sign-in is paused. Try again in a moment.");
@@ -225,7 +225,7 @@ export class SecurityPolicyService {
 
     /**
      * Staff may only sign in from the listed addresses. Owners are exempt, so a wrong list can always be fixed,
-     * and RIQ_IGNORE_IP_ALLOWLIST=1 switches the rule off from the server.
+     * and ADG_IGNORE_IP_ALLOWLIST=1 switches the rule off from the server.
      */
     async assertSignInAddress(req: any, user: { id: string; email: string; roles?: unknown }): Promise<void> {
         if (envIgnoresAllowlist()) return;

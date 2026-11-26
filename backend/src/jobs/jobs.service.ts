@@ -366,24 +366,24 @@ export class JobsService {
     let stored = false;
     const reason: "timeout" | "failed" | "unreadable" = status === "timeout" ? "timeout" : status === "failed" ? "failed" : "unreadable";
     if (handler && status !== "timeout") {
-      await tx.$executeRawUnsafe("SAVEPOINT riq_secret_ingest");
+      await tx.$executeRawUnsafe("SAVEPOINT adg_secret_ingest");
       try {
         stored = await handler.ingest(tx, ctx, { status, exitCode: result.exitCode, stdout: stripNul(result.stdout), stderr: stripNul(result.stderr) });
-        if (stored) await tx.$executeRawUnsafe("RELEASE SAVEPOINT riq_secret_ingest");
+        if (stored) await tx.$executeRawUnsafe("RELEASE SAVEPOINT adg_secret_ingest");
       } catch {
         stored = false;
       }
-      if (!stored) await tx.$executeRawUnsafe("ROLLBACK TO SAVEPOINT riq_secret_ingest");
+      if (!stored) await tx.$executeRawUnsafe("ROLLBACK TO SAVEPOINT adg_secret_ingest");
     }
     if (!stored) {
       this.logger.warn(`A secret job (${ctx.tool.slice(0, 40)}) gave nothing that could be stored; its output was discarded.`);
       if (handler) {
-        await tx.$executeRawUnsafe("SAVEPOINT riq_secret_failed");
+        await tx.$executeRawUnsafe("SAVEPOINT adg_secret_failed");
         try {
           await handler.failed(tx, ctx, reason);
-          await tx.$executeRawUnsafe("RELEASE SAVEPOINT riq_secret_failed");
+          await tx.$executeRawUnsafe("RELEASE SAVEPOINT adg_secret_failed");
         } catch {
-          await tx.$executeRawUnsafe("ROLLBACK TO SAVEPOINT riq_secret_failed");
+          await tx.$executeRawUnsafe("ROLLBACK TO SAVEPOINT adg_secret_failed");
         }
       }
       if (status === "succeeded") await tx.jobs.updateMany({ where: { id: ctx.jobId }, data: { status: "failed" } });
@@ -431,7 +431,7 @@ export class JobsService {
       const marked = await tx.jobs.findUnique({ where: { id: jobId }, select: { payload: true, agent_id: true } });
       const markedEnv = (marked?.payload as any)?.env;
       if (marked && isSecretJobEnv(markedEnv)) {
-        await this.finishSecretJob(tx, { jobId, agentId: marked.agent_id, tool: String(markedEnv.RIQ_TOOL ?? ""), env: markedEnv }, result, status);
+        await this.finishSecretJob(tx, { jobId, agentId: marked.agent_id, tool: String(markedEnv.ADG_TOOL ?? ""), env: markedEnv }, result, status);
         return true;
       }
 

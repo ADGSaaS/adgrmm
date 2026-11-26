@@ -192,13 +192,13 @@ function AppLogo() {
                 {dark ? <source srcSet={dark} media="(prefers-color-scheme: dark)" /> : null}
                 <img
                     src={light || dark || "/logo.png"}
-                    alt="RemoteIQ"
+                    alt="ADG RMM"
                     width={28}
                     height={28}
                     className="rounded-sm"
                 />
             </picture>
-            <span className="hidden font-semibold sm:inline">RemoteIQ</span>
+            <span className="hidden font-semibold sm:inline">ADG RMM</span>
         </div>
     );
 }
@@ -489,7 +489,7 @@ export default function TopBar() {
                     <Menu className="h-5 w-5" aria-hidden="true" />
                 </Button>
 
-                <Link href="/" className="flex shrink-0 items-center rounded-md outline-none focus-visible:ring-2 focus-visible:ring-ring" aria-label="RemoteIQ home">
+                <Link href="/" className="flex shrink-0 items-center rounded-md outline-none focus-visible:ring-2 focus-visible:ring-ring" aria-label="ADG RMM home">
                     <AppLogo />
                 </Link>
 
@@ -712,7 +712,7 @@ export default function TopBar() {
             <Sheet open={navOpen} onOpenChange={setNavOpen}>
                 <SheetContent side="left" className="flex w-[85vw] max-w-xs flex-col gap-0 overflow-y-auto p-0 sm:w-80">
                     <SheetHeader className="border-b p-4 text-left">
-                        <SheetTitle>RemoteIQ</SheetTitle>
+                        <SheetTitle>ADG RMM</SheetTitle>
                         <SheetDescription className="sr-only">Navigation and tools</SheetDescription>
                     </SheetHeader>
                     <nav aria-label="Main" className="grid gap-1 p-2">

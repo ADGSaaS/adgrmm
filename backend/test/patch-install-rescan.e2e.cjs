@@ -1,11 +1,11 @@
 // After an install: the device is scanned again by itself (once, not once per install), and until that scan lands the list of needed
 // patches counts every install since the last scan, so a package installed earlier does not come back as "Required".
-// Real database, throwaway only. Run: RIQ_E2E_ALLOW=1 DATABASE_URL=postgres://.../riq_x_e2e node test/patch-install-rescan.e2e.cjs
+// Real database, throwaway only. Run: ADG_E2E_ALLOW=1 DATABASE_URL=postgres://.../adg_x_e2e node test/patch-install-rescan.e2e.cjs
 "use strict";
 const crypto = require("node:crypto");
 const path = require("node:path");
 
-if (process.env.RIQ_E2E_ALLOW !== "1" || !/e2e/.test(process.env.DATABASE_URL || "")) { console.error("Refusing to run: set RIQ_E2E_ALLOW=1 and an e2e-named DATABASE_URL."); process.exit(2); }
+if (process.env.ADG_E2E_ALLOW !== "1" || !/e2e/.test(process.env.DATABASE_URL || "")) { console.error("Refusing to run: set ADG_E2E_ALLOW=1 and an e2e-named DATABASE_URL."); process.exit(2); }
 process.env.JWT_SECRET ||= "e2e-only-not-a-real-secret-e2e-only-not-a-real-secret";
 process.env.DATA_ENCRYPTION_KEY ||= "e2e-only-data-key";
 process.env.IMAP_POLL_ENABLED = "false";

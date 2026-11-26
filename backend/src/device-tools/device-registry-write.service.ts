@@ -217,7 +217,7 @@ export class DeviceRegistryWriteService {
         } catch (e) {
             return this.refused(actor, t, { ...known, newType: known.newType, newData: null }, e);
         }
-        const env = { RIQ_REG_PATH: path, RIQ_REG_VIEW: view, RIQ_REG_NAME: name, RIQ_REG_TYPE: type, RIQ_REG_DATA: dataArg(type, data), RIQ_REG_EXPECT: expectArg(expected) };
+        const env = { ADG_REG_PATH: path, ADG_REG_VIEW: view, ADG_REG_NAME: name, ADG_REG_TYPE: type, ADG_REG_DATA: dataArg(type, data), ADG_REG_EXPECT: expectArg(expected) };
         return this.execute(actor, t, { action: "set", kind: "registry.set", script: REGISTRY_WRITE_SCRIPTS.set, env, path, view, name, newType: type, newData: data });
     }
 
@@ -235,7 +235,7 @@ export class DeviceRegistryWriteService {
         } catch (e) {
             return this.refused(actor, t, known, e);
         }
-        const env = { RIQ_REG_PATH: path, RIQ_REG_VIEW: view, RIQ_REG_NAME: name, RIQ_REG_EXPECT: expectArg(expected) };
+        const env = { ADG_REG_PATH: path, ADG_REG_VIEW: view, ADG_REG_NAME: name, ADG_REG_EXPECT: expectArg(expected) };
         return this.execute(actor, t, { action: "delete-value", kind: "registry.delete-value", script: REGISTRY_WRITE_SCRIPTS.deleteValue, env, path, view, name, newType: null, newData: null });
     }
 
@@ -248,7 +248,7 @@ export class DeviceRegistryWriteService {
         } catch (e) {
             return this.refused(actor, t, known, e);
         }
-        const env = { RIQ_REG_PATH: path, RIQ_REG_VIEW: view };
+        const env = { ADG_REG_PATH: path, ADG_REG_VIEW: view };
         return this.execute(actor, t, { action: "create-key", kind: "registry.create-key", script: REGISTRY_WRITE_SCRIPTS.createKey, env, path, view, name: null, newType: null, newData: null });
     }
 
@@ -267,7 +267,7 @@ export class DeviceRegistryWriteService {
         } catch (e) {
             return this.refused(actor, t, known, e);
         }
-        const env: Record<string, string> = { RIQ_REG_PATH: path, RIQ_REG_VIEW: view, RIQ_REG_EXPECT: expectValues === null ? "" : JSON.stringify({ values: expectValues }) };
+        const env: Record<string, string> = { ADG_REG_PATH: path, ADG_REG_VIEW: view, ADG_REG_EXPECT: expectValues === null ? "" : JSON.stringify({ values: expectValues }) };
         return this.execute(actor, t, { action: "delete-key", kind: "registry.delete-key", script: REGISTRY_WRITE_SCRIPTS.deleteKey, env, path, view, name: null, newType: null, newData: null });
     }
 
@@ -300,20 +300,20 @@ export class DeviceRegistryWriteService {
             if (rec.action === "set" && rec.old_type) {
                 const r = restoring();
                 assertWritable(path, "value", name); assertNameNotMasked(name);
-                const env = { RIQ_REG_PATH: path, RIQ_REG_VIEW: view, RIQ_REG_NAME: name, RIQ_REG_TYPE: r.type, RIQ_REG_DATA: dataArg(r.type, r.data), RIQ_REG_EXPECT: expectArg(left()) };
+                const env = { ADG_REG_PATH: path, ADG_REG_VIEW: view, ADG_REG_NAME: name, ADG_REG_TYPE: r.type, ADG_REG_DATA: dataArg(r.type, r.data), ADG_REG_EXPECT: expectArg(left()) };
                 spec = { ...base, action: "set", kind: "registry.set", script: REGISTRY_WRITE_SCRIPTS.set, env, name, newType: r.type, newData: r.data };
             } else if (rec.action === "set") {
                 assertWritable(path, "value", name); assertNameNotMasked(name);
-                const env = { RIQ_REG_PATH: path, RIQ_REG_VIEW: view, RIQ_REG_NAME: name, RIQ_REG_EXPECT: expectArg(left()) };
+                const env = { ADG_REG_PATH: path, ADG_REG_VIEW: view, ADG_REG_NAME: name, ADG_REG_EXPECT: expectArg(left()) };
                 spec = { ...base, action: "delete-value", kind: "registry.delete-value", script: REGISTRY_WRITE_SCRIPTS.deleteValue, env, name };
             } else if (rec.action === "delete-value") {
                 const r = restoring();
                 assertWritable(path, "value", name); assertNameNotMasked(name);
-                const env = { RIQ_REG_PATH: path, RIQ_REG_VIEW: view, RIQ_REG_NAME: name, RIQ_REG_TYPE: r.type, RIQ_REG_DATA: dataArg(r.type, r.data), RIQ_REG_EXPECT: expectArg({ exists: false }) };
+                const env = { ADG_REG_PATH: path, ADG_REG_VIEW: view, ADG_REG_NAME: name, ADG_REG_TYPE: r.type, ADG_REG_DATA: dataArg(r.type, r.data), ADG_REG_EXPECT: expectArg({ exists: false }) };
                 spec = { ...base, action: "set", kind: "registry.set", script: REGISTRY_WRITE_SCRIPTS.set, env, name, newType: r.type, newData: r.data };
             } else if (rec.action === "create-key") {
                 assertWritable(path, "deletekey");
-                const env = { RIQ_REG_PATH: path, RIQ_REG_VIEW: view, RIQ_REG_EXPECT: JSON.stringify({ values: Number((rec.new_data as any)?.values ?? 0) }) };
+                const env = { ADG_REG_PATH: path, ADG_REG_VIEW: view, ADG_REG_EXPECT: JSON.stringify({ values: Number((rec.new_data as any)?.values ?? 0) }) };
                 spec = { ...base, action: "delete-key", kind: "registry.delete-key", script: REGISTRY_WRITE_SCRIPTS.deleteKey, env };
             } else {
                 assertWritable(path, "createkey");
@@ -323,7 +323,7 @@ export class DeviceRegistryWriteService {
                     if (isMaskedName(String(v?.name ?? "")) || !typeOk(v?.type)) throw new ConflictException("The key held a value that cannot be put back.");
                     return { name: String(v.name ?? ""), type: v.type as WriteType, data: cleanValueData(v.type as WriteType, v.data) };
                 });
-                const env: Record<string, string> = { RIQ_REG_PATH: path, RIQ_REG_VIEW: view, RIQ_REG_VALUES: valuesArg(values) };
+                const env: Record<string, string> = { ADG_REG_PATH: path, ADG_REG_VIEW: view, ADG_REG_VALUES: valuesArg(values) };
                 spec = { ...base, action: "create-key", kind: "registry.create-key", script: REGISTRY_WRITE_SCRIPTS.createKey, env };
             }
         } catch (e) {

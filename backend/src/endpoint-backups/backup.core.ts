@@ -2,7 +2,7 @@
 //
 // Backup status of customers' computers: what a device's report is allowed to say, how it is judged, and what an administrator may set.
 // Pure (no database, no network) so it can be tested alone. A device reports, product by product, what protects it and when that last worked;
-// RemoteIQ judges the age. Backup software that does not let anyone read its results from the device is reported as present but "unknown":
+// ADG RMM judges the age. Backup software that does not let anyone read its results from the device is reported as present but "unknown":
 // that is not the same as protected, and it is not a fault either.
 import { BadRequestException } from "@nestjs/common";
 

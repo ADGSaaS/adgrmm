@@ -20,7 +20,7 @@ export type ChannelInput = {
     notifyOnResolve?: boolean;
     recipients?: string[];
     url?: string;
-    /** How the message is written; when left out it follows the address (Slack, Discord, Teams) or is RemoteIQ's own. */
+    /** How the message is written; when left out it follows the address (Slack, Discord, Teams) or is ADG RMM's own. */
     format?: WebhookFormat | "auto";
 };
 
@@ -35,23 +35,23 @@ type ChannelConfig = { recipients?: string[]; url?: string; secret?: string; for
 
 /* ------------------------------ what a webhook is sent ------------------------------ */
 
-export type WebhookFormat = "remoteiq" | "slack" | "discord" | "teams";
-export const WEBHOOK_FORMATS: WebhookFormat[] = ["remoteiq", "slack", "discord", "teams"];
+export type WebhookFormat = "adgrmm" | "slack" | "discord" | "teams";
+export const WEBHOOK_FORMATS: WebhookFormat[] = ["adgrmm", "slack", "discord", "teams"];
 
 /**
  * Chat services only accept their own message shape and answer anything else with a 400, so the address says which one this is:
  * Slack (and Mattermost-style "hooks.slack.com" copies), Discord, and Microsoft Teams (Workflows and the older connectors).
- * Any other address gets RemoteIQ's own signed JSON, which is what a receiver written for RemoteIQ expects.
+ * Any other address gets ADG RMM's own signed JSON, which is what a receiver written for ADG RMM expects.
  */
 export function webhookFormatFor(rawUrl: string, chosen?: unknown): WebhookFormat {
     if (typeof chosen === "string" && (WEBHOOK_FORMATS as string[]).includes(chosen)) return chosen as WebhookFormat;
     let u: URL;
-    try { u = new URL(rawUrl); } catch { return "remoteiq"; }
+    try { u = new URL(rawUrl); } catch { return "adgrmm"; }
     const host = u.hostname.toLowerCase();
     if (host === "hooks.slack.com" || host.endsWith(".slack.com")) return "slack";
     if ((host === "discord.com" || host === "discordapp.com" || host.endsWith(".discord.com")) && /^\/api\/webhooks\//i.test(u.pathname)) return "discord";
     if (host.endsWith(".webhook.office.com") || host === "outlook.office.com" || host.endsWith(".logic.azure.com") || host.endsWith(".powerplatform.com") || host.endsWith(".environment.api.powerplatform.com")) return "teams";
-    return "remoteiq";
+    return "adgrmm";
 }
 
 const EVENT_LABEL: Record<string, string> = { resolved: "Resolved", reminder: "Still open", test: "Test" };
@@ -62,14 +62,14 @@ export function webhookText(payload: { event: string; alert: any }, consoleUrl =
     const label = EVENT_LABEL[payload.event] ?? (a.severity === "CRIT" ? "Critical alert" : "Warning");
     const where = a.device ? [a.device.customer, a.device.site].filter(Boolean).join(" / ") : "";
     const lines = [
-        `${label}: ${String(a.title ?? "RemoteIQ alert")}${a.device?.name ? ` on ${a.device.name}` : ""}${where ? ` (${where})` : ""}`,
+        `${label}: ${String(a.title ?? "ADG RMM alert")}${a.device?.name ? ` on ${a.device.name}` : ""}${where ? ` (${where})` : ""}`,
         a.detail ? String(a.detail) : "",
         consoleUrl && a.device?.id ? `Open the device: ${consoleUrl}/devices/${a.device.id}` : "",
     ];
     return lines.filter(Boolean).join("\n").replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, " ");
 }
 
-/** The JSON body for one format. RemoteIQ's own format is the event and the alert as they always were, plus the time. */
+/** The JSON body for one format. ADG RMM's own format is the event and the alert as they always were, plus the time. */
 export function webhookBody(format: WebhookFormat, payload: { event: string; alert: any }, consoleUrl = "", sentAt = new Date().toISOString()): unknown {
     if (format === "slack") return { text: webhookText(payload, consoleUrl).slice(0, 3000) };
     if (format === "discord") return { content: webhookText(payload, consoleUrl).slice(0, 1900), allowed_mentions: { parse: [] } };
@@ -168,7 +168,7 @@ export class NotificationsService {
             return { recipients };
         }
         if (!input.url?.trim()) throw new BadRequestException("Enter the webhook address.");
-        if (input.format !== undefined && input.format !== "auto" && !(WEBHOOK_FORMATS as string[]).includes(input.format)) throw new BadRequestException("The message format must be auto, remoteiq, slack, discord or teams.");
+        if (input.format !== undefined && input.format !== "auto" && !(WEBHOOK_FORMATS as string[]).includes(input.format)) throw new BadRequestException("The message format must be auto, adgrmm, slack, discord or teams.");
         return { url: input.url.trim(), ...(input.format && input.format !== "auto" ? { format: input.format } : {}) };
     }
 
@@ -211,7 +211,7 @@ export class NotificationsService {
         }
         if (row.kind === "webhook" && input.format !== undefined) {
             if (input.format === "auto") delete config.format;
-            else if (!(WEBHOOK_FORMATS as string[]).includes(input.format)) throw new BadRequestException("The message format must be auto, remoteiq, slack, discord or teams.");
+            else if (!(WEBHOOK_FORMATS as string[]).includes(input.format)) throw new BadRequestException("The message format must be auto, adgrmm, slack, discord or teams.");
             else config.format = input.format;
         }
 
@@ -245,7 +245,7 @@ export class NotificationsService {
                 event: "test",
                 alert: {
                     id: null,
-                    title: "Test notification from RemoteIQ",
+                    title: "Test notification from ADG RMM",
                     severity: "WARN",
                     state: "OPEN",
                     detail: "If this arrived, this channel works.",
@@ -405,10 +405,10 @@ export class NotificationsService {
             allowPrivate: process.env.ALLOW_PRIVATE_WEBHOOKS === "true",
             headers: {
                 "Content-Type": "application/json",
-                "User-Agent": "RemoteIQ-Webhook",
-                "X-RemoteIQ-Event": payload.event,
-                "X-RemoteIQ-Timestamp": timestamp,
-                "X-RemoteIQ-Signature": `sha256=${signature}`,
+                "User-Agent": "AdgRmm-Webhook",
+                "X-ADG-Event": payload.event,
+                "X-ADG-Timestamp": timestamp,
+                "X-ADG-Signature": `sha256=${signature}`,
             },
             body,
         });

@@ -3,7 +3,7 @@
 // nothing is left out, the numbers match the list, and a person limited to some customers only ever sees theirs.
 // Run against a throwaway backend and database only:
 //
-//   RIQ_E2E_ALLOW=1 BASE_URL=http://127.0.0.1:3951 DATABASE_URL=postgres://.../riq_e2e JWT_SECRET=... node test/devices-scale.e2e.cjs
+//   ADG_E2E_ALLOW=1 BASE_URL=http://127.0.0.1:3951 DATABASE_URL=postgres://.../adg_e2e JWT_SECRET=... node test/devices-scale.e2e.cjs
 //   (SCALE_DEVICES=1500 by default)
 "use strict";
 
@@ -18,8 +18,8 @@ const SECRET = process.env.JWT_SECRET || "";
 const COOKIE = process.env.AUTH_COOKIE_NAME || "auth_token";
 const N = Number(process.env.SCALE_DEVICES || 1500);
 
-if (process.env.RIQ_E2E_ALLOW !== "1" || !/e2e/.test(new URL(DB_URL).pathname) || !SECRET) {
-    console.error("Refusing to run: set RIQ_E2E_ALLOW=1, JWT_SECRET, and a DATABASE_URL naming an e2e database.");
+if (process.env.ADG_E2E_ALLOW !== "1" || !/e2e/.test(new URL(DB_URL).pathname) || !SECRET) {
+    console.error("Refusing to run: set ADG_E2E_ALLOW=1, JWT_SECRET, and a DATABASE_URL naming an e2e database.");
     process.exit(2);
 }
 

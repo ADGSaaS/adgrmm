@@ -241,7 +241,7 @@ export class AlertsService {
         if (!ticketId) return;
         try {
             const organizationId = await this.orgs.getDefaultOrganizationId();
-            const req = { user: { organizationId, name: "RemoteIQ Alerts" } };
+            const req = { user: { organizationId, name: "ADG RMM Alerts" } };
             const ticket = await this.tickets.getOne(ticketId, req);
             if (ticket && ticket.status === "resolved") await this.tickets.update(ticketId, { status: "open" } as any, req);
         } catch (err) {
@@ -407,11 +407,11 @@ export class AlertsService {
         const ticketId = await this.tickets.create(
             {
                 subject: alert.title,
-                description: [alert.detail, `Raised automatically by RemoteIQ alert ${alert.id}.`].filter(Boolean).join("\n\n"),
+                description: [alert.detail, `Raised automatically by ADG RMM alert ${alert.id}.`].filter(Boolean).join("\n\n"),
                 priority: alert.severity === "CRIT" ? "high" : "medium",
                 deviceId: alert.device_id,
             } as any,
-            { user: { organizationId, name: "RemoteIQ Alerts" } },
+            { user: { organizationId, name: "ADG RMM Alerts" } },
             { source: "alert" },
         );
 
@@ -427,7 +427,7 @@ export class AlertsService {
             if (!(await this.settingFor<boolean>(deviceId, "alerting.autoResolveTicket", settings.auto_resolve_ticket))) return;
 
             const organizationId = await this.orgs.getDefaultOrganizationId();
-            const req = { user: { organizationId, name: "RemoteIQ Alerts" } };
+            const req = { user: { organizationId, name: "ADG RMM Alerts" } };
             const ticket = await this.tickets.getOne(ticketId, req);
             // Someone working the ticket has taken it over, so it is theirs to close.
             if (!ticket || ticket.status !== "open") return;
@@ -531,7 +531,7 @@ export class AlertsService {
                 type: e.type,
                 reason: e.reason,
                 at: e.created_at,
-                actor: e.actor_user_id ? nameOf.get(e.actor_user_id) ?? "Unknown user" : "RemoteIQ",
+                actor: e.actor_user_id ? nameOf.get(e.actor_user_id) ?? "Unknown user" : "ADG RMM",
             })),
         };
     }

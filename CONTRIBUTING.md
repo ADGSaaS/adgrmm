@@ -1,4 +1,4 @@
-# Contributing to RemoteIQ
+# Contributing to ADG RMM
 
 Thanks for wanting to help. This is an early-stage project, so please open an issue to talk about a larger change before you spend time on it.
 
@@ -18,7 +18,7 @@ Thanks for wanting to help. This is an early-stage project, so please open an is
 
 ## Licence of your contribution
 
-RemoteIQ is released under the [GNU Affero General Public License v3.0](LICENSE). By sending a contribution you agree that it is licensed under the same licence. Please add a sign-off line to your commit messages to say you have the right to submit it:
+ADG RMM is released under the [GNU Affero General Public License v3.0](LICENSE). By sending a contribution you agree that it is licensed under the same licence. Please add a sign-off line to your commit messages to say you have the right to submit it:
 
 ```
 Signed-off-by: Your Name <you@example.com>

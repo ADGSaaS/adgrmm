@@ -52,7 +52,7 @@ function ConnectDialog({ clients, tenant, onClose, onSaved }: { clients: Custome
             <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-xl">
                 <DialogHeader>
                     <DialogTitle>{editing ? `Change the app for ${tenant?.name}` : "Connect a Microsoft 365 tenant"}</DialogTitle>
-                    <DialogDescription>RemoteIQ reads the tenant through an app registered in the customer&apos;s Microsoft Entra ID. It only reads: it never changes users, licences or settings.</DialogDescription>
+                    <DialogDescription>ADG RMM reads the tenant through an app registered in the customer&apos;s Microsoft Entra ID. It only reads: it never changes users, licences or settings.</DialogDescription>
                 </DialogHeader>
                 <div className="grid gap-4">
                     {!editing ? (

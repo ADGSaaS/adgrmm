@@ -107,10 +107,10 @@ export default function ClientPortalTab({ push }: { push: ToastFn }) {
                 </div>
 
                 <div className="rounded-md bg-muted/40 p-3 text-xs text-muted-foreground">
-                    <div className="mb-1 font-medium text-foreground">Point the domain at RemoteIQ (Nginx Proxy Manager)</div>
+                    <div className="mb-1 font-medium text-foreground">Point the domain at ADG RMM (Nginx Proxy Manager)</div>
                     <ol className="list-decimal space-y-1 pl-5">
-                        <li>In DNS, create a record for <code className="rounded bg-muted px-1">{shown}</code> that goes to the same place as your RemoteIQ web address.</li>
-                        <li>In Nginx Proxy Manager, add a <b>Proxy Host</b> with that domain name. Forward it to the <b>same address and port as your RemoteIQ web app</b> (the front end, not the API).</li>
+                        <li>In DNS, create a record for <code className="rounded bg-muted px-1">{shown}</code> that goes to the same place as your ADG RMM web address.</li>
+                        <li>In Nginx Proxy Manager, add a <b>Proxy Host</b> with that domain name. Forward it to the <b>same address and port as your ADG RMM web app</b> (the front end, not the API).</li>
                         <li>On the SSL tab, request a Let&apos;s Encrypt certificate for it and turn on <b>Force SSL</b>. Leave <b>Websockets Support</b> off; the portal does not need it.</li>
                         <li>Do not add any custom path rules: the web app already shows only the portal on this domain and nothing else.</li>
                         <li>Save the address here, press <b>Check address</b>, then turn the portal on.</li>

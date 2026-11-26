@@ -1,4 +1,4 @@
-// remoteiq-frontend/components/remote-shell-panel.tsx
+// adgrmm-frontend/components/remote-shell-panel.tsx
 "use client";
 
 import * as React from "react";

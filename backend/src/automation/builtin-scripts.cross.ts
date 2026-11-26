@@ -3,7 +3,7 @@
 // The built-in scripts that are made for Windows, Linux AND macOS: one entry, three texts. The Windows text (PowerShell) is the script itself,
 // the Linux and macOS texts (bash) ride beside it, and each device runs the one for its own system. The rules of the other two catalogs apply
 // to every text (see builtin-scripts.windows.ts and builtin-scripts.linux.ts): read-only unless the name says "changes the device", Confirm
-// has to be YES to change anything, parameters only as RIQ_<NAME> environment variables checked against strict patterns, no eval.
+// has to be YES to change anything, parameters only as ADG_<NAME> environment variables checked against strict patterns, no eval.
 // Where a Windows or Linux script already exists for the same job, its text is reused as it is (it has been run for real); the macOS texts are
 // new. macOS ships bash 3.2 and BSD tools: no associative arrays, no mapfile, no GNU-only options, no `timeout` command.
 // The texts live in String.raw templates: no dollar-brace sequence and no backtick (so $VAR and $(command), never ${VAR}).
@@ -65,7 +65,7 @@ ifconfig 2>/dev/null | awk '/^[a-z0-9]+:/ {i=$1} /inet / && $2 != "127.0.0.1" {p
         "Diagnostics", 120, [{ name: "count", label: "How many processes to list (1 to 50)", defaultValue: "10" }], {
             windows: win("win-top-processes"), linux: lin("lin-top-processes"),
             macos: HEAD + String.raw`N=10
-case "$RIQ_COUNT" in ''|*[!0-9]*) ;; *) if [ "$RIQ_COUNT" -ge 1 ] && [ "$RIQ_COUNT" -le 50 ]; then N="$RIQ_COUNT"; fi;; esac
+case "$ADG_COUNT" in ''|*[!0-9]*) ;; *) if [ "$ADG_COUNT" -ge 1 ] && [ "$ADG_COUNT" -le 50 ]; then N="$ADG_COUNT"; fi;; esac
 echo "Top $N by CPU:"
 ps -Aro pid,user,%cpu,%mem,etime,comm | head -n $((N + 1)) | sed 's/^/  /'
 echo
@@ -98,7 +98,7 @@ last reboot 2>/dev/null | head -n 5 | sed 's/^/  /'
         "Diagnostics", 300, [{ name: "hours", label: "How many hours back (1 to 168)", defaultValue: "24" }], {
             windows: win("win-event-errors"), linux: lin("lin-journal-errors"),
             macos: HEAD + String.raw`H=24
-case "$RIQ_HOURS" in ''|*[!0-9]*) ;; *) if [ "$RIQ_HOURS" -ge 1 ] && [ "$RIQ_HOURS" -le 168 ]; then H="$RIQ_HOURS"; fi;; esac
+case "$ADG_HOURS" in ''|*[!0-9]*) ;; *) if [ "$ADG_HOURS" -ge 1 ] && [ "$ADG_HOURS" -le 168 ]; then H="$ADG_HOURS"; fi;; esac
 echo "Errors and faults in the system log, last $H hours (the newest 60):"
 log show --style compact --last "$H"h --predicate 'messageType == error OR messageType == fault' 2>/dev/null | grep -v '^Timestamp' | tail -n 60 | cut -c1-300 | sed 's/^/  /'
 `,
@@ -109,13 +109,13 @@ log show --style compact --last "$H"h --predicate 'messageType == error OR messa
         "Services and processes", 180,
         [{ name: "service", label: "Service name (Windows service name, Linux unit, or macOS launchd label)", required: true }, CONFIRM_PARAM], {
             windows: win("win-restart-service"), linux: lin("lin-restart-service"),
-            macos: HEAD + String.raw`S="$RIQ_SERVICE"
+            macos: HEAD + String.raw`S="$ADG_SERVICE"
 if ! printf '%s' "$S" | grep -Eq '^[A-Za-z0-9_.@-]{1,120}$'; then echo "Give a valid service name (a launchd label such as com.example.agent) in the Service parameter."; exit 2; fi
 if [ "$(id -u)" != "0" ]; then echo "This needs to run as root."; exit 1; fi
 if ! launchctl print "system/$S" >/dev/null 2>&1; then echo "There is no system service with the label '$S'."; exit 2; fi
 echo "Service $S:"
 launchctl print "system/$S" 2>/dev/null | grep -E '^\s*(state|pid|program|path) =' | sed 's/^/  /'
-if [ "$RIQ_CONFIRM" != "YES" ]; then
+if [ "$ADG_CONFIRM" != "YES" ]; then
   echo "Nothing was changed. Run again with Confirm set to YES to restart it."
   exit 0
 fi
@@ -136,7 +136,7 @@ fi
             windows: win("win-disk-usage"), linux: lin("lin-disk-usage"),
             macos: HEAD + String.raw`echo "Space:"
 df -h 2>/dev/null | awk 'NR==1 || /^\/dev\//' | sed 's/^/  /'
-P="$RIQ_PATH"
+P="$ADG_PATH"
 [ -n "$P" ] || P=/
 if [ ! -d "$P" ] || printf '%s' "$P" | grep -q '^-'; then echo; echo "The Path parameter is not a folder on this system: $P"; exit 2; fi
 echo
@@ -152,9 +152,9 @@ if [ -n "$FULL" ]; then echo; echo "OVER 90% FULL: $FULL"; exit 1; fi
         "Network", 180,
         [{ name: "host", label: "Host name or IP address", required: true }, { name: "port", label: "TCP port to test (optional)", defaultValue: "" }], {
             windows: win("win-test-connection"), linux: lin("lin-test-connection"),
-            macos: HEAD + String.raw`H="$RIQ_HOST"
+            macos: HEAD + String.raw`H="$ADG_HOST"
 if ! printf '%s' "$H" | grep -Eq '^[A-Za-z0-9][A-Za-z0-9._:-]{0,252}$'; then echo "Give a valid host name or address in the Host parameter."; exit 2; fi
-PORT="$RIQ_PORT"
+PORT="$ADG_PORT"
 if [ -n "$PORT" ]; then
   case "$PORT" in *[!0-9]*) echo "The Port parameter must be a number from 1 to 65535."; exit 2;; esac
   if [ "$PORT" -lt 1 ] || [ "$PORT" -gt 65535 ]; then echo "The Port parameter must be a number from 1 to 65535."; exit 2; fi
@@ -262,9 +262,9 @@ crontab -l 2>&1 | sed 's/^/  /'
             windows: win("win-clean-temp"),
             linux: HEAD + String.raw`if [ "$(id -u)" != "0" ]; then echo "This needs to run as root."; exit 1; fi
 D=7
-case "$RIQ_DAYS" in ''|*[!0-9]*) ;; *) if [ "$RIQ_DAYS" -ge 1 ] && [ "$RIQ_DAYS" -le 365 ]; then D="$RIQ_DAYS"; fi;; esac
+case "$ADG_DAYS" in ''|*[!0-9]*) ;; *) if [ "$ADG_DAYS" -ge 1 ] && [ "$ADG_DAYS" -le 365 ]; then D="$ADG_DAYS"; fi;; esac
 ACT=0
-if [ "$RIQ_DRY_RUN" = "no" ] && [ "$RIQ_CONFIRM" = "YES" ]; then ACT=1; fi
+if [ "$ADG_DRY_RUN" = "no" ] && [ "$ADG_CONFIRM" = "YES" ]; then ACT=1; fi
 echo "Files in /tmp and /var/tmp not changed for $D days or more:"
 N=$(find /tmp /var/tmp -xdev -type f -mtime +"$D" 2>/dev/null | wc -l | tr -d ' ')
 SZ=$(find /tmp /var/tmp -xdev -type f -mtime +"$D" -print0 2>/dev/null | xargs -0 du -ck 2>/dev/null | tail -n 1 | awk '{print int($1 / 1024)}')
@@ -279,9 +279,9 @@ fi
 `,
             macos: HEAD + String.raw`if [ "$(id -u)" != "0" ]; then echo "This needs to run as root."; exit 1; fi
 D=7
-case "$RIQ_DAYS" in ''|*[!0-9]*) ;; *) if [ "$RIQ_DAYS" -ge 1 ] && [ "$RIQ_DAYS" -le 365 ]; then D="$RIQ_DAYS"; fi;; esac
+case "$ADG_DAYS" in ''|*[!0-9]*) ;; *) if [ "$ADG_DAYS" -ge 1 ] && [ "$ADG_DAYS" -le 365 ]; then D="$ADG_DAYS"; fi;; esac
 ACT=0
-if [ "$RIQ_DRY_RUN" = "no" ] && [ "$RIQ_CONFIRM" = "YES" ]; then ACT=1; fi
+if [ "$ADG_DRY_RUN" = "no" ] && [ "$ADG_CONFIRM" = "YES" ]; then ACT=1; fi
 echo "Files in /private/tmp and /private/var/tmp not changed for $D days or more:"
 N=$(find /private/tmp /private/var/tmp -xdev -type f -mtime +"$D" 2>/dev/null | wc -l | tr -d ' ')
 SZ=$(find /private/tmp /private/var/tmp -xdev -type f -mtime +"$D" -print0 2>/dev/null | xargs -0 du -ck 2>/dev/null | tail -n 1 | awk '{print int($1 / 1024)}')
@@ -301,7 +301,7 @@ fi
         "Network", 60, [CONFIRM_PARAM], {
             windows: win("win-flush-dns"),
             linux: HEAD + String.raw`if [ "$(id -u)" != "0" ]; then echo "This needs to run as root."; exit 1; fi
-if [ "$RIQ_CONFIRM" != "YES" ]; then echo "Nothing was changed. Run again with Confirm set to YES to flush the DNS cache."; exit 0; fi
+if [ "$ADG_CONFIRM" != "YES" ]; then echo "Nothing was changed. Run again with Confirm set to YES to flush the DNS cache."; exit 0; fi
 DONE=0
 if have resolvectl && resolvectl flush-caches >/dev/null 2>&1; then echo "Flushed the systemd-resolved cache."; DONE=1; fi
 if have nscd && nscd -i hosts >/dev/null 2>&1; then echo "Flushed the nscd hosts cache."; DONE=1; fi
@@ -309,7 +309,7 @@ if have dnsmasq && pkill -HUP -x dnsmasq >/dev/null 2>&1; then echo "Told dnsmas
 if [ "$DONE" = 0 ]; then echo "No caching name resolver was found, so there was nothing to flush."; fi
 `,
             macos: HEAD + String.raw`if [ "$(id -u)" != "0" ]; then echo "This needs to run as root."; exit 1; fi
-if [ "$RIQ_CONFIRM" != "YES" ]; then echo "Nothing was changed. Run again with Confirm set to YES to flush the DNS cache."; exit 0; fi
+if [ "$ADG_CONFIRM" != "YES" ]; then echo "Nothing was changed. Run again with Confirm set to YES to flush the DNS cache."; exit 0; fi
 dscacheutil -flushcache
 killall -HUP mDNSResponder 2>/dev/null
 echo "Flushed the DNS cache."
@@ -489,45 +489,45 @@ last -10 2>/dev/null | head -n 10 | sed 's/^/  /'
         }),
 
     all("stop-process", "Stop a process by name (all systems, changes the device)",
-        "Ends every process with the given name. Core system programs and RemoteIQ itself are refused. Without Confirm it only lists what it would stop.",
+        "Ends every process with the given name. Core system programs and ADG RMM itself are refused. Without Confirm it only lists what it would stop.",
         "Services and processes", 120,
         [{ name: "process", label: "Process name (for example notepad, firefox)", required: true }, CONFIRM_PARAM], {
-            windows: String.raw`$name = [string]$env:RIQ_PROCESS
+            windows: String.raw`$name = [string]$env:ADG_PROCESS
 if ($name -notmatch '^[A-Za-z0-9_.+-]{1,64}$') { Write-Output 'Give a valid process name in the Process parameter.'; exit 2 }
-if ($name -match '(?i)^(system|smss|csrss|wininit|winlogon|services|lsass|svchost|explorer|dwm|idle)(\.exe)?$' -or $name -match '(?i)remoteiq') { Write-Output "Refusing to stop '$name': it is a core system program or RemoteIQ itself."; exit 2 }
+if ($name -match '(?i)^(system|smss|csrss|wininit|winlogon|services|lsass|svchost|explorer|dwm|idle)(\.exe)?$' -or $name -match '(?i)adgrmm') { Write-Output "Refusing to stop '$name': it is a core system program or ADG RMM itself."; exit 2 }
 $short = $name -replace '\.exe$', ''
 $procs = @(Get-Process -Name $short -ErrorAction SilentlyContinue)
 if ($procs.Count -eq 0) { Write-Output "No process named '$short' is running."; exit 0 }
 Write-Output "Processes named '$short':"
 $procs | ForEach-Object { Write-Output ("  id {0}  started {1}" -f $_.Id, $_.StartTime) }
-if ($env:RIQ_CONFIRM -cne 'YES') { Write-Output 'Nothing was stopped. Run again with Confirm set to YES to stop them.'; exit 0 }
+if ($env:ADG_CONFIRM -cne 'YES') { Write-Output 'Nothing was stopped. Run again with Confirm set to YES to stop them.'; exit 0 }
 $failed = 0
 foreach ($p in $procs) {
   try { Stop-Process -Id $p.Id -Force -ErrorAction Stop; Write-Output "Stopped id $($p.Id)." } catch { Write-Output "Could not stop id $($p.Id): $($_.Exception.Message)"; $failed = 1 }
 }
 exit $failed
 `,
-            linux: HEAD + String.raw`P="$RIQ_PROCESS"
+            linux: HEAD + String.raw`P="$ADG_PROCESS"
 if ! printf '%s' "$P" | grep -Eq '^[A-Za-z0-9_.+-]{1,64}$'; then echo "Give a valid process name in the Process parameter."; exit 2; fi
-if printf '%s' "$P" | grep -Eiq '^(init|systemd|launchd|kernel_task|sshd|dbus-daemon|login)$|remoteiq'; then echo "Refusing to stop '$P': it is a core system program or RemoteIQ itself."; exit 2; fi
+if printf '%s' "$P" | grep -Eiq '^(init|systemd|launchd|kernel_task|sshd|dbus-daemon|login)$|adgrmm'; then echo "Refusing to stop '$P': it is a core system program or ADG RMM itself."; exit 2; fi
 if ! have pgrep; then echo "The pgrep command is missing (package: procps)."; exit 1; fi
 PIDS=$(pgrep -x "$P" 2>/dev/null | grep -vx "$$")
 if [ -z "$PIDS" ]; then echo "No process named '$P' is running."; exit 0; fi
 echo "Processes named '$P':"
 for I in $PIDS; do echo "  id $I  user $(ps -o user= -p "$I" 2>/dev/null)"; done
-if [ "$RIQ_CONFIRM" != "YES" ]; then echo "Nothing was stopped. Run again with Confirm set to YES to stop them."; exit 0; fi
+if [ "$ADG_CONFIRM" != "YES" ]; then echo "Nothing was stopped. Run again with Confirm set to YES to stop them."; exit 0; fi
 FAILED=0
 for I in $PIDS; do if kill "$I" 2>/dev/null; then echo "Stopped id $I."; else echo "Could not stop id $I."; FAILED=1; fi; done
 exit $FAILED
 `,
-            macos: HEAD + String.raw`P="$RIQ_PROCESS"
+            macos: HEAD + String.raw`P="$ADG_PROCESS"
 if ! printf '%s' "$P" | grep -Eq '^[A-Za-z0-9_.+-]{1,64}$'; then echo "Give a valid process name in the Process parameter."; exit 2; fi
-if printf '%s' "$P" | grep -Eiq '^(init|launchd|kernel_task|sshd|loginwindow|WindowServer)$|remoteiq'; then echo "Refusing to stop '$P': it is a core system program or RemoteIQ itself."; exit 2; fi
+if printf '%s' "$P" | grep -Eiq '^(init|launchd|kernel_task|sshd|loginwindow|WindowServer)$|adgrmm'; then echo "Refusing to stop '$P': it is a core system program or ADG RMM itself."; exit 2; fi
 PIDS=$(pgrep -x "$P" 2>/dev/null | grep -vx "$$")
 if [ -z "$PIDS" ]; then echo "No process named '$P' is running."; exit 0; fi
 echo "Processes named '$P':"
 for I in $PIDS; do echo "  id $I  user $(ps -o user= -p "$I" 2>/dev/null)"; done
-if [ "$RIQ_CONFIRM" != "YES" ]; then echo "Nothing was stopped. Run again with Confirm set to YES to stop them."; exit 0; fi
+if [ "$ADG_CONFIRM" != "YES" ]; then echo "Nothing was stopped. Run again with Confirm set to YES to stop them."; exit 0; fi
 FAILED=0
 for I in $PIDS; do if kill "$I" 2>/dev/null; then echo "Stopped id $I."; else echo "Could not stop id $I."; FAILED=1; fi; done
 exit $FAILED
@@ -543,9 +543,9 @@ exit $FAILED
             CONFIRM_PARAM,
         ], {
             windows: String.raw`$mins = 5
-if ($env:RIQ_MINUTES -match '^[0-9]{1,4}$' -and [int]$env:RIQ_MINUTES -ge 1 -and [int]$env:RIQ_MINUTES -le 1440) { $mins = [int]$env:RIQ_MINUTES }
-$cancel = ($env:RIQ_CANCEL -ceq 'YES')
-if ($env:RIQ_CONFIRM -cne 'YES') {
+if ($env:ADG_MINUTES -match '^[0-9]{1,4}$' -and [int]$env:ADG_MINUTES -ge 1 -and [int]$env:ADG_MINUTES -le 1440) { $mins = [int]$env:ADG_MINUTES }
+$cancel = ($env:ADG_CANCEL -ceq 'YES')
+if ($env:ADG_CONFIRM -cne 'YES') {
   if ($cancel) { Write-Output 'Nothing was changed. Run again with Confirm set to YES to cancel the waiting restart.' } else { Write-Output "Nothing was changed. Run again with Confirm set to YES to restart in $mins minutes." }
   exit 0
 }
@@ -556,36 +556,36 @@ if ($cancel) {
   exit 0
 }
 $secs = $mins * 60
-& shutdown.exe /r /t $secs /c 'Restart requested from RemoteIQ' 2>&1 | ForEach-Object { Write-Output $_ }
+& shutdown.exe /r /t $secs /c 'Restart requested from ADG RMM' 2>&1 | ForEach-Object { Write-Output $_ }
 if ($LASTEXITCODE -ne 0) { Write-Output 'The restart could not be scheduled.'; exit 1 }
 Write-Output "The device will restart in $mins minutes."
 `,
             linux: HEAD + String.raw`if [ "$(id -u)" != "0" ]; then echo "This needs to run as root."; exit 1; fi
 M=5
-case "$RIQ_MINUTES" in ''|*[!0-9]*) ;; *) if [ "$RIQ_MINUTES" -ge 1 ] && [ "$RIQ_MINUTES" -le 1440 ]; then M="$RIQ_MINUTES"; fi;; esac
-if [ "$RIQ_CONFIRM" != "YES" ]; then
-  if [ "$RIQ_CANCEL" = "YES" ]; then echo "Nothing was changed. Run again with Confirm set to YES to cancel the waiting restart."; else echo "Nothing was changed. Run again with Confirm set to YES to restart in $M minutes."; fi
+case "$ADG_MINUTES" in ''|*[!0-9]*) ;; *) if [ "$ADG_MINUTES" -ge 1 ] && [ "$ADG_MINUTES" -le 1440 ]; then M="$ADG_MINUTES"; fi;; esac
+if [ "$ADG_CONFIRM" != "YES" ]; then
+  if [ "$ADG_CANCEL" = "YES" ]; then echo "Nothing was changed. Run again with Confirm set to YES to cancel the waiting restart."; else echo "Nothing was changed. Run again with Confirm set to YES to restart in $M minutes."; fi
   exit 0
 fi
 if ! have shutdown; then echo "The shutdown command is missing."; exit 1; fi
-if [ "$RIQ_CANCEL" = "YES" ]; then
+if [ "$ADG_CANCEL" = "YES" ]; then
   if shutdown -c 2>&1; then echo "The waiting restart was cancelled."; else echo "There was no restart waiting, or it could not be cancelled."; exit 1; fi
   exit 0
 fi
-if shutdown -r +"$M" "Restart requested from RemoteIQ" 2>&1; then echo "The device will restart in $M minutes."; else echo "The restart could not be scheduled."; exit 1; fi
+if shutdown -r +"$M" "Restart requested from ADG RMM" 2>&1; then echo "The device will restart in $M minutes."; else echo "The restart could not be scheduled."; exit 1; fi
 `,
             macos: HEAD + String.raw`if [ "$(id -u)" != "0" ]; then echo "This needs to run as root."; exit 1; fi
 M=5
-case "$RIQ_MINUTES" in ''|*[!0-9]*) ;; *) if [ "$RIQ_MINUTES" -ge 1 ] && [ "$RIQ_MINUTES" -le 1440 ]; then M="$RIQ_MINUTES"; fi;; esac
-if [ "$RIQ_CONFIRM" != "YES" ]; then
-  if [ "$RIQ_CANCEL" = "YES" ]; then echo "Nothing was changed. Run again with Confirm set to YES to cancel the waiting restart."; else echo "Nothing was changed. Run again with Confirm set to YES to restart in $M minutes."; fi
+case "$ADG_MINUTES" in ''|*[!0-9]*) ;; *) if [ "$ADG_MINUTES" -ge 1 ] && [ "$ADG_MINUTES" -le 1440 ]; then M="$ADG_MINUTES"; fi;; esac
+if [ "$ADG_CONFIRM" != "YES" ]; then
+  if [ "$ADG_CANCEL" = "YES" ]; then echo "Nothing was changed. Run again with Confirm set to YES to cancel the waiting restart."; else echo "Nothing was changed. Run again with Confirm set to YES to restart in $M minutes."; fi
   exit 0
 fi
-if [ "$RIQ_CANCEL" = "YES" ]; then
+if [ "$ADG_CANCEL" = "YES" ]; then
   if pkill -x shutdown 2>/dev/null; then echo "The waiting restart was cancelled."; else echo "There was no restart waiting."; exit 1; fi
   exit 0
 fi
-nohup shutdown -r +"$M" "Restart requested from RemoteIQ" >/dev/null 2>&1 &
+nohup shutdown -r +"$M" "Restart requested from ADG RMM" >/dev/null 2>&1 &
 sleep 1
 echo "The device will restart in $M minutes."
 `,
@@ -594,7 +594,7 @@ echo "The device will restart in $M minutes."
     all("file-hash", "File size and SHA-256 hash (all systems)",
         "The size, last change time and SHA-256 hash of one file, for checking that a file is what it should be. Works on Windows, Linux and macOS.",
         "Security", 300, [{ name: "path", label: "Full path of the file", required: true }], {
-            windows: String.raw`$p = [string]$env:RIQ_PATH
+            windows: String.raw`$p = [string]$env:ADG_PATH
 if ([string]::IsNullOrWhiteSpace($p) -or $p -match '[<>|"?*]' -or $p.Length -gt 240 -or -not (Test-Path -LiteralPath $p -PathType Leaf)) { Write-Output "The Path parameter is not a file on this computer: $p"; exit 2 }
 $f = Get-Item -LiteralPath $p
 $h = Get-FileHash -LiteralPath $p -Algorithm SHA256
@@ -603,7 +603,7 @@ Write-Output "Size     : $($f.Length) bytes"
 Write-Output "Changed  : $($f.LastWriteTime)"
 Write-Output "SHA-256  : $($h.Hash.ToLower())"
 `,
-            linux: HEAD + String.raw`P="$RIQ_PATH"
+            linux: HEAD + String.raw`P="$ADG_PATH"
 if [ -z "$P" ] || [ ! -f "$P" ] || printf '%s' "$P" | grep -q '^-'; then echo "The Path parameter is not a file on this system: $P"; exit 2; fi
 if ! have sha256sum; then echo "The sha256sum command is missing."; exit 1; fi
 echo "File     : $P"
@@ -611,7 +611,7 @@ echo "Size     : $(wc -c < "$P" | tr -d ' ') bytes"
 echo "Changed  : $(date -r "$P" '+%Y-%m-%d %H:%M:%S' 2>/dev/null)"
 echo "SHA-256  : $(sha256sum "$P" | cut -d' ' -f1)"
 `,
-            macos: HEAD + String.raw`P="$RIQ_PATH"
+            macos: HEAD + String.raw`P="$ADG_PATH"
 if [ -z "$P" ] || [ ! -f "$P" ] || printf '%s' "$P" | grep -q '^-'; then echo "The Path parameter is not a file on this system: $P"; exit 2; fi
 echo "File     : $P"
 echo "Size     : $(wc -c < "$P" | tr -d ' ') bytes"
@@ -623,7 +623,7 @@ echo "SHA-256  : $(shasum -a 256 "$P" | cut -d' ' -f1)"
     all("dns-lookup", "DNS lookup of a name (all systems)",
         "Asks the device's own name resolution for the addresses of a host name, and shows the answers. Works on Windows, Linux and macOS.",
         "Network", 60, [{ name: "name", label: "Host name to look up", required: true }], {
-            windows: String.raw`$n = [string]$env:RIQ_NAME
+            windows: String.raw`$n = [string]$env:ADG_NAME
 if ($n -notmatch '^[A-Za-z0-9][A-Za-z0-9._-]{0,252}$') { Write-Output 'Give a valid host name in the Name parameter.'; exit 2 }
 try {
   Resolve-DnsName -Name $n -ErrorAction Stop | Select-Object Name, Type, TTL, IPAddress, NameHost | Format-Table -AutoSize | Out-String -Width 200 | Write-Output
@@ -632,7 +632,7 @@ try {
   exit 1
 }
 `,
-            linux: HEAD + String.raw`N="$RIQ_NAME"
+            linux: HEAD + String.raw`N="$ADG_NAME"
 if ! printf '%s' "$N" | grep -Eq '^[A-Za-z0-9][A-Za-z0-9._-]{0,252}$'; then echo "Give a valid host name in the Name parameter."; exit 2; fi
 echo "Answers of the system resolver for $N:"
 R=$(getent ahosts "$N" 2>/dev/null | awk '{print $1}' | sort -u)
@@ -640,7 +640,7 @@ if [ -z "$R" ]; then echo "  none: the name could not be resolved"; exit 1; fi
 echo "$R" | sed 's/^/  /'
 if have nslookup; then echo; echo "nslookup:"; nslookup "$N" 2>&1 | head -n 12 | sed 's/^/  /'; fi
 `,
-            macos: HEAD + String.raw`N="$RIQ_NAME"
+            macos: HEAD + String.raw`N="$ADG_NAME"
 if ! printf '%s' "$N" | grep -Eq '^[A-Za-z0-9][A-Za-z0-9._-]{0,252}$'; then echo "Give a valid host name in the Name parameter."; exit 2; fi
 echo "Answers of the system resolver for $N:"
 R=$(dscacheutil -q host -a name "$N" 2>/dev/null | awk '/ip_address|ipv6_address/ {print $2}' | sort -u)

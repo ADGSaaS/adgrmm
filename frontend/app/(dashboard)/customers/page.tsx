@@ -277,7 +277,7 @@ function CustomersActions() {
 
     const emitCustomersChanged = React.useCallback(() => {
         try {
-            window.dispatchEvent(new CustomEvent("remoteiq:customers-changed"));
+            window.dispatchEvent(new CustomEvent("adgrmm:customers-changed"));
         } catch {
             // ignore
         }

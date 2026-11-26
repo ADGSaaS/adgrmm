@@ -1,4 +1,4 @@
-// remoteiq-frontend/app/account/tabs/SecurityTab.tsx
+// adgrmm-frontend/app/account/tabs/SecurityTab.tsx
 "use client";
 
 import * as React from "react";
@@ -260,7 +260,7 @@ export default function SecurityTab({ onDirtyChange, saveHandleRef }: Props) {
     const d = String(now.getDate()).padStart(2, "0");
     const filename = `recovery-codes-${y}${m}${d}.txt`;
 
-    const header = `RemoteIQ Recovery Codes
+    const header = `ADG RMM Recovery Codes
 Generated: ${now.toISOString()}
 Each code can be used once. Store these somewhere safe.
 
@@ -315,7 +315,7 @@ Each code can be used once. Store these somewhere safe.
               <Input
                 id="current"
                 type="password"
-                name="riq-current-password"
+                name="adg-current-password"
                 autoComplete="new-password"
                 data-lpignore="true"
                 data-1p-ignore="true"

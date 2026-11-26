@@ -420,7 +420,7 @@ export class BackupsService {
                 retentionDays: 30,
                 encrypt: false,
                 encryptionSupported: hasDataKey(),
-                destination: { kind: "local", path: "/var/remoteiq/backups" },
+                destination: { kind: "local", path: "/var/adgrmm/backups" },
                 extraDestinations: [],
                 notifications: { email: false, webhook: false, slack: false },
                 minSuccess: 1,
@@ -437,7 +437,7 @@ export class BackupsService {
             retentionDays: policy.retentionDays,
             encrypt: policy.encrypt,
             encryptionSupported: hasDataKey(),
-            destination: policy.destination ?? { kind: "local", path: "/var/remoteiq/backups" },
+            destination: policy.destination ?? { kind: "local", path: "/var/adgrmm/backups" },
             extraDestinations: policy.extraDestinations ?? [],
             notifications: policy.notifications,
             minSuccess: policy.minSuccess ?? undefined,
@@ -681,7 +681,7 @@ export class BackupsService {
             sanitizeLocalPath(dest.path);
             const { ensureDir } = await import("./storage-clients");
             const fs = await import("fs/promises");
-            const p = require("path").join(dest.path, ".remoteiq_probe.txt");
+            const p = require("path").join(dest.path, ".adgrmm_probe.txt");
             await ensureDir(dest.path);
             await fs.writeFile(p, "probe");
             const r = await fs.readFile(p, "utf8");
@@ -696,7 +696,7 @@ export class BackupsService {
             const cfgS3 = { ...(row.config || {}), ...(row.secrets || {}) };
             const bucket = dest.bucket || cfgS3.bucket;
             const prefix = (dest.prefix || cfgS3.prefix || "").replace(/^\/+|\/+$/g, "");
-            const key = (prefix ? `${prefix}/` : "") + ".remoteiq_probe.txt";
+            const key = (prefix ? `${prefix}/` : "") + ".adgrmm_probe.txt";
             const { s3PutObject, s3Head, s3Delete } = await import("./storage-clients");
             await s3PutObject(cfgS3, bucket, key, Buffer.from("probe"));
             const head = await s3Head(cfgS3, bucket, key);
@@ -758,7 +758,7 @@ export class BackupsService {
     async testNotification() {
         await this.notifier.send(
             { email: true, slack: true, webhook: true },
-            "RemoteIQ Backups: Test",
+            "ADG RMM Backups: Test",
             "This is a test notification."
         );
         return { sent: true };

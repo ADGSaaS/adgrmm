@@ -2,7 +2,7 @@
 // Recurring tickets: the schedule arithmetic, then the real HTTP API and the in-process sweep (restart and double-run safety).
 // The sweep runs every 30 seconds, so this test waits for it once.
 //
-//   RIQ_E2E_ALLOW=1 BASE_URL=http://127.0.0.1:3901 DATABASE_URL=postgres://.../riq_x_e2e JWT_SECRET=... node test/recurring-tickets-http.e2e.cjs
+//   ADG_E2E_ALLOW=1 BASE_URL=http://127.0.0.1:3901 DATABASE_URL=postgres://.../adg_x_e2e JWT_SECRET=... node test/recurring-tickets-http.e2e.cjs
 "use strict";
 const path = require("node:path");
 const { assert, call, json, runner, setup, uuid } = require("./groupc-helpers.cjs");

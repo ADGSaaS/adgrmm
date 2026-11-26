@@ -42,16 +42,16 @@ async function check(name, fn) {
         await check("a customer's fields are filled in for the device's customer", async () => {
             const p = await run("Write-Output '{{customer.contract}} has {{customer.seats}} seats on {{agent.hostname}}'");
             assert.equal(p.scriptText, `Write-Output 'C-100 has 12 seats on CFJ-${stamp}'`);
-            assert.equal(p.env.RIQ_CUSTOMER_CONTRACT, "C-100");
-            assert.equal(p.env.RIQ_CUSTOMER_SEATS, "12");
-            assert.equal(p.env.RIQ_CUSTOMER_SIGNED, "false", "an unchecked box is false");
-            assert.equal(p.env.RIQ_CUSTOMER_MISSINGFIELD, "", "a field with no value is empty");
-            assert.ok(!("RIQ_CUSTOMER_OLDFIELD" in p.env), "an archived field is not offered");
+            assert.equal(p.env.ADG_CUSTOMER_CONTRACT, "C-100");
+            assert.equal(p.env.ADG_CUSTOMER_SEATS, "12");
+            assert.equal(p.env.ADG_CUSTOMER_SIGNED, "false", "an unchecked box is false");
+            assert.equal(p.env.ADG_CUSTOMER_MISSINGFIELD, "", "a field with no value is empty");
+            assert.ok(!("ADG_CUSTOMER_OLDFIELD" in p.env), "an archived field is not offered");
         });
         await check("a script that uses no property is sent exactly as written", async () => {
             const p = await run("Get-Date");
             assert.equal(p.scriptText, "Get-Date");
-            assert.ok(!Object.keys(p.env).some((k) => k.startsWith("RIQ_CUSTOMER_")));
+            assert.ok(!Object.keys(p.env).some((k) => k.startsWith("ADG_CUSTOMER_")));
         });
         await check("an archived field, an unknown one, and one with no value stop the script and say why", async () => {
             for (const [ref, why] of [["oldfield", /is not a custom field/], ["nothere", /is not a custom field/], ["missingfield", /has no value for this device''s customer/]]) {  // (PowerShell doubles the apostrophe in the stub script)

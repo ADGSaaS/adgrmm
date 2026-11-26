@@ -127,15 +127,15 @@ function names(v: unknown, label: string): string[] {
     return out;
 }
 
-/** Names the managed account may not have: the built-in and well-known accounts RemoteIQ must never touch. */
+/** Names the managed account may not have: the built-in and well-known accounts ADG RMM must never touch. */
 export const RESERVED_ACCOUNT_NAMES = ["administrator", "guest", "defaultaccount", "system", "wdagutilityaccount", "krbtgt", "localservice", "networkservice", "root", "admin", "administrators", "users"];
 const LAPS_ACCOUNT = /^[A-Za-z0-9._-]{1,20}$/;
 
-/** The name of the account RemoteIQ manages: 1 to 20 characters of letters, digits, dot, underscore and hyphen, not a reserved name. */
+/** The name of the account ADG RMM manages: 1 to 20 characters of letters, digits, dot, underscore and hyphen, not a reserved name. */
 export function cleanLapsAccount(v: unknown): string {
     const s = typeof v === "string" ? v.trim() : "";
     if (!LAPS_ACCOUNT.test(s)) throw new BadRequestException("The account name must be 1 to 20 characters: letters, digits, dot, underscore or hyphen.");
-    if (RESERVED_ACCOUNT_NAMES.includes(s.toLowerCase()) || /^[.-]|[.]$/.test(s)) throw new BadRequestException("That account name is reserved or not allowed. RemoteIQ never manages the built-in Administrator or other system accounts; choose another name.");
+    if (RESERVED_ACCOUNT_NAMES.includes(s.toLowerCase()) || /^[.-]|[.]$/.test(s)) throw new BadRequestException("That account name is reserved or not allowed. ADG RMM never manages the built-in Administrator or other system accounts; choose another name.");
     return s;
 }
 

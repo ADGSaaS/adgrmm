@@ -140,7 +140,7 @@ export class DatabaseService {
                     : `mssql://${host}:${port}/${db}`;
             case "sqlite":
                 // dbName serves as filepath
-                return `file:${db || "remoteiq.sqlite"}?mode=rwc`;
+                return `file:${db || "adgrmm.sqlite"}?mode=rwc`;
             case "mongodb":
                 return user
                     ? `mongodb://${user}:${pass}@${host}:${port}/${db}${cfg.ssl ? "?tls=true" : ""}`
@@ -240,7 +240,7 @@ export class DatabaseService {
                     // Prefer better-sqlite3
                     try {
                         const bsql = (await import("better-sqlite3")) as any;
-                        const db = new bsql.default(cfg.dbName || "remoteiq.sqlite", {
+                        const db = new bsql.default(cfg.dbName || "adgrmm.sqlite", {
                             fileMustExist: false,
                         });
                         db.prepare("CREATE TABLE IF NOT EXISTS _ping (id INTEGER)").run();
@@ -253,7 +253,7 @@ export class DatabaseService {
                             const sqlite3 = (await import("sqlite3")) as any;
                             const { open } = (await import("sqlite")) as any;
                             const db = await open({
-                                filename: cfg.dbName || "remoteiq.sqlite",
+                                filename: cfg.dbName || "adgrmm.sqlite",
                                 driver: sqlite3.Database,
                             });
                             await db.exec("CREATE TABLE IF NOT EXISTS _ping (id INTEGER)");

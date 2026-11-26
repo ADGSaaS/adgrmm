@@ -542,7 +542,7 @@ export default function AutomationPage() {
     const historyPaged = usePaged(history ?? [], "script-history", 50);
 
     const resetScript = async (script: Script) => {
-        if (!window.confirm(`Put "${script.name}" back to the version RemoteIQ ships? Your changes to it are lost.`)) return;
+        if (!window.confirm(`Put "${script.name}" back to the version ADG RMM ships? Your changes to it are lost.`)) return;
         try {
             await jfetch(`/api/scripts/${script.id}/reset`, { method: "POST", body: {} });
             toast({ title: "Back to the original", variant: "success" });
@@ -669,7 +669,7 @@ export default function AutomationPage() {
                                 <>
                                     <ScriptCategoryTiles data={catData} canManage={canManageCategories} onOpen={showCategory} onCreate={createCategory} onDelete={(id, name) => void deleteCategory(id, name)} />
                                     <p className="text-sm text-muted-foreground" data-testid="builtin-note">
-                                        Scripts marked <strong>Built-in</strong> come with RemoteIQ. You can run, copy and edit them; an edited one shows as <strong>Customized</strong> and can be reset to the original.
+                                        Scripts marked <strong>Built-in</strong> come with ADG RMM. You can run, copy and edit them; an edited one shows as <strong>Customized</strong> and can be reset to the original.
                                     </p>
                                 </>
                             ) : (

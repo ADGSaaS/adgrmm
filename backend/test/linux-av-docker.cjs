@@ -16,13 +16,13 @@ const run = (cmd, args, o = {}) => spawnSync(cmd, args, { encoding: "utf8", maxB
 const dk = (...a) => run("docker", a);
 if (dk("info", "--format", "{{.ServerVersion}}").status !== 0) { console.log("(Docker is not running, skipped)"); process.exit(0); }
 
-const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "riq-av-"));
+const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "adg-av-"));
 const stamp = Date.now(), names = [];
 // the standard anti-malware test file, carried as base64 so it never sits on this machine as a file
 const EICAR_B64 = Buffer.from("X5O!P%@AP[4\\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*").toString("base64");
 
 function box(tag, image, prep) {
-    const n = `riq-av-${tag}-${stamp}`; names.push(n);
+    const n = `adg-av-${tag}-${stamp}`; names.push(n);
     assert.equal(dk("run", "-d", "--name", n, image, "sleep", "3000").status, 0);
     const r = dk("exec", n, "bash", "-c", prep); assert.equal(r.status, 0, r.stderr);
     return n;
@@ -72,13 +72,13 @@ try {
             assert.notEqual(r.status, 0); assert.match(r.stderr, /could not be updated/); assert.throws(() => A.parseLinuxAction("antivirus-update", r.stdout, r.stderr));
         });
         check("the malware scan finds the EICAR test file, names the signature and the path, and a clean machine scans clean", () => {
-            dk("exec", n, "bash", "-c", `echo ${EICAR_B64} | base64 -d > /tmp/riq-eicar.txt`);
+            dk("exec", n, "bash", "-c", `echo ${EICAR_B64} | base64 -d > /tmp/adg-eicar.txt`);
             const bad = A.parseLinuxAction("malware-scan", go(n, "scan.sh").stdout, "");
-            assert.equal(bad.state, "infected"); assert.ok(bad.found.some((f) => /Eicar/i.test(f.signature) && f.path === "/tmp/riq-eicar.txt"), JSON.stringify(bad));
-            dk("exec", n, "rm", "-f", "/tmp/riq-eicar.txt");
+            assert.equal(bad.state, "infected"); assert.ok(bad.found.some((f) => /Eicar/i.test(f.signature) && f.path === "/tmp/adg-eicar.txt"), JSON.stringify(bad));
+            dk("exec", n, "rm", "-f", "/tmp/adg-eicar.txt");
             const ok = A.parseLinuxAction("malware-scan", go(n, "scan.sh").stdout, "");
             assert.equal(ok.state, "clean", JSON.stringify(ok));
-            assert.ok(dk("exec", n, "bash", "-c", "ls /tmp/riq-eicar.txt 2>&1").stdout.includes("No such") || true);
+            assert.ok(dk("exec", n, "bash", "-c", "ls /tmp/adg-eicar.txt 2>&1").stdout.includes("No such") || true);
         });
     }
     console.log("Rocky 9 without EPEL permission: Red Hat itself is never given a repository it did not choose");

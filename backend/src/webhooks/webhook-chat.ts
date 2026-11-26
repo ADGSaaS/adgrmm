@@ -2,7 +2,7 @@
 //
 // Outbound webhooks to chat services. Slack, Discord and Microsoft Teams only accept their own message shape and answer anything else with
 // a 400, so a webhook whose address is one of theirs (or that was told which one it is) gets a message a person reads in the channel instead
-// of RemoteIQ's signed JSON. Pure: no database, no network.
+// of ADG RMM's signed JSON. Pure: no database, no network.
 //
 // Text from tickets and alerts is written by customers and by devices, so it is cleaned before it goes into a channel: Slack would turn
 // <!channel> or <@U123> into a mention of everyone, so < > & are written as entities for Slack; Discord gets allowed_mentions with nothing in
@@ -37,7 +37,7 @@ export type ChatMessage = { title: string; lines: string[]; link?: { url: string
 export function chatMessage(env: Envelope): ChatMessage {
     const d = env.data ?? {};
     const label = LABEL[env.event] ?? env.event;
-    if (env.event === "webhook.test") return { title: "Test from RemoteIQ", lines: [clean(d.message ?? "This webhook works."), d.webhook ? `Webhook: ${clean(d.webhook, 80)}` : ""].filter(Boolean) };
+    if (env.event === "webhook.test") return { title: "Test from ADG RMM", lines: [clean(d.message ?? "This webhook works."), d.webhook ? `Webhook: ${clean(d.webhook, 80)}` : ""].filter(Boolean) };
 
     if (env.event.startsWith("ticket.") && d.ticket) {
         const t = d.ticket;
@@ -90,9 +90,9 @@ export function chatMessage(env: Envelope): ChatMessage {
 
 const slackEscape = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
-/** The JSON body for a chat format, or null for RemoteIQ's own format (which keeps the envelope as it always was). */
+/** The JSON body for a chat format, or null for ADG RMM's own format (which keeps the envelope as it always was). */
 export function chatBody(format: WebhookFormat, env: Envelope): unknown | null {
-    if (format === "remoteiq") return null;
+    if (format === "adgrmm") return null;
     const m = chatMessage(env);
     if (format === "slack") {
         const text = [`*${slackEscape(m.title)}*`, ...m.lines.map(slackEscape), m.link ? `<${m.link.url.replace(/[<>|\s]/g, "")}|${m.link.label}>` : ""].filter(Boolean).join("\n");

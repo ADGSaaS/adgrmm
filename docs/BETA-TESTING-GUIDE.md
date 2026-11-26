@@ -1,6 +1,6 @@
-# RemoteIQ Beta Testing Guide
+# ADG RMM Beta Testing Guide
 
-This guide is for testers working on a **fresh installation** of RemoteIQ that they set up themselves. It starts with installing the server, then installing the agent on test computers, then has one test section for every feature that is built but not yet confirmed on real machines. The sections use the numbers from the [roadmap](roadmap/ROADMAP.md).
+This guide is for testers working on a **fresh installation** of ADG RMM that they set up themselves. It starts with installing the server, then installing the agent on test computers, then has one test section for every feature that is built but not yet confirmed on real machines. The sections use the numbers from the [roadmap](roadmap/ROADMAP.md).
 
 Do the setup in Parts A to D first. Every later section assumes that setup is done.
 
@@ -28,7 +28,7 @@ If a section needs something you don't have, mark it **Skipped** and say why.
 3. Run the installer. If the project's release page is private, the development team will give you a token first: run `export GITHUB_TOKEN=<token>` and use `sudo -E bash` instead of `sudo bash` below.
 
 ```bash
-curl -fsSL https://github.com/RemoteIQ-RMM/RemoteIQ-RMM/releases/latest/download/install.sh | sudo bash
+curl -fsSL https://github.com/adgrmm/adgrmm/releases/latest/download/install.sh | sudo bash
 ```
 
 4. Answer the questions. If you are unsure, take the first choice listed:
@@ -43,7 +43,7 @@ curl -fsSL https://github.com/RemoteIQ-RMM/RemoteIQ-RMM/releases/latest/download
 6. Check that everything is healthy:
 
 ```bash
-sudo bash /opt/remoteiq/install.sh status
+sudo bash /opt/adgrmm/install.sh status
 ```
 
 7. If you use your own reverse proxy: add a host for your domain that forwards to `http://<server address>:8080`, turn **Websockets Support** on, and request a certificate. Add a second host with the same target for the portal name.
@@ -54,12 +54,12 @@ sudo bash /opt/remoteiq/install.sh status
 **Report if:** the installer stops with an error (copy the last 20 lines), a step is unclear, `status` shows anything unhealthy, the certificate is not issued, or the sign-in fails. If it stops part way, run the same command again: it keeps your earlier answers. Send the support bundle with your report:
 
 ```bash
-sudo bash /opt/remoteiq/install.sh status --logs
+sudo bash /opt/adgrmm/install.sh status --logs
 ```
 
 ### Back up the keys
 
-Copy the folder `/opt/remoteiq/secrets/` to somewhere safe outside the server. It holds the data encryption key and the job signing key. Without them, stored passwords and encrypted backups cannot be read and every agent has to be reinstalled.
+Copy the folder `/opt/adgrmm/secrets/` to somewhere safe outside the server. It holds the data encryption key and the job signing key. Without them, stored passwords and encrypted backups cannot be read and every agent has to be reinstalled.
 
 ---
 
@@ -78,7 +78,7 @@ Copy the folder `/opt/remoteiq/secrets/` to somewhere safe outside the server. I
 
 ## Part C: Install the agent on a test computer
 
-An agent is the small program that connects a computer to RemoteIQ. Every device test needs at least one.
+An agent is the small program that connects a computer to ADG RMM. Every device test needs at least one.
 
 ### Make an install key
 
@@ -95,7 +95,7 @@ An agent is the small program that connects a computer to RemoteIQ. Every device
 3. Wait for it to finish. The computer should appear in the console under **Devices** within a minute or two, and shows as online.
 4. Note: new Windows installs can be blocked by Microsoft Defender at the moment (a known false positive, roadmap 0.12). If Defender blocks the file, write down the exact message and the time, and tell the development team. For testing, you can add the install folder as a Defender exclusion, but say in your report that you did.
 5. On the device page, check the **Overview** tab shows the computer's name, operating system and the agent version. Write down the agent version: you need it for every report.
-6. Look next to the clock for the RemoteIQ tray icon. It is needed for the tray tests (5.5).
+6. Look next to the clock for the ADG RMM tray icon. It is needed for the tray tests (5.5).
 
 ### Linux
 
@@ -105,7 +105,7 @@ An agent is the small program that connects a computer to RemoteIQ. Every device
 4. Check the service is running:
 
 ```bash
-systemctl status remoteiq-agent
+systemctl status adgrmm-agent
 ```
 
 ### Group Policy (optional)
@@ -146,7 +146,7 @@ Needed for 3.2. Under Administration, connect a mailbox for support with Microso
 Needed for Phase 5. Check the portal address under Administration, **Client Portal**. If you changed the address after installing, run this on the server so the built-in HTTPS knows the name:
 
 ```bash
-sudo bash /opt/remoteiq/install.sh reconfigure
+sudo bash /opt/adgrmm/install.sh reconfigure
 ```
 
 ### Notification channels
@@ -160,11 +160,11 @@ Needed for 1.46, 9.2 and 9.3. Under Alerts, create a notification channel of typ
 1. **Upgrade.** Take a snapshot first. Run:
 
 ```bash
-sudo bash /opt/remoteiq/install.sh upgrade
+sudo bash /opt/adgrmm/install.sh upgrade
 ```
 
    **Expected:** it backs up the database, installs the newest release, starts it, and your data and devices are still there. If it fails it rolls back by itself.
-2. **Uninstall.** On a spare snapshot run `sudo bash /opt/remoteiq/install.sh uninstall`, and choose whether to keep your data. **Expected:** it asks the question and does what you chose.
+2. **Uninstall.** On a spare snapshot run `sudo bash /opt/adgrmm/install.sh uninstall`, and choose whether to keep your data. **Expected:** it asks the question and does what you chose.
 3. **Reinstall** on the same server after uninstalling and check a clean install still works (roadmap 10.17).
 
 ---
@@ -616,11 +616,11 @@ Steps:
 2. Browse: expand HKLM and HKU in the Registry keys tree, open HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion and confirm values show in the table. Use the Search in and Search text boxes with the Search button.
 3. Try HKLM\SAM and HKLM\SECURITY. Confirm they show "Blocked key". Confirm secret-named values (such as a value with "password" in its name) show as hidden.
 4. Go to Admin > Audit logs and confirm each look was recorded.
-5. Edit (needs the write right): create a test key under HKLM\SOFTWARE with Create key (name it RemoteIQTest). Use Add value with a name, Value type (for example String) and Data.
+5. Edit (needs the write right): create a test key under HKLM\SOFTWARE with Create key (name it AdgRmmTest). Use Add value with a name, Value type (for example String) and Data.
 6. Change the value (Edit value; the confirm dialog shows old and new values). Type the device name to confirm where asked. Check on the PC in regedit that the value changed.
 7. Open Recent changes and click Undo on the change; confirm the old value returns. Delete the value (Delete value) and delete the empty key (Delete key).
 8. Collision check: open the same value in two browser windows, change it in one, then try to save a change in the other; confirm a "Changed since you looked" warning.
-9. Try to write to a blocked area (Session Manager, SafeBoot, Winlogon, UAC settings, Defender, Image File Execution Options, RemoteIQ's own keys). Confirm "Not allowed".
+9. Try to write to a blocked area (Session Manager, SafeBoot, Winlogon, UAC settings, Defender, Image File Execution Options, ADG RMM's own keys). Confirm "Not allowed".
 10. Try writing under the Run or RunOnce key or AppInit_DLLs. These are not blocked yet. If the edit goes through, report it (do not go further than adding a harmless test value, then undo it).
 11. Make many quick changes and confirm "Too many changes" appears.
 12. Try an offline device and confirm "The device is offline".
@@ -676,13 +676,13 @@ Report if: A device is deleted without a waiting request; Decline deletes or doe
 Needs: A Slack, Discord or Microsoft Teams (Workflows) incoming webhook URL that you own and a channel to receive it. This has only been tried against a local receiver, never against the real services, so this test is the important one.
 Steps:
 1. Go to Alerts > Notifications and settings. Under Notification channels click to add a channel. Choose Type "webhook", give it a Name and paste your webhook URL into Address.
-2. Open the Message format dropdown. Confirm Automatic (from the address) is the default and the other choices are Slack (also Mattermost and Rocket.Chat), Discord, Microsoft Teams and RemoteIQ JSON.
+2. Open the Message format dropdown. Confirm Automatic (from the address) is the default and the other choices are Slack (also Mattermost and Rocket.Chat), Discord, Microsoft Teams and ADG RMM JSON.
 3. Leave it on Automatic, set "Send" (the severity) as desired, and click Add channel.
 4. In the channel list click Test. Confirm a message arrives in the chat channel, readable and well formatted ("Test sent to <name>" appears in the console).
 5. Cause a real alert (see 1.1) and confirm the alert message arrives with title, device, severity and the alert's details.
 6. Change Message format by hand to the wrong one (for example Discord for a Slack URL) and click Test. Confirm the console shows what the receiver said as the error.
-7. Delete the webhook inside the chat service (so it answers 404) and cause another alert. Confirm RemoteIQ does not keep retrying forever and the error text is visible. Repeat for each service you can.
-8. Add a webhook with another address (your own test receiver) and confirm it gets RemoteIQ's own signed JSON.
+7. Delete the webhook inside the chat service (so it answers 404) and cause another alert. Confirm ADG RMM does not keep retrying forever and the error text is visible. Repeat for each service you can.
+8. Add a webhook with another address (your own test receiver) and confirm it gets ADG RMM's own signed JSON.
 Expected result: Test and real alerts arrive properly formatted in Slack, Discord or Teams; wrong settings produce a readable error; receivers that refuse are not retried repeatedly.
 Report if: A test shows "failed" with a 400 error; the message arrives as raw JSON in a chat; the message is missing the device or severity; Teams or Discord shows an empty card; the same refused alert is sent again and again; or the Message format choice is ignored.
 
@@ -694,7 +694,7 @@ Steps:
 2. Click Install software. The dialog is titled "Install software". Type a harmless package name (for example `htop` or `tree`) and confirm.
 3. Watch for "Install queued", then success. On the machine run `which htop` and confirm it is installed.
 4. Find the package in the list, open its row and click Uninstall. Confirm in the dialog. Confirm it is removed on the machine.
-5. Try removing a protected package, for example `openssh-server`, `sudo`, `systemd`, the kernel, the package manager (`apt`/`dnf`), the firewall (`ufw`/`firewalld`) or the RemoteIQ agent. Confirm each is refused and the console explains why, and verify nothing was removed on the machine.
+5. Try removing a protected package, for example `openssh-server`, `sudo`, `systemd`, the kernel, the package manager (`apt`/`dnf`), the firewall (`ufw`/`firewalld`) or the ADG RMM agent. Confirm each is refused and the console explains why, and verify nothing was removed on the machine.
 6. Try removing a package where other packages depend on it (for example a library used by other programs). Confirm the refusal says it would take other packages with it and that nothing was removed.
 7. Type a package name with odd characters (for example `foo; touch /tmp/x`) and confirm it is rejected or fails safely, and that `/tmp/x` was not created.
 8. Open Admin > Audit logs or the software install log and confirm the actions are recorded.
@@ -711,7 +711,7 @@ Steps:
 5. On the machine, create a harmless test file in your home folder: `echo 'X5O!P%@AP[4\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*' > ~/eicar.txt`, run the scan again.
 6. Check the file is still there afterwards (`ls ~/eicar.txt`).
 Expected result: The firewall turns on without cutting off SSH. The scan finishes and reports the EICAR file as found, and the file is NOT deleted or moved. If no firewall tool is installed, you get a clear message and nothing gets installed. An entry for each action appears in the audit log.
-Report if: you are locked out of SSH, the firewall tool gets installed by RemoteIQ, the scan never finishes, the scan misses the EICAR file, the scan deletes or moves the file, a user without the device actions right can still press the buttons, or no audit entry appears.
+Report if: you are locked out of SSH, the firewall tool gets installed by ADG RMM, the scan never finishes, the scan misses the EICAR file, the scan deletes or moves the file, a user without the device actions right can still press the buttons, or no audit entry appears.
 
 ### 1.49 Patch list catches up after an install
 Needs: A Windows PC and a Linux machine (Ubuntu or Debian preferred) with the agent, each with at least two pending updates.
@@ -786,8 +786,8 @@ Needs: A real Linux machine with the agent (ideally with a LUKS2 encrypted disk 
 Steps:
 1. Open Devices, open the Linux device, Security tab, find the Device secrets card.
 2. In the Local administrator password block press Rotate now and confirm with Rotate password. Wait for the device to answer.
-3. When it shows the account (default riq-admin) and a last changed time, press Reveal, give a reason, and copy the password.
-4. On the machine, log in as that account with the password (for example `su - riq-admin`) and check it works and is in sudo or wheel.
+3. When it shows the account (default adg-admin) and a last changed time, press Reveal, give a reason, and copy the password.
+4. On the machine, log in as that account with the password (for example `su - adg-admin`) and check it works and is in sudo or wheel.
 5. Press Rotate now again and check the old password stops working and the new one works.
 6. In the Disk recovery keys (LUKS) block press Escrow keys now and confirm. Check the key list, or the reason a disk was skipped.
 7. If you have a TPM-unlocked LUKS2 disk: Reveal the key and test it with `sudo cryptsetup luksOpen --test-passphrase /dev/<disk>`, entering the key.
@@ -823,7 +823,7 @@ Needs: A real Alpine Linux machine or VM (3.20 or newer), or Gentoo or Artix wit
 Steps:
 1. On the machine run `apk add bash curl`.
 2. In the console copy the Linux install command for the right customer and run it as root. Check the device appears and is online.
-3. Reboot the machine and check the agent comes back by itself. Kill the agent process (`pkill -f remoteiq` or similar name) and check it is restarted within a minute.
+3. Reboot the machine and check the agent comes back by itself. Kill the agent process (`pkill -f adgrmm` or similar name) and check it is restarted within a minute.
 4. Open the device, Scripts: run a small script and a remote shell session. Check both work.
 5. Open the Software tab, install a package by name (for example `nano`), then remove it.
 6. Press Malware scan on the Security tab after installing ClamAV.
@@ -1378,7 +1378,7 @@ Report if: Wrong amounts; another customer's invoice; PDF will not download.
 Needs: A Windows PC with the new agent (1.3.39 or later, in the candidate slot, so the PC must be in the test ring; ask the developer), signed in as a normal user, plus a second person account on the same PC if possible, and a Slack or Teams webhook (optional).
 Steps:
 1. As an Owner open Administration > Infrastructure > Agents and find the "Tray app (Windows)" box. Turn on "Show the tray app on devices", "Let people ask for help", "Let people chat with support". Fill in "IT provider name", support email, support phone, "Office hours" and "Point of contact". Save.
-2. On the PC wait about a minute and look next to the clock for the RemoteIQ icon (this was never checked by a person). Note if a second icon appears.
+2. On the PC wait about a minute and look next to the clock for the ADG RMM icon (this was never checked by a person). Note if a second icon appears.
 3. Click the icon and read the status window: connected, problems found, its own help requests, and the support phone and email.
 4. Ask for help (try "urgent" and "not urgent"). Then in the console open Service desk > Tickets and check a ticket exists for the computer's customer with the PC on it.
 5. Chat: type a message in the tray and open Service desk > Device chat in the console. Reply. Check unread counts, "delivered" and "seen" markers on both sides. If a webhook is set, check the message also reached Slack or Teams.
@@ -1670,11 +1670,11 @@ Report if: The key differs or is missing, a key appears in any log, ticket or jo
 ### 8.4 Local admin and password management (LAPS-style)
 Needs: A Windows test VM with the agent (never a customer machine for the first test), an Owner login, and access to log on to the VM with the managed account to prove the password works.
 Steps:
-1. Automation > Policies: edit the policy applied to the VM, open "Device secrets", switch the local admin password management on (laps.enabled) with the default account riq-admin. Save.
-2. On the VM, check after a minute that a local account riq-admin exists (and that the built-in Administrator was not changed).
+1. Automation > Policies: edit the policy applied to the VM, open "Device secrets", switch the local admin password management on (laps.enabled) with the default account adg-admin. Save.
+2. On the VM, check after a minute that a local account adg-admin exists (and that the built-in Administrator was not changed).
 3. Open the device > "Security" tab and find "Local administrator password" in the Device secrets card. Click "Rotate password" and confirm.
 4. Wait until it shows the account and "Last changed" and "Next rotation due".
-5. Click "Reveal", type a reason, confirm. Within 60 seconds log on to the VM (for example runas or the sign-in screen) with riq-admin and this password.
+5. Click "Reveal", type a reason, confirm. Within 60 seconds log on to the VM (for example runas or the sign-in screen) with adg-admin and this password.
 6. After the reveal, note the "Rotation after a reveal due"; wait that many minutes and check the password changed (reveal the new one and log on again; the old one must fail).
 7. Rotate several times and check only the last 3 generations are kept.
 8. Switch the VM off during a rotation (or block its network) and check the old password stays revealable and an error such as "The last rotation could not be confirmed" is shown.
@@ -1715,7 +1715,7 @@ Needs: A real Microsoft 365 tenant you may read (a test tenant is best, ideally 
 Steps:
 1. Open Monitoring > Microsoft 365.
 2. Read "How to set it up in Microsoft Entra (once per customer)". In Entra register an app, add the seven read permissions under "API permissions > Add > Microsoft Graph > Application permissions" and "Grant admin consent", then "Certificates & secrets > New client secret" and copy its Value.
-3. In RemoteIQ click "Connect a tenant", choose the customer, enter "Tenant ID or domain", "Application (client) ID" and the secret Value, and connect.
+3. In ADG RMM click "Connect a tenant", choose the customer, enter "Tenant ID or domain", "Application (client) ID" and the secret Value, and connect.
 4. Click "Read" (or wait for the daily read) and wait for "Reading…" to finish.
 5. Check each part: people and guests; Licences (Bought, Given out, Free) with names you know; disabled accounts still holding a licence; licensed people not signed in for 90 days; "Without multi-factor sign-in"; Administrators (global admin count); whether something enforces MFA; "Microsoft Secure Score" and "Health out of 100". Compare each with the Microsoft 365 admin center.
 6. Check "What could not be read" lists any part the app lacks permission for, and that no finding is made up from it (remove one permission and read again to test).
@@ -1737,8 +1737,8 @@ Report if: Token creation fails or the token cannot be revoked. Do not report mi
 Needs: Console login with settings access; a place that receives webhooks you can see (for example a free request-catcher site; use only test data); a test ticket and device.
 Steps:
 1. Open Administration > Integrations and find "Outbound webhooks".
-2. Click "New webhook", enter a Name (for example "Ops chat"), the Address (placeholder https://example.com/hooks/remoteiq), tick the "Events to send" (ticket created, ticket updated, alert opened, alert resolved, device offline) and save. Copy the signing secret shown and click "I have saved it".
-3. Click "Test" on the webhook and check your receiver gets a request with X-RemoteIQ-Event, X-RemoteIQ-Timestamp, X-RemoteIQ-Signature headers.
+2. Click "New webhook", enter a Name (for example "Ops chat"), the Address (placeholder https://example.com/hooks/adgrmm), tick the "Events to send" (ticket created, ticket updated, alert opened, alert resolved, device offline) and save. Copy the signing secret shown and click "I have saved it".
+3. Click "Test" on the webhook and check your receiver gets a request with X-ADG-Event, X-ADG-Timestamp, X-ADG-Signature headers.
 4. Check the signature with the instructions "How to check a delivery is genuine" (ask the developer for help if needed).
 5. Create a ticket, update it, raise and resolve an alert, and shut down a test device; check each event arrives.
 6. Make your receiver return an error and check the delivery log (Event, Attempts, Result) shows retries.
@@ -1852,7 +1852,7 @@ Steps:
 Expected result: Developer runs the 119 checks in CI on demand and they pass.
 Report if: Not applicable for testers; developers report any failing check.
 
-### 10.13 Monitoring of RemoteIQ's own servers
+### 10.13 Monitoring of ADG RMM's own servers
 Needs: Administrator login; a developer to help cause failures on a test server (testers should not stop the live server); an alert target (email, Slack or webhook as set for backups).
 Steps:
 1. Open Administration > System and find the "Server health" card.

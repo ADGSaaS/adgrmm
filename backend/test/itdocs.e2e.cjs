@@ -1,10 +1,10 @@
-// Assets and links, against a real database. (There is no password vault in RemoteIQ: customer passwords belong in the owner's other software.)
-// Usage, from backend/ after building: RIQ_E2E_ALLOW=1 DATABASE_URL=postgres://.../riq_e2e node test/itdocs.e2e.cjs
+// Assets and links, against a real database. (There is no password vault in ADG RMM: customer passwords belong in the owner's other software.)
+// Usage, from backend/ after building: ADG_E2E_ALLOW=1 DATABASE_URL=postgres://.../adg_e2e node test/itdocs.e2e.cjs
 const crypto = require("node:crypto");
 const path = require("node:path");
 
-if (process.env.RIQ_E2E_ALLOW !== "1" || !/e2e/.test(process.env.DATABASE_URL || "")) {
-    console.error("Refusing to run: set RIQ_E2E_ALLOW=1 and an e2e-named DATABASE_URL.");
+if (process.env.ADG_E2E_ALLOW !== "1" || !/e2e/.test(process.env.DATABASE_URL || "")) {
+    console.error("Refusing to run: set ADG_E2E_ALLOW=1 and an e2e-named DATABASE_URL.");
     process.exit(2);
 }
 

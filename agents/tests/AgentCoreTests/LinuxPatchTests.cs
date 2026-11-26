@@ -1,7 +1,7 @@
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
-using RemoteIQ.Agent.Shared;
+using AdgRmm.Agent.Shared;
 
 /// <summary>
 /// Linux patching: the parsers against output captured from real apt, dnf and zypper (samples/), and the engine's

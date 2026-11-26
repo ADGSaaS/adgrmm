@@ -4,7 +4,7 @@
 // on request), hosts remembered once and updated by the next scan, managed devices recognised by MAC, address and name, ignoring,
 // failed and garbage answers, the customer limit, and the audit trail. Throwaway backend and database only; the database needs the
 // migration 20261121010000_network_discovery applied.
-//   RIQ_E2E_ALLOW=1 BASE_URL=http://127.0.0.1:3951 DATABASE_URL=postgres://.../riq_x_e2e JWT_SECRET=... node test/network-discovery-http.e2e.cjs
+//   ADG_E2E_ALLOW=1 BASE_URL=http://127.0.0.1:3951 DATABASE_URL=postgres://.../adg_x_e2e JWT_SECRET=... node test/network-discovery-http.e2e.cjs
 "use strict";
 const path = require("node:path");
 const { assert, call, runner, setup, uuid } = require("./groupc-helpers.cjs");
@@ -55,7 +55,7 @@ async function main() {
         try {
             const rows = (await q(`SELECT j.id, j.payload FROM jobs j JOIN agents a ON a.id = j.agent_id WHERE j.status = 'queued' AND a.device_id = ANY($1::uuid[])`, [devs])).rows;
             for (const r of rows) {
-                if (r.payload?.env?.RIQ_TOOL !== D.DISCOVERY_KIND || handled.has(r.id)) continue;
+                if (r.payload?.env?.ADG_TOOL !== D.DISCOVERY_KIND || handled.has(r.id)) continue;
                 handled.add(r.id); seen.push({ id: r.id, payload: r.payload });
                 if (!answer || answer.mode === "never") continue;
                 if (answer.mode === "fail") { await finishJob(r.id, "", { stderr: answer.stderr, status: "failed" }); continue; }
@@ -96,7 +96,7 @@ async function main() {
         assert.equal((await scan(uuid(), [])).status, 404);
         assert.equal((await scan(bScanner, [], limited)).status, 404);
         assert.equal((await post("/scan", { deviceId: "not-a-uuid" })).status, 400);
-        assert.equal((await q(`SELECT count(*)::int AS n FROM jobs WHERE payload->'env'->>'RIQ_TOOL' = $1 AND agent_id IN (SELECT id FROM agents WHERE device_id = ANY($2::uuid[]))`, [D.DISCOVERY_KIND, [mac, off]])).rows[0].n, 0, "no job for a refused request");
+        assert.equal((await q(`SELECT count(*)::int AS n FROM jobs WHERE payload->'env'->>'ADG_TOOL' = $1 AND agent_id IN (SELECT id FROM agents WHERE device_id = ANY($2::uuid[]))`, [D.DISCOVERY_KIND, [mac, off]])).rows[0].n, 0, "no job for a refused request");
     });
 
     console.log("a scan");
@@ -109,7 +109,7 @@ async function main() {
         run1 = r.body;
         const job = (await q(`SELECT payload FROM jobs WHERE id = $1`, [run1.jobId])).rows[0].payload;
         assert.equal(job.language, "powershell"); assert.equal(job.scriptText, D.WINDOWS_DISCOVERY_SCRIPT);
-        assert.deepEqual(job.env, { RIQ_TOOL: D.DISCOVERY_KIND, RIQ_RANGES: "10.9.0.0/24" });
+        assert.deepEqual(job.env, { ADG_TOOL: D.DISCOVERY_KIND, ADG_RANGES: "10.9.0.0/24" });
         const again = await scan(win, []);
         assert.equal(again.body.alreadyRunning, true); assert.equal(again.body.runId, run1.runId, "a device does one scan at a time");
         // a different device of the same site scans at the same time, its own network
@@ -223,7 +223,7 @@ async function main() {
         const all = (await hosts("all")).items.filter((x) => x.ip === "10.9.0.200"); assert.equal(all.length, 1);
     });
     await test("scanning from several devices: a request for none, too many or a bad range is refused before anything starts; another customer's devices are skipped for a limited person", async () => {
-        const jobs = async () => (await q(`SELECT count(*)::int AS n FROM jobs WHERE payload->'env'->>'RIQ_TOOL' = $1`, [D.DISCOVERY_KIND])).rows[0].n;
+        const jobs = async () => (await q(`SELECT count(*)::int AS n FROM jobs WHERE payload->'env'->>'ADG_TOOL' = $1`, [D.DISCOVERY_KIND])).rows[0].n;
         const before = await jobs();
         assert.equal((await post("/scan-many", { deviceIds: [] })).status, 400);
         assert.equal((await post("/scan-many", { deviceIds: Array.from({ length: 26 }, () => uuid()) })).status, 400);

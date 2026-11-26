@@ -99,15 +99,15 @@ export function cleanSearch(raw: unknown): string {
 
 /* ------------------------------ Windows scripts ------------------------------ */
 
-// Every script ends in Out-Riq, which prints one JSON text made only of ASCII, so the agent's output code page cannot garble it.
+// Every script ends in Out-Adg, which prints one JSON text made only of ASCII, so the agent's output code page cannot garble it.
 const PS_HEAD = String.raw`$ErrorActionPreference = 'Stop'
 $ProgressPreference = 'SilentlyContinue'
 function ConvertTo-Ascii([string]$s) {
   $bs = [string][char]92
   return [regex]::Replace($s, '[^\x00-\x7F]', { param($m) $bs + 'u' + ('{0:x4}' -f [int][char]$m.Value) })
 }
-function Out-Riq($obj) { [Console]::Out.Write((ConvertTo-Ascii ($obj | ConvertTo-Json -Compress -Depth 6))) }
-function Fail($e) { Out-Riq @{ ok = $false; error = [string]$e.Exception.Message } }
+function Out-Adg($obj) { [Console]::Out.Write((ConvertTo-Ascii ($obj | ConvertTo-Json -Compress -Depth 6))) }
+function Fail($e) { Out-Adg @{ ok = $false; error = [string]$e.Exception.Message } }
 `;
 
 const psc = (body: string) => `${PS_HEAD}try {\n${body}\n} catch { Fail $_ }\n`;
@@ -118,12 +118,12 @@ const PS_SERVICE_ROWS = String.raw`$rows = @(Get-CimInstance -ClassName Win32_Se
 })`;
 
 export const WINDOWS = {
-    servicesList: psc(`${PS_SERVICE_ROWS}\nOut-Riq @{ ok = $true; items = $rows }`),
+    servicesList: psc(`${PS_SERVICE_ROWS}\nOut-Adg @{ ok = $true; items = $rows }`),
 
-    // The service name arrives in RIQ_SERVICE and is matched exactly (a ServiceController, not a wildcard pattern).
-    serviceAction: psc(String.raw`$name = $env:RIQ_SERVICE
-$action = $env:RIQ_ACTION
-$force = ($env:RIQ_FORCE -eq '1')
+    // The service name arrives in ADG_SERVICE and is matched exactly (a ServiceController, not a wildcard pattern).
+    serviceAction: psc(String.raw`$name = $env:ADG_SERVICE
+$action = $env:ADG_ACTION
+$force = ($env:ADG_FORCE -eq '1')
 $s = New-Object System.ServiceProcess.ServiceController($name)
 $null = $s.Status
 switch ($action) {
@@ -131,7 +131,7 @@ switch ($action) {
   'stop'    { if ($s.Status -ne 'Stopped') { if ($force) { Stop-Service -InputObject $s -Force } else { Stop-Service -InputObject $s }; $s.WaitForStatus('Stopped', [TimeSpan]::FromSeconds(30)) } }
   'restart' { if ($force) { Restart-Service -InputObject $s -Force } else { Restart-Service -InputObject $s }; $s.Refresh(); $s.WaitForStatus('Running', [TimeSpan]::FromSeconds(30)) }
   'startup' {
-    $mode = switch ($env:RIQ_STARTTYPE) { 'automatic' { 'auto' } 'delayed' { 'delayed-auto' } 'manual' { 'demand' } 'disabled' { 'disabled' } default { throw 'Unknown start type.' } }
+    $mode = switch ($env:ADG_STARTTYPE) { 'automatic' { 'auto' } 'delayed' { 'delayed-auto' } 'manual' { 'demand' } 'disabled' { 'disabled' } default { throw 'Unknown start type.' } }
     $out = & sc.exe config $name start= $mode 2>&1 | Out-String
     if ($LASTEXITCODE -ne 0) { throw ('sc.exe could not change the start type: ' + $out.Trim()) }
   }
@@ -139,36 +139,36 @@ switch ($action) {
 }
 $s.Refresh()
 $c = Get-CimInstance -ClassName Win32_Service -Property Name,StartMode,DelayedAutoStart -Filter ("Name='" + $name.Replace("'", "''") + "'")
-Out-Riq @{ ok = $true; name = $name; state = [string]$s.Status; startMode = [string]$c.StartMode; delayed = [bool]$c.DelayedAutoStart }`),
+Out-Adg @{ ok = $true; name = $name; state = [string]$s.Status; startMode = [string]$c.StartMode; delayed = [bool]$c.DelayedAutoStart }`),
 
     processesList: psc(String.raw`$procs = @(Get-Process -IncludeUserName -ErrorAction SilentlyContinue | ForEach-Object {
   $cpu = $null; try { if ($_.CPU -ne $null) { $cpu = [math]::Round([double]$_.CPU, 1) } } catch { }
   @{ name = $_.ProcessName; pid = [int]$_.Id; cpuSeconds = $cpu; memoryMb = [math]::Round($_.WorkingSet64 / 1MB, 1); user = [string]$_.UserName }
 })
-Out-Riq @{ ok = $true; items = $procs }`),
+Out-Adg @{ ok = $true; items = $procs }`),
 
-    // The process id arrives in RIQ_PID. Processes whose end stops Windows, and this agent's own, are refused here as well.
-    processEnd: psc(String.raw`$procId = [int]$env:RIQ_PID
+    // The process id arrives in ADG_PID. Processes whose end stops Windows, and this agent's own, are refused here as well.
+    processEnd: psc(String.raw`$procId = [int]$env:ADG_PID
 if ($procId -le 4) { throw 'That process belongs to the operating system.' }
 $p = Get-Process -Id $procId
 $protected = @('system','idle','smss','csrss','wininit','winlogon','services','lsass','lsm','registry','memory compression','secure system')
 if ($protected -contains $p.ProcessName.ToLower()) { throw ('Ending ' + $p.ProcessName + ' would stop Windows, so it is not allowed.') }
-if ($p.ProcessName -like 'RemoteIQ*') { throw 'This is the RemoteIQ agent, which runs this tool. Update or restart it from the device actions instead.' }
+if ($p.ProcessName -like 'ADG RMM*') { throw 'This is the ADG RMM agent, which runs this tool. Update or restart it from the device actions instead.' }
 $me = $PID; $guard = @($me)
 try { $parent = (Get-CimInstance Win32_Process -Filter ('ProcessId=' + $me)).ParentProcessId; if ($parent) { $guard += [int]$parent } } catch { }
 if ($guard -contains $procId) { throw 'That process is running this tool.' }
 $name = $p.ProcessName
 Stop-Process -Id $procId -Force
-Out-Riq @{ ok = $true; pid = $procId; name = $name }`),
+Out-Adg @{ ok = $true; pid = $procId; name = $name }`),
 
-    // RIQ_LOG, RIQ_HOURS, RIQ_MAX, RIQ_LEVELS (numbers, comma separated), RIQ_TEXT (a plain substring) and RIQ_SCAN.
-    eventLog: psc(String.raw`$log = $env:RIQ_LOG
-$hours = [int]$env:RIQ_HOURS
-$max = [int]$env:RIQ_MAX
-$text = $env:RIQ_TEXT
-$scan = [int]$env:RIQ_SCAN
+    // ADG_LOG, ADG_HOURS, ADG_MAX, ADG_LEVELS (numbers, comma separated), ADG_TEXT (a plain substring) and ADG_SCAN.
+    eventLog: psc(String.raw`$log = $env:ADG_LOG
+$hours = [int]$env:ADG_HOURS
+$max = [int]$env:ADG_MAX
+$text = $env:ADG_TEXT
+$scan = [int]$env:ADG_SCAN
 $filter = @{ LogName = $log; StartTime = (Get-Date).AddHours(-$hours) }
-if ($env:RIQ_LEVELS) { $filter.Level = [int[]]($env:RIQ_LEVELS -split ',') }
+if ($env:ADG_LEVELS) { $filter.Level = [int[]]($env:ADG_LEVELS -split ',') }
 $take = if ($text) { $scan } else { $max }
 $events = @()
 try { $events = @(Get-WinEvent -FilterHashtable $filter -MaxEvents $take) }
@@ -200,50 +200,50 @@ echo "---UNITFILES---"
 systemctl list-unit-files --type=service --no-legend --no-pager 2>&1 | head -c 200000
 `,
 
-    // RIQ_SERVICE is a validated unit name; RIQ_ACTION is one of the fixed commands below. Neither is ever part of the script text.
+    // ADG_SERVICE is a validated unit name; ADG_ACTION is one of the fixed commands below. Neither is ever part of the script text.
     serviceAction: `set -u
-case "$RIQ_ACTION" in
+case "$ADG_ACTION" in
   start|stop|restart|enable|disable|mask|unmask) ;;
   *) echo "ERR: unknown action"; exit 0 ;;
 esac
-out=$(systemctl "$RIQ_ACTION" -- "$RIQ_SERVICE" 2>&1)
+out=$(systemctl "$ADG_ACTION" -- "$ADG_SERVICE" 2>&1)
 rc=$?
 if [ $rc -ne 0 ]; then echo "ERR: $out" | head -c 2000; exit 0; fi
 echo "OK"
-echo "$(systemctl is-active -- "$RIQ_SERVICE" 2>&1)"
-echo "$(systemctl is-enabled -- "$RIQ_SERVICE" 2>&1)"
+echo "$(systemctl is-active -- "$ADG_SERVICE" 2>&1)"
+echo "$(systemctl is-enabled -- "$ADG_SERVICE" 2>&1)"
 `,
 
     processesList: `set -u
 ps -eo pid=,user:32=,rss=,time=,comm= --sort=-pcpu 2>&1 | head -c 400000
 `,
 
-    // RIQ_PID is a validated number; RIQ_FORCE=1 sends KILL instead of TERM.
+    // ADG_PID is a validated number; ADG_FORCE=1 sends KILL instead of TERM.
     processEnd: `set -u
-if [ "$RIQ_PID" -le 1 ]; then echo "ERR: that process belongs to the operating system"; exit 0; fi
-if [ "$RIQ_PID" -eq "$$" ] || [ "$RIQ_PID" -eq "$PPID" ]; then echo "ERR: that process is running this tool"; exit 0; fi
-name=$(ps -p "$RIQ_PID" -o comm= 2>/dev/null)
+if [ "$ADG_PID" -le 1 ]; then echo "ERR: that process belongs to the operating system"; exit 0; fi
+if [ "$ADG_PID" -eq "$$" ] || [ "$ADG_PID" -eq "$PPID" ]; then echo "ERR: that process is running this tool"; exit 0; fi
+name=$(ps -p "$ADG_PID" -o comm= 2>/dev/null)
 if [ -z "$name" ]; then echo "ERR: there is no process with that id"; exit 0; fi
-case "$name" in remoteiq*) echo "ERR: this is the RemoteIQ agent, which runs this tool"; exit 0 ;; esac
-sig=TERM; [ "\${RIQ_FORCE:-}" = "1" ] && sig=KILL
-out=$(kill -"$sig" "$RIQ_PID" 2>&1) || { echo "ERR: $out"; exit 0; }
+case "$name" in adgrmm*) echo "ERR: this is the ADG RMM agent, which runs this tool"; exit 0 ;; esac
+sig=TERM; [ "\${ADG_FORCE:-}" = "1" ] && sig=KILL
+out=$(kill -"$sig" "$ADG_PID" 2>&1) || { echo "ERR: $out"; exit 0; }
 echo "OK"
 echo "$name"
 `,
 
-    // RIQ_LOG (system, kernel, security), RIQ_SINCE (epoch seconds), RIQ_MAX, RIQ_SCAN, RIQ_PRIO (0 to 7, the least severe wanted), RIQ_TEXT.
+    // ADG_LOG (system, kernel, security), ADG_SINCE (epoch seconds), ADG_MAX, ADG_SCAN, ADG_PRIO (0 to 7, the least severe wanted), ADG_TEXT.
     eventLog: `set -u
-since=$(date -u -d "@$RIQ_SINCE" '+%Y-%m-%d %H:%M:%S')
-args=(--no-pager -o json -r --since "$since" -n "$RIQ_SCAN" --output-fields=MESSAGE,PRIORITY,SYSLOG_IDENTIFIER,_SYSTEMD_UNIT,_COMM)
-[ -n "\${RIQ_PRIO:-}" ] && args+=(-p "$RIQ_PRIO")
-case "$RIQ_LOG" in
+since=$(date -u -d "@$ADG_SINCE" '+%Y-%m-%d %H:%M:%S')
+args=(--no-pager -o json -r --since "$since" -n "$ADG_SCAN" --output-fields=MESSAGE,PRIORITY,SYSLOG_IDENTIFIER,_SYSTEMD_UNIT,_COMM)
+[ -n "\${ADG_PRIO:-}" ] && args+=(-p "$ADG_PRIO")
+case "$ADG_LOG" in
   kernel) args+=(-k) ;;
   security) args+=(SYSLOG_FACILITY=4 SYSLOG_FACILITY=10) ;;
 esac
-if [ -n "\${RIQ_TEXT:-}" ]; then
-  journalctl "\${args[@]}" 2>&1 | grep -i -F -e "$RIQ_TEXT" | head -n "$RIQ_MAX" | head -c 190000
+if [ -n "\${ADG_TEXT:-}" ]; then
+  journalctl "\${args[@]}" 2>&1 | grep -i -F -e "$ADG_TEXT" | head -n "$ADG_MAX" | head -c 190000
 else
-  journalctl "\${args[@]}" 2>&1 | head -n "$RIQ_MAX" | head -c 190000
+  journalctl "\${args[@]}" 2>&1 | head -n "$ADG_MAX" | head -c 190000
 fi
 `,
 };

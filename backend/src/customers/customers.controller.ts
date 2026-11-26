@@ -1,4 +1,4 @@
-// FILE: remoteiq-minimal-e2e/backend/src/customers/customers.controller.ts
+// FILE: adgrmm-minimal-e2e/backend/src/customers/customers.controller.ts
 
 import {
     Body,

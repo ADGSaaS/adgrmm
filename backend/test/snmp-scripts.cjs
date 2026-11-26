@@ -70,9 +70,9 @@ console.log("Linux script, real SNMP agents in Docker");
 if (run("docker", ["info", "--format", "{{.ServerVersion}}"]).status !== 0) console.log("     (Docker is not running, skipped)");
 else {
     const fs = require("node:fs"), os = require("node:os");
-    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "riq-snmp-"));
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "adg-snmp-"));
     fs.writeFileSync(path.join(tmp, "snmp.sh"), S.LINUX_SNMP_SCRIPT, { mode: 0o755 });
-    const NET = `riq-snmp-${Date.now()}`, names = [];
+    const NET = `adg-snmp-${Date.now()}`, names = [];
     const dk = (...a) => run("docker", a);
     const cleanup = () => { for (const n of names) dk("rm", "-f", n); dk("network", "rm", NET); };
     const agentConf = (community, printer) => `agentaddress udp:161\\nrocommunity ${community} default\\nsysLocation Server room\\nsysName ${printer ? "printer-test" : "plain-host"}\\n` + (printer ? [
@@ -85,7 +85,7 @@ else {
         dk("run", "-d", "--name", base, "debian:12", "sleep", "600");
         const inst = run("docker", ["exec", base, "bash", "-c", "apt-get update -qq >/dev/null 2>&1; DEBIAN_FRONTEND=noninteractive apt-get install -y -qq snmpd snmp >/dev/null 2>&1; command -v snmpget snmpd"]);
         assert.match(inst.stdout, /snmpget[\s\S]*snmpd/, inst.stderr);
-        const img = `riq-snmp-img:${Date.now()}`;
+        const img = `adg-snmp-img:${Date.now()}`;
         assert.equal(dk("commit", base, img).status, 0);
         const agent = (name, ip, community, printer, extra = []) => {
             names.push(name);
@@ -98,7 +98,7 @@ else {
         names.push(`${NET}-poller`);
         assert.equal(dk("run", "-d", "--name", `${NET}-poller`, "--network", NET, "--ip", "172.31.9.2", "-v", `${tmp.replace(/\\/g, "/")}:/w:ro`, img, "sleep", "600").status, 0);
         run("sleep", ["3"]);
-        const go = (targets) => run("docker", ["exec", "-e", `RIQ_SNMP_TARGETS=${targets}`, `${NET}-poller`, "bash", "/w/snmp.sh"]);
+        const go = (targets) => run("docker", ["exec", "-e", `ADG_SNMP_TARGETS=${targets}`, `${NET}-poller`, "bash", "/w/snmp.sh"]);
 
         check("a printer answers: name, description, location, uptime, supplies with levels, status, error bits, page count, interfaces", () => {
             const r = go("172.31.9.20,161,public");
@@ -134,7 +134,7 @@ else {
             assert.equal(run("docker", ["exec", `${NET}-poller`, "bash", "-c", "ls /tmp/pwned 2>&1"]).stdout.includes("No such file"), true);
         });
         check("with the SNMP tools missing it says which package to install", () => {
-            const r = run("docker", ["run", "--rm", "-e", "RIQ_SNMP_TARGETS=172.31.9.20,161,public", "-v", `${tmp.replace(/\\/g, "/")}:/w:ro`, "debian:12", "bash", "/w/snmp.sh"]);
+            const r = run("docker", ["run", "--rm", "-e", "ADG_SNMP_TARGETS=172.31.9.20,161,public", "-v", `${tmp.replace(/\\/g, "/")}:/w:ro`, "debian:12", "bash", "/w/snmp.sh"]);
             assert.equal(r.status, 69); assert.match(r.stderr, /snmp package.*net-snmp-utils.*Software tab/);
         });
 
@@ -144,9 +144,9 @@ else {
             const ps = "powershell";
             const own = run(ps, ["-NoProfile", "-Command", "(Get-NetIPAddress -AddressFamily IPv4 | Where-Object { $_.IPAddress -match '^(10\\.|192\\.168\\.|172\\.(1[6-9]|2\\d|3[01])\\.)' } | Select-Object -First 1).IPAddress"]).stdout.trim();
             if (!own) return console.log("     (no private address on this machine, skipped)");
-            const f = path.join(os.tmpdir(), `riq-snmp-${Date.now()}.ps1`);
+            const f = path.join(os.tmpdir(), `adg-snmp-${Date.now()}.ps1`);
             fs.writeFileSync(f, S.WINDOWS_SNMP_SCRIPT);
-            const runPs = (targets) => run(ps, ["-NoProfile", "-Command", `$env:RIQ_SNMP_TARGETS = '${targets}'; & '${f}'`]);
+            const runPs = (targets) => run(ps, ["-NoProfile", "-Command", `$env:ADG_SNMP_TARGETS = '${targets}'; & '${f}'`]);
             check(`the built-in SNMP client reads a printer (${own}:16161): supplies, status, error bits, page count, interfaces`, () => {
                 const r = runPs(`${own},16161,public`);
                 const { results } = S.parseSnmp(r.stdout, r.stderr, [own]);

@@ -267,8 +267,8 @@ export class SmtpService {
             await transporter.sendMail({
                 from: r.smtp_from_address,
                 to,
-                subject: subject || "Test from RemoteIQ",
-                text: body || "This is a test email from RemoteIQ.",
+                subject: subject || "Test from ADG RMM",
+                text: body || "This is a test email from ADG RMM.",
             });
             return { ok: true, result: "Test email sent" };
         } catch (e: any) {

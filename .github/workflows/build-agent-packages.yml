@@ -28,7 +28,7 @@ jobs:
       - name: Build
         shell: pwsh
         run: |
-          Push-Location agents/windows/RemoteIQ.Agent
+          Push-Location agents/windows/AdgRmm.Agent
           dotnet --version
           Pop-Location
           ./agents/build-packages.ps1 -OutDir "$env:GITHUB_WORKSPACE/out/packages"
@@ -48,7 +48,7 @@ jobs:
           Get-MpPreference | Select-Object MAPSReporting, SubmitSamplesConsent, CloudBlockLevel | Format-List
           Get-MpComputerStatus | Select-Object AMServiceEnabled, AntivirusEnabled, AntivirusSignatureVersion | Format-List
           $scan = "$env:RUNNER_TEMP/scan"
-          Expand-Archive out/packages/windows/remoteiq-agent-windows.zip $scan
+          Expand-Archive out/packages/windows/adgrmm-agent-windows.zip $scan
           $mp = "$env:ProgramFiles\Windows Defender\MpCmdRun.exe"
           Get-ChildItem $scan -Recurse -Filter *.exe | ForEach-Object {
             Write-Output "--- $($_.Name) $((Get-FileHash $_.FullName).Hash)"

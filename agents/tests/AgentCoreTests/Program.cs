@@ -7,9 +7,9 @@
 
 using System.Security.Cryptography;
 using System.Text;
-using RemoteIQ.Agent.Linux;
-using RemoteIQ.Agent.Services;
-using RemoteIQ.Agent.Shared;
+using AdgRmm.Agent.Linux;
+using AdgRmm.Agent.Services;
+using AdgRmm.Agent.Shared;
 
 var failures = 0;
 void Check(string name, bool ok)
@@ -169,7 +169,7 @@ Check("a forged plan fails", !CheckEvaluation.TryOpenPlan(forged.Payload, forged
 
 // ── Real Windows probes: these only read ───────────────────────────────────
 var probes = new WindowsCheckProbes();
-var workDir = Path.Combine(Path.GetTempPath(), "riq-agentcore-" + Guid.NewGuid().ToString("N"));
+var workDir = Path.Combine(Path.GetTempPath(), "adg-agentcore-" + Guid.NewGuid().ToString("N"));
 Directory.CreateDirectory(workDir);
 
 var windowsRunner = new CheckRunner(probes, new CheckRunnerOptions
@@ -196,7 +196,7 @@ Check("every default produced a result", seen.Count >= CheckEvaluation.Defaults(
 Check("every result has a dedupe key and times", seen.All(r => !string.IsNullOrEmpty(r.DedupeKey) && r.StartedAt is not null && r.FinishedAt is not null));
 Check("disk, memory and cpu really measured", new[] { "DISK", "MEMORY", "CPU" }.All(t => seen.Any(r => r.CheckType == t && r.Status != "UNKNOWN")));
 Check("service states were read", seen.Where(r => r.CheckType == "SERVICE").All(r => r.Status == "OK"));
-Check("a missing service warns", (await windowsRunner.ExecuteAsync(new CheckDefinition { Key = "k", Type = "SERVICE", Name = "n", Service = "RemoteIQNoSuchService" }, cts.Token))[0].Status == "WARN");
+Check("a missing service warns", (await windowsRunner.ExecuteAsync(new CheckDefinition { Key = "k", Type = "SERVICE", Name = "n", Service = "AdgRmmNoSuchService" }, cts.Token))[0].Status == "WARN");
 Check("an unknown type is unknown, not a crash", (await windowsRunner.ExecuteAsync(new CheckDefinition { Key = "k", Type = "NOPE", Name = "n" }, cts.Token))[0].Status == "UNKNOWN");
 Check("an unreachable server warns", seen.Single(r => r.CheckType == "PORT").Status == "WARN");
 
@@ -214,7 +214,7 @@ try
     dynamic scheduler = Activator.CreateInstance(Type.GetTypeFromProgID("Schedule.Service")!)!;
     scheduler.Connect();
     dynamic definition = scheduler.NewTask(0);
-    definition.XmlText = WindowsUpdatePlatform.TaskXml(@"C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe", "-File \"C:\\ProgramData\\RemoteIQ\\update\\apply & <test>.ps1\"");
+    definition.XmlText = WindowsUpdatePlatform.TaskXml(@"C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe", "-File \"C:\\ProgramData\\AdgRmm\\update\\apply & <test>.ps1\"");
     Check("Task Scheduler accepts the task XML", definition.Settings.DisallowStartIfOnBatteries == false && definition.Settings.StopIfGoingOnBatteries == false);
 }
 catch (Exception ex)
@@ -229,15 +229,15 @@ await UpdatesTests.Run(Check);
 await PerfTests.Run(Check);
 
 // ── The real Linux package format, when one is given ───────────────────────
-var linuxPackage = Environment.GetEnvironmentVariable("RIQ_LINUX_PACKAGE");
+var linuxPackage = Environment.GetEnvironmentVariable("ADG_LINUX_PACKAGE");
 if (!string.IsNullOrEmpty(linuxPackage))
 {
-    var extractTo = Path.Combine(Path.GetTempPath(), "riq-tar-" + Guid.NewGuid().ToString("N"));
+    var extractTo = Path.Combine(Path.GetTempPath(), "adg-tar-" + Guid.NewGuid().ToString("N"));
     Directory.CreateDirectory(extractTo);
     await using (var file = File.OpenRead(linuxPackage))
     await using (var gz = new System.IO.Compression.GZipStream(file, System.IO.Compression.CompressionMode.Decompress))
         await System.Formats.Tar.TarFile.ExtractToDirectoryAsync(gz, extractTo, overwriteFiles: true);
-    Check("the managed tar reader unpacks the real Linux package", File.Exists(Path.Combine(extractTo, "remoteiq-agent")) && File.Exists(Path.Combine(extractTo, "uninstall.sh")));
+    Check("the managed tar reader unpacks the real Linux package", File.Exists(Path.Combine(extractTo, "adgrmm-agent")) && File.Exists(Path.Combine(extractTo, "uninstall.sh")));
     Directory.Delete(extractTo, recursive: true);
 }
 
@@ -250,7 +250,7 @@ if (args.Length >= 6)
     var packageVersion = args[5];
     using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(30) };
 
-    var root = Path.Combine(Path.GetTempPath(), "riq-e2e-" + Guid.NewGuid().ToString("N"));
+    var root = Path.Combine(Path.GetTempPath(), "adg-e2e-" + Guid.NewGuid().ToString("N"));
     Directory.CreateDirectory(root);
     var install = Path.Combine(root, "Agent");
     Directory.CreateDirectory(install);

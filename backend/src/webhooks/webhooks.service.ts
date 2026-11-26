@@ -139,7 +139,7 @@ export class WebhooksService {
     /** Sends a sample event now, so the address and secret can be checked. It is logged like any delivery, and not retried. */
     async test(orgId: string, id: string) {
         const ep = await this.find(orgId, id);
-        const payload = this.envelope("webhook.test", { message: "This is a test from RemoteIQ.", webhook: ep.name });
+        const payload = this.envelope("webhook.test", { message: "This is a test from ADG RMM.", webhook: ep.name });
         const row = await this.prisma.webhook_deliveries.create({ data: { endpoint_id: ep.id, event: "webhook.test", payload: payload as object, status: "pending", attempts: 0, next_attempt_at: new Date(Date.now() + 3_600_000) } });
         const result = await this.deliver(ep, row.id, "webhook.test", payload, 1);
         return { ok: result.ok, status: result.status ?? null, message: result.ok ? `The address answered with status ${result.status}.` : result.error };
@@ -259,7 +259,7 @@ export class WebhooksService {
             await assertSafeWebhookUrl(ep.url);
             // a chat service gets a message it can show; anything else gets the signed envelope as it always was
             const format = formatFor(ep.url, ep.format);
-            const chat = format === "remoteiq" ? null : chatBody(format, payload as { event: string; data?: unknown });
+            const chat = format === "adgrmm" ? null : chatBody(format, payload as { event: string; data?: unknown });
             const body = JSON.stringify(chat ?? payload);
             const timestamp = Math.floor(Date.now() / 1000).toString();
             // Connects only to an address that passed the check at connection time (no DNS rebinding between check and send).
@@ -268,11 +268,11 @@ export class WebhooksService {
                 allowPrivate: process.env.ALLOW_PRIVATE_WEBHOOKS === "true",
                 headers: {
                     "Content-Type": "application/json",
-                    "User-Agent": "RemoteIQ-Webhook",
-                    "X-RemoteIQ-Event": event,
-                    "X-RemoteIQ-Delivery": deliveryId,
-                    "X-RemoteIQ-Timestamp": timestamp,
-                    "X-RemoteIQ-Signature": sign(decryptSecret(ep.secret), timestamp, body),
+                    "User-Agent": "AdgRmm-Webhook",
+                    "X-ADG-Event": event,
+                    "X-ADG-Delivery": deliveryId,
+                    "X-ADG-Timestamp": timestamp,
+                    "X-ADG-Signature": sign(decryptSecret(ep.secret), timestamp, body),
                 },
                 body,
             });

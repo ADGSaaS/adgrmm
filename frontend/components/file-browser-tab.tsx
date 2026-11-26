@@ -1,4 +1,4 @@
-// remoteiq-frontend/components/file-browser-tab.tsx
+// adgrmm-frontend/components/file-browser-tab.tsx
 "use client";
 
 import * as React from "react";

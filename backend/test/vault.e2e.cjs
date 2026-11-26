@@ -9,8 +9,8 @@
 const crypto = require("node:crypto");
 const path = require("node:path");
 
-if (process.env.RIQ_E2E_ALLOW !== "1" || !/e2e/.test(process.env.DATABASE_URL || "")) {
-    console.error("Refusing to run: set RIQ_E2E_ALLOW=1 and an e2e-named DATABASE_URL.");
+if (process.env.ADG_E2E_ALLOW !== "1" || !/e2e/.test(process.env.DATABASE_URL || "")) {
+    console.error("Refusing to run: set ADG_E2E_ALLOW=1 and an e2e-named DATABASE_URL.");
     process.exit(2);
 }
 process.env.JWT_SECRET ||= "e2e-only-not-a-real-secret-e2e-only-not-a-real-secret";
@@ -85,7 +85,7 @@ const guid = () => crypto.randomUUID();
         if (a && isOnline) online.add(a.id);
         return { dev, agent: a, c };
     }
-    const jobsOf = (d, tool) => prisma.jobs.findMany({ where: { agent_id: d.agent.id }, orderBy: { created_at: "asc" } }).then((l) => (tool ? l.filter((j) => j.payload?.env?.RIQ_TOOL === tool) : l));
+    const jobsOf = (d, tool) => prisma.jobs.findMany({ where: { agent_id: d.agent.id }, orderBy: { created_at: "asc" } }).then((l) => (tool ? l.filter((j) => j.payload?.env?.ADG_TOOL === tool) : l));
     const stateOf = async (d) => (await prisma.$queryRaw`SELECT * FROM public.device_secret_state WHERE device_id = ${d.dev.id}::uuid`)[0] ?? null;
     const secretsOf = (d, kind) => prisma.$queryRaw`SELECT id::text AS id, kind, label, ref, status, missed_reads, ciphertext, created_at, superseded_at FROM public.device_secrets WHERE device_id = ${d.dev.id}::uuid ORDER BY created_at, id`.then((r) => (kind ? r.filter((x) => x.kind === kind) : r));
     async function runAt(t) {
@@ -100,7 +100,7 @@ const guid = () => crypto.randomUUID();
         const ok = await jobs.finishJob(j.id, { exitCode: exitCode ?? (status === "succeeded" ? 0 : 1), stdout, stderr, durationMs: 7 }, status, { agentId: d.agent.id });
         return { id: j.id, accepted: ok, payload: j.payload };
     }
-    const lapsOut = (password, { account = "riq-admin", verified = true, created = false } = {}) => JSON.stringify({ ok: true, account, created, verified, password });
+    const lapsOut = (password, { account = "adg-admin", verified = true, created = false } = {}) => JSON.stringify({ ok: true, account, created, verified, password });
     const bitOut = (keys) => JSON.stringify({ ok: true, keys: keys.map((k) => ({ mount: k.mount ?? "C:", protectorId: `{${k.id.toUpperCase()}}`, recoveryPassword: k.pw })) });
     const revealAs = (d, secretId, reason = "ticket 5512 lost laptop", a = actor) => vault.reveal({ id: d.dev.id, name: d.dev.hostname, windows: true }, secretId, a, reason);
     const view = async (d) => vault.view(await vault.device(d.dev.id), { reveal: true, manage: true });
@@ -127,8 +127,8 @@ const guid = () => crypto.randomUUID();
     const probe = await device(A, "probe");
     const eff0 = (await policies.effectiveForDevices([probe.dev.id])).values().next().value;
     const sc = eff0.scalars;
-    check("defaults: escrow off, LAPS off, account riq-admin, length 20, every 30 days, 60 minutes after a reveal, all from the baseline",
-        sc["security.bitlockerEscrow"].value === "off" && sc["laps.enabled"].value === false && sc["laps.account"].value === "riq-admin" && sc["laps.passwordLength"].value === 20 && sc["laps.rotateDays"].value === 30 && sc["laps.rotateAfterRevealMinutes"].value === 60
+    check("defaults: escrow off, LAPS off, account adg-admin, length 20, every 30 days, 60 minutes after a reveal, all from the baseline",
+        sc["security.bitlockerEscrow"].value === "off" && sc["laps.enabled"].value === false && sc["laps.account"].value === "adg-admin" && sc["laps.passwordLength"].value === 20 && sc["laps.rotateDays"].value === 30 && sc["laps.rotateAfterRevealMinutes"].value === 60
         && ["security.bitlockerEscrow", "laps.enabled", "laps.account"].every((k) => sc[k].source.kind === "default"), Object.fromEntries(Object.entries(sc).filter(([k]) => /laps|Escrow/.test(k)).map(([k, v]) => [k, v.value])));
     const bad = async (sections, re) => fails(() => policies.create({ name: `bad ${Math.random()}`, sections }, me, o), re);
     check("policy: escrow must be off or on", await bad({ security: { bitlockerEscrow: "maybe" } }, /off.*on/) && await bad({ security: { bitlockerEscrow: true } }, /off.*on/));
@@ -177,10 +177,10 @@ const guid = () => crypto.randomUUID();
     const lukJobs = async (ds) => (await Promise.all(ds.filter((d) => d.agent).map((d) => jobsOf(d, TOOL_LUKS).then((l) => l.length)))).reduce((a, b) => a + b, 0);
     check("escrow on: online devices with an agent are asked (Windows read BitLocker keys, Linux adds LUKS keys); offline and no-agent devices are skipped", r.escrows === 3 && (await countJobs([w1])) === 1 && (await countJobs([w2])) === 1 && (await countJobs([off1, lin1])) === 0 && (await lukJobs([lin1])) === 1 && (await lukJobs([w1, w2, off1])) === 0 && (await lapsJobs([w1, w2])) === 0, r);
     const lukJob = (await jobsOf(lin1, TOOL_LUKS))[0];
-    check("the Linux escrow job is the fixed bash script, marked secret, with only the list of volumes already stored in its environment", lukJob.payload.scriptText === require(path.join(dist, "vault/vault.scripts.js")).LINUX_LUKS_ESCROW_SCRIPT && lukJob.payload.language === "bash" && Object.keys(lukJob.payload.env).sort().join() === "RIQ_LUKS_HAVE,RIQ_SECRET_JOB,RIQ_TOOL" && lukJob.payload.env.RIQ_LUKS_HAVE === "" && lukJob.payload.env.RIQ_TOOL === TOOL_LUKS, lukJob.payload.env);
+    check("the Linux escrow job is the fixed bash script, marked secret, with only the list of volumes already stored in its environment", lukJob.payload.scriptText === require(path.join(dist, "vault/vault.scripts.js")).LINUX_LUKS_ESCROW_SCRIPT && lukJob.payload.language === "bash" && Object.keys(lukJob.payload.env).sort().join() === "ADG_LUKS_HAVE,ADG_SECRET_JOB,ADG_TOOL" && lukJob.payload.env.ADG_LUKS_HAVE === "" && lukJob.payload.env.ADG_TOOL === TOOL_LUKS, lukJob.payload.env);
     const ej = (await jobsOf(w1, TOOL_BITLOCKER))[0];
     check("the escrow job is a fixed signed script job marked as secret, with nothing typed and no secret in its environment",
-        ej.payload.scriptText === require(path.join(dist, "vault/vault.scripts.js")).BITLOCKER_KEYS_SCRIPT && JSON.stringify(ej.payload.env) === JSON.stringify({ RIQ_TOOL: TOOL_BITLOCKER, RIQ_SECRET_JOB: "1" }) && ej.payload.timeoutSec === 90 && ej.payload.language === "powershell", ej.payload.env);
+        ej.payload.scriptText === require(path.join(dist, "vault/vault.scripts.js")).BITLOCKER_KEYS_SCRIPT && JSON.stringify(ej.payload.env) === JSON.stringify({ ADG_TOOL: TOOL_BITLOCKER, ADG_SECRET_JOB: "1" }) && ej.payload.timeoutSec === 90 && ej.payload.language === "powershell", ej.payload.env);
     r = await runAt(t + 60_000);
     check("a device whose key read is still waiting is left alone", r.escrows === 0 && (await countJobs([w1])) === 1, r);
 
@@ -200,7 +200,7 @@ const guid = () => crypto.randomUUID();
     let st = await stateOf(w1);
     check("the state: no longer waiting, read ok", st.escrow_pending_job_id === null && st.escrow_ok_at !== null && st.escrow_message === null);
     const acc = await prisma.$queryRaw`SELECT * FROM public.device_secret_access WHERE device_id = ${w1.dev.id}::uuid ORDER BY at`;
-    check("an access row 'escrow' was written for the scheduled read (it stores a count, no secret)", acc.length === 1 && acc[0].action === "escrow" && acc[0].outcome === "ok" && acc[0].user_name === "RemoteIQ (scheduled)" && !JSON.stringify(acc).includes(k1.pw));
+    check("an access row 'escrow' was written for the scheduled read (it stores a count, no secret)", acc.length === 1 && acc[0].action === "escrow" && acc[0].outcome === "ok" && acc[0].user_name === "ADG RMM (scheduled)" && !JSON.stringify(acc).includes(k1.pw));
     r = await runAt(t + 2 * HOUR);
     check("no re-read before 24 hours", r.escrows === 0 || (await countJobs([w1])) === 1, r);
     r = await runAt(t + 25 * HOUR);
@@ -267,10 +267,10 @@ const guid = () => crypto.randomUUID();
     r = await runAt(tl);
     check("laps on: the first password is set on online devices with an agent (Windows and Linux); offline devices are skipped", r.rotations === 3 && (await lapsJobs([l1])) === 1 && (await lapsJobs([l3off])) === 0 && (await lapsJobs([l4lin])) === 1, r);
     const l4job = (await jobsOf(l4lin, TOOL_LAPS))[0];
-    check("the Linux rotation job is the fixed bash script with the same environment as Windows", l4job.payload.language === "bash" && l4job.payload.scriptText === require(path.join(dist, "vault/vault.scripts.js")).LINUX_LAPS_ROTATE_SCRIPT && l4job.payload.env.RIQ_LAPS_ACCOUNT === "vault-admin" && l4job.payload.env.RIQ_LAPS_LENGTH === "22" && Object.keys(l4job.payload.env).sort().join() === "RIQ_LAPS_ACCOUNT,RIQ_LAPS_LENGTH,RIQ_SECRET_JOB,RIQ_TOOL", l4job.payload);
+    check("the Linux rotation job is the fixed bash script with the same environment as Windows", l4job.payload.language === "bash" && l4job.payload.scriptText === require(path.join(dist, "vault/vault.scripts.js")).LINUX_LAPS_ROTATE_SCRIPT && l4job.payload.env.ADG_LAPS_ACCOUNT === "vault-admin" && l4job.payload.env.ADG_LAPS_LENGTH === "22" && Object.keys(l4job.payload.env).sort().join() === "ADG_LAPS_ACCOUNT,ADG_LAPS_LENGTH,ADG_SECRET_JOB,ADG_TOOL", l4job.payload);
     const lj = (await jobsOf(l1, TOOL_LAPS))[0];
     check("the rotation job: fixed script, account and length in the environment, the secret marker, no password in the job",
-        lj.payload.env.RIQ_LAPS_ACCOUNT === "vault-admin" && lj.payload.env.RIQ_LAPS_LENGTH === "22" && lj.payload.env.RIQ_SECRET_JOB === "1" && Object.keys(lj.payload.env).sort().join() === "RIQ_LAPS_ACCOUNT,RIQ_LAPS_LENGTH,RIQ_SECRET_JOB,RIQ_TOOL" && !JSON.stringify(lj.payload.env).toLowerCase().includes("password") && !JSON.stringify(lj.payload.args ?? []).includes("password"));
+        lj.payload.env.ADG_LAPS_ACCOUNT === "vault-admin" && lj.payload.env.ADG_LAPS_LENGTH === "22" && lj.payload.env.ADG_SECRET_JOB === "1" && Object.keys(lj.payload.env).sort().join() === "ADG_LAPS_ACCOUNT,ADG_LAPS_LENGTH,ADG_SECRET_JOB,ADG_TOOL" && !JSON.stringify(lj.payload.env).toLowerCase().includes("password") && !JSON.stringify(lj.payload.args ?? []).includes("password"));
     // result: verified
     const p1 = pw(22);
     const dl = await deliver(l1, TOOL_LAPS, lapsOut(p1, { account: "vault-admin", created: true }));
@@ -386,7 +386,7 @@ const guid = () => crypto.randomUUID();
     console.log("redaction");
     const S5 = await customer("S5");
     const x1 = await device(S5, "x1");
-    const pX = await policies.create({ name: `vault x ${stamp}`, sections: { laps: { enabled: true, account: "riq-admin", passwordLength: 20 }, security: { bitlockerEscrow: "on" } }, assignments: [{ level: "customer", targetId: S5.client.id }] }, me, o);
+    const pX = await policies.create({ name: `vault x ${stamp}`, sections: { laps: { enabled: true, account: "adg-admin", passwordLength: 20 }, security: { bitlockerEscrow: "on" } }, assignments: [{ level: "customer", targetId: S5.client.id }] }, me, o);
     const xdev = async () => vault.device(x1.dev.id);
     async function expectRedacted(label, tool, queue, stdout, opts, expectStatus, secrets) {
         await prisma.$executeRaw`UPDATE public.device_secret_state SET laps_attempted_at = NULL, laps_pending_job_id = NULL, escrow_pending_job_id = NULL WHERE device_id = ${x1.dev.id}::uuid`;
@@ -407,7 +407,7 @@ const guid = () => crypto.randomUUID();
     await expectRedacted("garbage output that contains a password", TOOL_LAPS, qL, `Result: the password is ${sA} ok`, {}, "failed", [sA]);
     await expectRedacted("valid JSON for another account", TOOL_LAPS, qL, lapsOut(sC, { account: "someone-else" }), {}, "failed", [sC]);
     await expectRedacted("a password of the wrong length", TOOL_LAPS, qL, lapsOut(sE.slice(0, 18)), {}, "failed", [sE.slice(0, 18)]);
-    await expectRedacted("a dry-run answer is never stored", TOOL_LAPS, qL, JSON.stringify({ ok: true, dryRun: true, account: "riq-admin", created: false, verified: false, password: sF }), {}, "failed", [sF]);
+    await expectRedacted("a dry-run answer is never stored", TOOL_LAPS, qL, JSON.stringify({ ok: true, dryRun: true, account: "adg-admin", created: false, verified: false, password: sF }), {}, "failed", [sF]);
     await expectRedacted("a bad key in a BitLocker answer (nothing is partly stored)", TOOL_BITLOCKER, qB, bitOut([{ id: guid(), pw: sH }]).replace(sH, "12345-1"), {}, "failed", [sH]);
     await expectRedacted("hostile output with a recovery key and a stderr that also holds a secret", TOOL_BITLOCKER, qB, `Recovery: ${sB}`, { stderr: `oops ${sD}` }, "failed", [sB, sD]);
     check("none of those stored anything: the same number of generations, no new BitLocker rows", (await adminRows(x1)).length === adminBefore && (await secretsOf(x1, "bitlocker_recovery")).length === 0);
@@ -428,12 +428,12 @@ const guid = () => crypto.randomUUID();
     // status other than succeeded still redacts
     await expectRedacted("a timeout result that carries output", TOOL_LAPS, qL, lapsOut(pw(20)), { status: "timeout", stderr: "TIMEOUT" }, "timeout", [lapsOut(pw(20)).slice(-40)]);
     // an unknown tool with the marker
-    const rogue = await jobs.createRunScriptJob({ agentId: x1.agent.id, language: "powershell", scriptText: "Write-Output 1", env: { RIQ_TOOL: "something.else", RIQ_SECRET_JOB: "1" } });
+    const rogue = await jobs.createRunScriptJob({ agentId: x1.agent.id, language: "powershell", scriptText: "Write-Output 1", env: { ADG_TOOL: "something.else", ADG_SECRET_JOB: "1" } });
     const sK = pw(20);
     await jobs.finishJob(rogue.id, { exitCode: 0, stdout: `secret ${sK}`, stderr: "", durationMs: 1 }, "succeeded", { agentId: x1.agent.id });
     check("a job marked secret with an unknown tool is redacted and failed too", (await leaks(sK)).length === 0 && (await prisma.jobs.findUnique({ where: { id: rogue.id } })).status === "failed" && /secret output removed/.test((await prisma.job_results.findUnique({ where: { job_id: rogue.id } })).stdout));
     // an ordinary job keeps its output
-    const plain = await jobs.createRunScriptJob({ agentId: x1.agent.id, language: "powershell", scriptText: "Write-Output 1", env: { RIQ_TOOL: "services.list" } });
+    const plain = await jobs.createRunScriptJob({ agentId: x1.agent.id, language: "powershell", scriptText: "Write-Output 1", env: { ADG_TOOL: "services.list" } });
     await jobs.finishJob(plain.id, { exitCode: 0, stdout: "ordinary output", stderr: "", durationMs: 1 }, "succeeded", { agentId: x1.agent.id });
     check("an ordinary job still stores its output and status as before", (await prisma.job_results.findUnique({ where: { job_id: plain.id } })).stdout === "ordinary output" && (await prisma.jobs.findUnique({ where: { id: plain.id } })).status === "succeeded");
     // a finished job cannot be overwritten with another result
@@ -480,7 +480,7 @@ const guid = () => crypto.randomUUID();
     const SL = await customer("SL");
     const lx = await device(SL, "lx", { os: "linux" });
     await prisma.$executeRaw`UPDATE public.devices SET operating_system = 'Debian GNU/Linux 12 (bookworm)' WHERE id = ${lx.dev.id}::uuid`;
-    const pLx = await policies.create({ name: `vault linux ${stamp}`, sections: { security: { bitlockerEscrow: "on" }, laps: { enabled: true, account: "riq-admin", passwordLength: 20, rotateDays: 30, rotateAfterRevealMinutes: 0 } }, assignments: [{ level: "customer", targetId: SL.client.id }] }, me, o);
+    const pLx = await policies.create({ name: `vault linux ${stamp}`, sections: { security: { bitlockerEscrow: "on" }, laps: { enabled: true, account: "adg-admin", passwordLength: 20, rotateDays: 30, rotateAfterRevealMinutes: 0 } }, assignments: [{ level: "customer", targetId: SL.client.id }] }, me, o);
     const MODHEX = "cbdefghijklnrtuv";
     const lkey = () => Array.from({ length: 8 }, () => Array.from({ length: 8 }, () => MODHEX[crypto.randomInt(16)]).join("")).join("-");
     const luksOut = (keys, vols) => JSON.stringify({ ok: true, keys: keys.map((k) => ({ mount: k.mount, protectorId: k.id, recoveryPassword: k.key })), volumes: vols.map(([id, state]) => ({ id, state })) });
@@ -500,7 +500,7 @@ const guid = () => crypto.randomUUID();
     check("Linux: revealing a LUKS key needs a reason, returns the key once and is audited", lxRv.payload.secret === lxKey1 && lxRv.payload.kind === "luks_recovery" && lxRv.audit.kind === "luks_recovery");
     await vault.requestEscrow(await vault.device(lx.dev.id), actor, "manual");
     const lj2 = (await jobsOf(lx, TOOL_LUKS)).filter((j) => ["queued", "dispatched", "running"].includes(j.status)).pop();
-    check("Linux: the next job lists the volumes that already have a key, so none gets a second slot", lj2.payload.env.RIQ_LUKS_HAVE.split(",").sort().join() === [u1, u2].sort().join(), lj2.payload.env);
+    check("Linux: the next job lists the volumes that already have a key, so none gets a second slot", lj2.payload.env.ADG_LUKS_HAVE.split(",").sort().join() === [u1, u2].sort().join(), lj2.payload.env);
     await deliver(lx, TOOL_LUKS, luksOut([], [[u1, "have"], [u2, "have"]]));
     check("Linux: a run that adds nothing keeps both keys and clears the message", (await luksRows()).length === 2 && (await stateOf(lx)).escrow_message === null);
     await vault.requestEscrow(await vault.device(lx.dev.id), actor, "manual");
@@ -519,7 +519,7 @@ const guid = () => crypto.randomUUID();
     await vault.requestRotate(await vault.device(lx.dev.id), actor, "manual").catch(() => null);
     await qLx();
     async function qLx() { await prisma.$executeRaw`UPDATE public.device_secret_state SET laps_pending_job_id = NULL, laps_pending_at = NULL, laps_attempted_at = NULL WHERE device_id = ${lx.dev.id}::uuid`; await vault.requestRotate(await vault.device(lx.dev.id), actor, "manual"); }
-    await deliver(lx, TOOL_LAPS, lapsOut(lxPw, { account: "riq-admin", created: true, verified: false }));
+    await deliver(lx, TOOL_LAPS, lapsOut(lxPw, { account: "adg-admin", created: true, verified: false }));
     check("Linux: the password answer is stored like a Windows one (unconfirmed when the device could not confirm it, 7-day warning)", (await adminRows(lx)).length >= 1 && (await adminRows(lx)).some((x) => x.status === "unconfirmed") && (await leaks(lxPw)).length === 0);
     await prisma.$executeRaw`DELETE FROM public.policies WHERE id = ${pLx.id}::uuid`;
     PoliciesService.invalidate();

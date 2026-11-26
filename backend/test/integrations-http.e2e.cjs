@@ -4,7 +4,7 @@
 // can be made, tested, rotated and deleted only by people with the settings right. The server must run with
 // ALLOW_PRIVATE_WEBHOOKS=true so the test receiver on 127.0.0.1 is allowed.
 //
-//   RIQ_E2E_ALLOW=1 BASE_URL=http://127.0.0.1:3901 DATABASE_URL=postgres://.../riq_x_e2e JWT_SECRET=... node test/integrations-http.e2e.cjs
+//   ADG_E2E_ALLOW=1 BASE_URL=http://127.0.0.1:3901 DATABASE_URL=postgres://.../adg_x_e2e JWT_SECRET=... node test/integrations-http.e2e.cjs
 "use strict";
 const http = require("node:http");
 const path = require("node:path");
@@ -204,8 +204,8 @@ async function main() {
         const r = await json(`/api/admin/webhooks/${ep.id}/test`, { method: "POST", token: admin.token });
         assert.equal(r.ok, true);
         const got = received.at(-1);
-        assert.equal(got.headers["x-remoteiq-event"], "webhook.test");
-        assert.ok(core.verify(ep.signingSecret, got.headers["x-remoteiq-timestamp"], got.body, got.headers["x-remoteiq-signature"]));
+        assert.equal(got.headers["x-adg-event"], "webhook.test");
+        assert.ok(core.verify(ep.signingSecret, got.headers["x-adg-timestamp"], got.body, got.headers["x-adg-signature"]));
         hook.status = 500;
         const bad = await json(`/api/admin/webhooks/${ep.id}/test`, { method: "POST", token: admin.token });
         hook.status = 200;
@@ -228,7 +228,7 @@ async function main() {
         // The worker runs every few seconds.
         const end = Date.now() + 25_000;
         while (received.length === before && Date.now() < end) await new Promise((r) => setTimeout(r, 300));
-        const got = received.slice(before).find((r) => r.headers["x-remoteiq-event"] === "ticket.created");
+        const got = received.slice(before).find((r) => r.headers["x-adg-event"] === "ticket.created");
         assert.ok(got, "delivered by the background worker");
         assert.equal(JSON.parse(got.body).data.ticket.subject, `GC integration ticket ${stamp}`);
         const c = (await cards()).webhooks;

@@ -1,5 +1,5 @@
 // Runs the registry editor's fixed WRITE scripts for real (Windows only, Windows PowerShell as the agent runs them) against a throwaway
-// key under the CURRENT USER's own hive: HKU\<this user's SID>\Software\RemoteIQ-Test (read back as HKCU). Run as a normal user,
+// key under the CURRENT USER's own hive: HKU\<this user's SID>\Software\AdgRmm-Test (read back as HKCU). Run as a normal user,
 // so HKLM CANNOT be written here: HKLM writes (and their blocklist inside the script) are only exercised up to the refusal, which
 // happens before the key is opened; a real write below HKLM needs an elevated run and is not part of this test.
 // Covers every type round trip (unicode, quotes, very long, binary), optimistic concurrency, delete key with sub keys, undo at the
@@ -19,34 +19,34 @@ let passed = 0, failed = 0;
 const timings = [];
 const check = (name, fn) => { try { fn(); passed++; console.log(`ok   ${name}`); } catch (e) { failed++; console.log(`FAIL ${name}: ${e.message}`); } };
 const ps = (file, env) => spawnSync("powershell", ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", file], { env: { ...process.env, ...env }, encoding: "utf8", maxBuffer: 1e8 });
-const dir = fs.mkdtempSync(path.join(os.tmpdir(), "riq-regw-"));
+const dir = fs.mkdtempSync(path.join(os.tmpdir(), "adg-regw-"));
 const writeScript = (name, text) => { const f = path.join(dir, name); fs.writeFileSync(f, text); return f; };
 
 // the user's SID, and a clean slate
 const sid = ps(writeScript("sid.ps1", "[Security.Principal.WindowsIdentity]::GetCurrent().User.Value"), {}).stdout.trim();
 assert.match(sid, /^S-1-5-21-/);
-const cleanup = () => ps(writeScript("rm.ps1", "Remove-Item 'HKCU:\\Software\\RemoteIQ-Test' -Recurse -ErrorAction SilentlyContinue"), {});
+const cleanup = () => ps(writeScript("rm.ps1", "Remove-Item 'HKCU:\\Software\\AdgRmm-Test' -Recurse -ErrorAction SilentlyContinue"), {});
 cleanup();
-const BASE = `HKU\\${sid}\\Software\\RemoteIQ-Test`;
+const BASE = `HKU\\${sid}\\Software\\AdgRmm-Test`;
 
 /** Runs a write script. `answer` is what the server would store; throws what the server would turn into a 409 (ToolOutputError). */
 function W(kind, env, label) {
     const f = writeScript(`${kind}.ps1`, "﻿" + R.REGISTRY_WRITE_SCRIPTS[kind]);
     const t = Date.now();
-    const r = ps(f, { RIQ_REG_VIEW: "64", RIQ_REG_NAME: "", RIQ_REG_TYPE: "", RIQ_REG_DATA: "", RIQ_REG_EXPECT: "", RIQ_REG_VALUES: "", ...env });
+    const r = ps(f, { ADG_REG_VIEW: "64", ADG_REG_NAME: "", ADG_REG_TYPE: "", ADG_REG_DATA: "", ADG_REG_EXPECT: "", ADG_REG_VALUES: "", ...env });
     const ms = Date.now() - t;
     timings.push(`${label || kind}: ${ms} ms`);
     assert.ok(ms < 2000, `${kind} took ${ms} ms (must be under 2 s)`);
     assert.ok(/^[\x00-\x7f]*$/.test(r.stdout), "ASCII only");
     return { ms, answer: R.parseRegistryWrite(parseWindowsJson(r.stdout, r.stderr)), raw: r.stdout };
 }
-const setV = (name, type, data, expected, path = BASE, extra = {}) => W("set", { RIQ_REG_PATH: path, RIQ_REG_NAME: name, RIQ_REG_TYPE: type, RIQ_REG_DATA: R.dataArg(type, R.cleanValueData(type, data)), RIQ_REG_EXPECT: R.expectArg(R.cleanExpected(expected)), ...extra }, `set ${type}`).answer;
-const delV = (name, expected, path = BASE) => W("deleteValue", { RIQ_REG_PATH: path, RIQ_REG_NAME: name, RIQ_REG_EXPECT: R.expectArg(R.cleanExpected(expected)) }, "delete value").answer;
-const mkKey = (p, values) => W("createKey", { RIQ_REG_PATH: p, ...(values ? { RIQ_REG_VALUES: R.valuesArg(values) } : {}) }, values ? "create key (put values back)" : "create key").answer;
-const rmKey = (p, n) => W("deleteKey", { RIQ_REG_PATH: p, RIQ_REG_EXPECT: n === undefined ? "" : JSON.stringify({ values: n }) }, "delete key").answer;
+const setV = (name, type, data, expected, path = BASE, extra = {}) => W("set", { ADG_REG_PATH: path, ADG_REG_NAME: name, ADG_REG_TYPE: type, ADG_REG_DATA: R.dataArg(type, R.cleanValueData(type, data)), ADG_REG_EXPECT: R.expectArg(R.cleanExpected(expected)), ...extra }, `set ${type}`).answer;
+const delV = (name, expected, path = BASE) => W("deleteValue", { ADG_REG_PATH: path, ADG_REG_NAME: name, ADG_REG_EXPECT: R.expectArg(R.cleanExpected(expected)) }, "delete value").answer;
+const mkKey = (p, values) => W("createKey", { ADG_REG_PATH: p, ...(values ? { ADG_REG_VALUES: R.valuesArg(values) } : {}) }, values ? "create key (put values back)" : "create key").answer;
+const rmKey = (p, n) => W("deleteKey", { ADG_REG_PATH: p, ADG_REG_EXPECT: n === undefined ? "" : JSON.stringify({ values: n }) }, "delete key").answer;
 const readKey = (p) => {
     const f = writeScript("key.ps1", "﻿" + R.REGISTRY_SCRIPTS.key);
-    const r = ps(f, { RIQ_REG_VIEW: "64", RIQ_REG_PATH: p, RIQ_REG_TEXT: "", RIQ_REG_IN: "keys" });
+    const r = ps(f, { ADG_REG_VIEW: "64", ADG_REG_PATH: p, ADG_REG_TEXT: "", ADG_REG_IN: "keys" });
     return R.parseRegistryKey(parseWindowsJson(r.stdout, r.stderr), p);
 };
 const val = (p, n) => readKey(p).values.find((v) => v.name === n);
@@ -148,30 +148,30 @@ try {
 
     check("secret-looking names are refused by the script too: nothing is written, deleted or read back", () => {
         for (const n of ["MyPassword", "ApiKey", "client_secret", "Token1"]) {
-            const a = W("set", { RIQ_REG_PATH: BASE, RIQ_REG_NAME: n, RIQ_REG_TYPE: "REG_SZ", RIQ_REG_DATA: R.dataArg("REG_SZ", "hunter2") }).answer;
+            const a = W("set", { ADG_REG_PATH: BASE, ADG_REG_NAME: n, ADG_REG_TYPE: "REG_SZ", ADG_REG_DATA: R.dataArg("REG_SZ", "hunter2") }).answer;
             assert.equal(a.status, "refused"); assert.equal(a.reason, "masked"); assert.match(a.message, /blocked/);
             assert.equal(val(BASE, n), undefined, `${n} was not written`);
-            assert.equal(W("deleteValue", { RIQ_REG_PATH: BASE, RIQ_REG_NAME: n }).answer.reason, "masked");
+            assert.equal(W("deleteValue", { ADG_REG_PATH: BASE, ADG_REG_NAME: n }).answer.reason, "masked");
         }
         // a secret-named value that exists (put there by someone else) is not touched, read, or recorded
-        ps1(`New-ItemProperty 'HKCU:\\Software\\RemoteIQ-Test' 'PreexistingPassword' -Value 'real-secret-data' | Out-Null`);
-        const d = W("deleteValue", { RIQ_REG_PATH: BASE, RIQ_REG_NAME: "PreexistingPassword" });
+        ps1(`New-ItemProperty 'HKCU:\\Software\\AdgRmm-Test' 'PreexistingPassword' -Value 'real-secret-data' | Out-Null`);
+        const d = W("deleteValue", { ADG_REG_PATH: BASE, ADG_REG_NAME: "PreexistingPassword" });
         assert.equal(d.answer.reason, "masked"); assert.ok(!d.raw.includes("real-secret-data"));
         assert.ok(readKey(BASE).values.some((v) => v.name === "PreexistingPassword"), "still there");
-        ps1(`Remove-ItemProperty 'HKCU:\\Software\\RemoteIQ-Test' 'PreexistingPassword'`);
+        ps1(`Remove-ItemProperty 'HKCU:\\Software\\AdgRmm-Test' 'PreexistingPassword'`);
     });
 
-    check("blocklist inside the script: refused BEFORE anything is opened (HKLM roots, Winlogon Shell, IFEO, Session Manager, RemoteIQ, Lsa); HKLM itself cannot be written without elevation", () => {
-        const set = (p, n = "x") => W("set", { RIQ_REG_PATH: p, RIQ_REG_NAME: n, RIQ_REG_TYPE: "REG_SZ", RIQ_REG_DATA: R.dataArg("REG_SZ", "v") }).answer;
+    check("blocklist inside the script: refused BEFORE anything is opened (HKLM roots, Winlogon Shell, IFEO, Session Manager, ADG RMM, Lsa); HKLM itself cannot be written without elevation", () => {
+        const set = (p, n = "x") => W("set", { ADG_REG_PATH: p, ADG_REG_NAME: n, ADG_REG_TYPE: "REG_SZ", ADG_REG_DATA: R.dataArg("REG_SZ", "v") }).answer;
         for (const [p, n] of [["HKLM\\SOFTWARE", "x"], ["HKLM\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Winlogon", "Shell"], ["HKLM\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Image File Execution Options\\notepad.exe", "Debugger"],
-            ["HKLM\\SYSTEM\\CurrentControlSet\\Control\\Session Manager", "BootExecute"], ["HKLM\\SOFTWARE\\RemoteIQ", "x"], ["HKLM\\SYSTEM\\CurrentControlSet\\Control\\Lsa", "x"], [`HKU\\${sid}`, "x"]]) {
+            ["HKLM\\SYSTEM\\CurrentControlSet\\Control\\Session Manager", "BootExecute"], ["HKLM\\SOFTWARE\\AdgRmm", "x"], ["HKLM\\SYSTEM\\CurrentControlSet\\Control\\Lsa", "x"], [`HKU\\${sid}`, "x"]]) {
             const a = set(p, n); assert.equal(a.status, "refused", p); assert.equal(a.reason, "blocked", p); assert.match(a.message, /^This change is blocked: /);
         }
-        assert.equal(W("createKey", { RIQ_REG_PATH: "HKLM\\SYSTEM" }).answer.reason, "blocked");
-        assert.equal(W("deleteKey", { RIQ_REG_PATH: "HKLM\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Winlogon" }).answer.reason, "blocked");
-        assert.equal(W("deleteValue", { RIQ_REG_PATH: "HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Policies\\System", RIQ_REG_NAME: "EnableLUA" }).answer.reason, "blocked");
+        assert.equal(W("createKey", { ADG_REG_PATH: "HKLM\\SYSTEM" }).answer.reason, "blocked");
+        assert.equal(W("deleteKey", { ADG_REG_PATH: "HKLM\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Winlogon" }).answer.reason, "blocked");
+        assert.equal(W("deleteValue", { ADG_REG_PATH: "HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Policies\\System", ADG_REG_NAME: "EnableLUA" }).answer.reason, "blocked");
         // an allowed HKLM path: the script reaches the registry and Windows refuses (not elevated): an error, not a silent success
-        throwsDevice(() => set("HKLM\\SOFTWARE\\RiqRegNoSuchVendor"), /does not exist|denied|not allowed|Access/i);
+        throwsDevice(() => set("HKLM\\SOFTWARE\\AdgRegNoSuchVendor"), /does not exist|denied|not allowed|Access/i);
     });
 
     check("create a key with values (used to put back a deleted key); a failure part way leaves nothing behind", () => {
@@ -200,21 +200,21 @@ try {
     check("delete key refusals: the value count changed since, a secret-named value inside, too many values, too much data, an unrecordable type: nothing is deleted", () => {
         const p = `${BASE}\\Guard`; mkKey(p); setV("a", "REG_SZ", "1", { exists: false }, p);
         const c = rmKey(p, 0); assert.equal(c.reason, "changed"); assert.ok(val(p, "a"));
-        ps1(`New-ItemProperty 'HKCU:\\Software\\RemoteIQ-Test\\Guard' 'Password1' -Value 'real-secret' | Out-Null`);
-        const s = W("deleteKey", { RIQ_REG_PATH: p }); assert.equal(s.answer.reason, "masked"); assert.ok(!s.raw.includes("real-secret")); assert.ok(readKey(p).values.some((v) => v.name === "Password1"));
-        ps1(`Remove-ItemProperty 'HKCU:\\Software\\RemoteIQ-Test\\Guard' 'Password1'`);
-        ps1(`1..101 | ForEach-Object { New-ItemProperty 'HKCU:\\Software\\RemoteIQ-Test\\Guard' ('n' + $_) -Value 'x' | Out-Null }`);
+        ps1(`New-ItemProperty 'HKCU:\\Software\\AdgRmm-Test\\Guard' 'Password1' -Value 'real-secret' | Out-Null`);
+        const s = W("deleteKey", { ADG_REG_PATH: p }); assert.equal(s.answer.reason, "masked"); assert.ok(!s.raw.includes("real-secret")); assert.ok(readKey(p).values.some((v) => v.name === "Password1"));
+        ps1(`Remove-ItemProperty 'HKCU:\\Software\\AdgRmm-Test\\Guard' 'Password1'`);
+        ps1(`1..101 | ForEach-Object { New-ItemProperty 'HKCU:\\Software\\AdgRmm-Test\\Guard' ('n' + $_) -Value 'x' | Out-Null }`);
         assert.equal(rmKey(p).reason, "toolarge");
-        ps1(`1..101 | ForEach-Object { Remove-ItemProperty 'HKCU:\\Software\\RemoteIQ-Test\\Guard' ('n' + $_) }`);
-        ps1(`New-ItemProperty 'HKCU:\\Software\\RemoteIQ-Test\\Guard' 'Blob' -Value ([byte[]](1..12 | ForEach-Object { 0..255 })) -PropertyType Binary | Out-Null`);
+        ps1(`1..101 | ForEach-Object { Remove-ItemProperty 'HKCU:\\Software\\AdgRmm-Test\\Guard' ('n' + $_) }`);
+        ps1(`New-ItemProperty 'HKCU:\\Software\\AdgRmm-Test\\Guard' 'Blob' -Value ([byte[]](1..12 | ForEach-Object { 0..255 })) -PropertyType Binary | Out-Null`);
         assert.equal(rmKey(p).reason, "toolarge", "3072 bytes weigh 9216, more than 8000");
-        ps1(`Remove-ItemProperty 'HKCU:\\Software\\RemoteIQ-Test\\Guard' 'Blob'`);
-        ps1(`New-ItemProperty 'HKCU:\\Software\\RemoteIQ-Test\\Guard' 'Huge' -Value ('x' * 9000) | Out-Null`);
+        ps1(`Remove-ItemProperty 'HKCU:\\Software\\AdgRmm-Test\\Guard' 'Blob'`);
+        ps1(`New-ItemProperty 'HKCU:\\Software\\AdgRmm-Test\\Guard' 'Huge' -Value ('x' * 9000) | Out-Null`);
         assert.equal(rmKey(p).reason, "unrecordable"); assert.ok(val(p, "a"));
         const o = setV("Huge", "REG_SZ", "small", undefined, p); assert.equal(o.reason, "unrecordable", "overwriting a value too big to record is refused too");
         assert.equal(delV("Huge", undefined, p).reason, "unrecordable");
-        ps1(`Remove-ItemProperty 'HKCU:\\Software\\RemoteIQ-Test\\Guard' 'Huge'`);
-        ps1(`New-ItemProperty 'HKCU:\\Software\\RemoteIQ-Test\\Guard' 'NoneKind' -Value ([byte[]](1,2)) -PropertyType Binary | Out-Null`);
+        ps1(`Remove-ItemProperty 'HKCU:\\Software\\AdgRmm-Test\\Guard' 'Huge'`);
+        ps1(`New-ItemProperty 'HKCU:\\Software\\AdgRmm-Test\\Guard' 'NoneKind' -Value ([byte[]](1,2)) -PropertyType Binary | Out-Null`);
         assert.equal(rmKey(p, 2).status, "done", "the guard key is deletable once it only holds ordinary values");
     });
 
@@ -267,10 +267,10 @@ try {
         assert.ok(!fs.existsSync(sentinel), "the injected command never ran");
         for (const t of Object.values(R.REGISTRY_WRITE_SCRIPTS)) assert.ok(!t.includes("New-Item") && !t.includes("pwned"), "no typed text in the script");
         // a malformed argument (not made by the server) is an error, never a write
-        throwsDevice(() => W("set", { RIQ_REG_PATH: BASE, RIQ_REG_NAME: "bad", RIQ_REG_TYPE: "REG_SZ", RIQ_REG_DATA: JSON.stringify({ v: "no prefix" }) }), /malformed/);
-        throwsDevice(() => W("set", { RIQ_REG_PATH: BASE, RIQ_REG_NAME: "bad", RIQ_REG_TYPE: "REG_DWORD", RIQ_REG_DATA: R.dataArg("REG_DWORD", "4294967296") }), /./);
-        throwsDevice(() => W("set", { RIQ_REG_PATH: BASE, RIQ_REG_NAME: "bad", RIQ_REG_TYPE: "REG_BINARY", RIQ_REG_DATA: R.dataArg("REG_BINARY", "zz") }), /hex/);
-        throwsDevice(() => W("set", { RIQ_REG_PATH: BASE, RIQ_REG_NAME: "bad", RIQ_REG_TYPE: "REG_NONE", RIQ_REG_DATA: R.dataArg("REG_SZ", "x") }), /cannot be written/);
+        throwsDevice(() => W("set", { ADG_REG_PATH: BASE, ADG_REG_NAME: "bad", ADG_REG_TYPE: "REG_SZ", ADG_REG_DATA: JSON.stringify({ v: "no prefix" }) }), /malformed/);
+        throwsDevice(() => W("set", { ADG_REG_PATH: BASE, ADG_REG_NAME: "bad", ADG_REG_TYPE: "REG_DWORD", ADG_REG_DATA: R.dataArg("REG_DWORD", "4294967296") }), /./);
+        throwsDevice(() => W("set", { ADG_REG_PATH: BASE, ADG_REG_NAME: "bad", ADG_REG_TYPE: "REG_BINARY", ADG_REG_DATA: R.dataArg("REG_BINARY", "zz") }), /hex/);
+        throwsDevice(() => W("set", { ADG_REG_PATH: BASE, ADG_REG_NAME: "bad", ADG_REG_TYPE: "REG_NONE", ADG_REG_DATA: R.dataArg("REG_SZ", "x") }), /cannot be written/);
         assert.equal(val(BASE, "bad"), undefined);
     });
 } finally {

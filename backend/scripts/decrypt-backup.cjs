@@ -2,7 +2,7 @@
 // Decrypts an encrypted backup archive by hand, for when the backend is not running or a downloaded
 // archive has to be read. It needs the build in dist/ and the key the archive was made with.
 //
-//   DATA_ENCRYPTION_KEY_FILE=/opt/remoteiq/secrets/data-encryption.key \
+//   DATA_ENCRYPTION_KEY_FILE=/opt/adgrmm/secrets/data-encryption.key \
 //     node scripts/decrypt-backup.cjs <input> <output>
 "use strict";
 

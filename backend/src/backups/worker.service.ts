@@ -175,7 +175,7 @@ export class WorkerService {
             return;
         }
 
-        const tmpRoot = await fsp.mkdtemp(path.join(os.tmpdir(), "remoteiq-bkp-"));
+        const tmpRoot = await fsp.mkdtemp(path.join(os.tmpdir(), "adgrmm-bkp-"));
         const exportDir = path.join(tmpRoot, "export");
         await ensureDir(exportDir);
         let manifest: any = null;
@@ -604,7 +604,7 @@ export class WorkerService {
                 .replace(/[:]/g, "-")
                 .replace(/\..+/, "");
 
-            let archiveName = `remoteiq-postgresql_${stamp}.dump`;
+            let archiveName = `adgrmm-postgresql_${stamp}.dump`;
             let archivePath = path.join(tmpRoot, archiveName);
 
             await this.appendLog(

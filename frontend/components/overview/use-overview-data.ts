@@ -8,8 +8,8 @@ import * as React from "react";
 import { fetchCustomers, fetchDeviceCounts, fetchDevices, type CustomerClient, type Device as ApiDevice, type DeviceCounts } from "@/lib/api";
 import { fetchDashboardSummary, type DashboardSummary } from "@/lib/dashboard-api";
 
-const CUSTOMER_KEY = "remoteiq.overview.customer.v1";
-const BREAKDOWN_KEY = "remoteiq.overview.breakdown.v1";
+const CUSTOMER_KEY = "adgrmm.overview.customer.v1";
+const BREAKDOWN_KEY = "adgrmm.overview.breakdown.v1";
 const REFRESH_MS = 60_000;
 const OFFLINE_LIST_LIMIT = 50;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;

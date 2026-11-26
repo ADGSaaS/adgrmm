@@ -5,7 +5,7 @@
 // limit, and news (a new critical finding goes to the webhooks).
 // The backend under test has to be started with:
 //   M365_LOGIN_BASE=http://127.0.0.1:4881 M365_GRAPH_BASE=http://127.0.0.1:4881 M365_SYNC=false
-//   RIQ_E2E_ALLOW=1 BASE_URL=http://127.0.0.1:3977 DATABASE_URL=postgres://.../riq_m365_e2e JWT_SECRET=... node test/m365-http.e2e.cjs
+//   ADG_E2E_ALLOW=1 BASE_URL=http://127.0.0.1:3977 DATABASE_URL=postgres://.../adg_m365_e2e JWT_SECRET=... node test/m365-http.e2e.cjs
 "use strict";
 const http = require("node:http");
 const { assert, call, runner, setup, uuid } = require("./groupc-helpers.cjs");

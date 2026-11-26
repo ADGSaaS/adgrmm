@@ -1,4 +1,4 @@
-//remoteiq-frontend\components\data-table.tsx
+//adgrmm-frontend\components\data-table.tsx
 
 "use client";
 
@@ -148,7 +148,7 @@ export function DataTable<TData extends { id?: string }, TValue>({
     React.useEffect(() => {
         if (!orderStorageKey) return;
         try {
-            const saved = JSON.parse(window.localStorage.getItem(`riq.table.${orderStorageKey}.order`) ?? "null");
+            const saved = JSON.parse(window.localStorage.getItem(`adg.table.${orderStorageKey}.order`) ?? "null");
             if (Array.isArray(saved)) {
                 // Keep what is saved, drop columns that no longer exist, and put new ones at the end of the movable part.
                 const known = saved.filter((id: string) => defaultOrder.includes(id));
@@ -168,7 +168,7 @@ export function DataTable<TData extends { id?: string }, TValue>({
         const order = [...lead, ...movable, ...tail];
         setColumnOrder(order);
         if (orderStorageKey) {
-            try { window.localStorage.setItem(`riq.table.${orderStorageKey}.order`, JSON.stringify(order)); } catch { /* ignore */ }
+            try { window.localStorage.setItem(`adg.table.${orderStorageKey}.order`, JSON.stringify(order)); } catch { /* ignore */ }
         }
     }, [defaultOrder, orderStorageKey, pinned]);
     const move = (id: string, delta: -1 | 1) => {
@@ -183,7 +183,7 @@ export function DataTable<TData extends { id?: string }, TValue>({
     React.useEffect(() => {
         if (!orderStorageKey) return;
         try {
-            const saved = Number(window.localStorage.getItem(`riq.table.${orderStorageKey}.pageSize`));
+            const saved = Number(window.localStorage.getItem(`adg.table.${orderStorageKey}.pageSize`));
             if (PAGE_SIZES.includes(saved)) setPagination((p) => ({ ...p, pageSize: saved }));
         } catch { /* ignore */ }
     }, [orderStorageKey]);
@@ -212,7 +212,7 @@ export function DataTable<TData extends { id?: string }, TValue>({
     const changePageSize = (n: number) => {
         setPagination({ pageIndex: 0, pageSize: n });
         if (orderStorageKey) {
-            try { window.localStorage.setItem(`riq.table.${orderStorageKey}.pageSize`, String(n)); } catch { /* ignore */ }
+            try { window.localStorage.setItem(`adg.table.${orderStorageKey}.pageSize`, String(n)); } catch { /* ignore */ }
         }
     };
     // Widths people have dragged, by column id (pixels). Columns without one share what is left.
@@ -220,7 +220,7 @@ export function DataTable<TData extends { id?: string }, TValue>({
     React.useEffect(() => {
         if (!orderStorageKey) return;
         try {
-            const saved = JSON.parse(window.localStorage.getItem(`riq.table.${orderStorageKey}.widths`) ?? "null");
+            const saved = JSON.parse(window.localStorage.getItem(`adg.table.${orderStorageKey}.widths`) ?? "null");
             if (saved && typeof saved === "object") {
                 const clean: Record<string, number> = {};
                 for (const [k, v] of Object.entries(saved)) if (typeof v === "number" && v >= MIN_COL && v <= 1200) clean[k] = v;
@@ -231,7 +231,7 @@ export function DataTable<TData extends { id?: string }, TValue>({
     const saveWidths = React.useCallback((next: Record<string, number>) => {
         setWidths(next);
         if (orderStorageKey) {
-            try { window.localStorage.setItem(`riq.table.${orderStorageKey}.widths`, JSON.stringify(next)); } catch { /* ignore */ }
+            try { window.localStorage.setItem(`adg.table.${orderStorageKey}.widths`, JSON.stringify(next)); } catch { /* ignore */ }
         }
     }, [orderStorageKey]);
     const startResize = (id: string, e: React.MouseEvent<HTMLElement>) => {

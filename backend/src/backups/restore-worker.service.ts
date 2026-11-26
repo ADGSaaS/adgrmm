@@ -341,7 +341,7 @@ export class RestoreWorkerService {
     }
 
     private assertRestoreDatabaseName(name: string): void {
-        if (!/^remoteiq_restore_[a-f0-9_]+$/.test(name)) {
+        if (!/^adgrmm_restore_[a-f0-9_]+$/.test(name)) {
             throw new Error("Unsafe restore database name");
         }
     }
@@ -465,7 +465,7 @@ export class RestoreWorkerService {
                 DATABASE_URL: url,
                 PG_URL: url,
             },
-            "/opt/remoteiq/backend-repo/backend"
+            "/opt/adgrmm/backend-repo/backend"
         );
     }
 
@@ -618,9 +618,9 @@ export class RestoreWorkerService {
 
         const child = spawn(
             "/usr/local/bin/node",
-            ["/opt/remoteiq/backend-repo/backend/dist/main.js"],
+            ["/opt/adgrmm/backend-repo/backend/dist/main.js"],
             {
-                cwd: "/opt/remoteiq/backend-repo/backend",
+                cwd: "/opt/adgrmm/backend-repo/backend",
                 env: {
                     ...process.env,
                     DATABASE_URL: databaseUrl,
@@ -682,13 +682,13 @@ export class RestoreWorkerService {
         backupJobId: string
     ): Promise<void> {
         const tmpRoot = await fsp.mkdtemp(
-            path.join(os.tmpdir(), "remoteiq-restore-")
+            path.join(os.tmpdir(), "adgrmm-restore-")
         );
 
         await fsp.chmod(tmpRoot, 0o700);
 
         const dbName =
-            "remoteiq_restore_" +
+            "adgrmm_restore_" +
             restoreId
                 .replace(/-/g, "")
                 .slice(0, 16)

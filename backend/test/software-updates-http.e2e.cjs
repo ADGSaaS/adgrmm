@@ -2,7 +2,7 @@
 // Third-party software patching over the real routes and sign-in: who may read, scan, update and change the lists,
 // what a customer-limited person can reach, and what the audit log records. Throwaway backend and database only:
 //
-//   RIQ_E2E_ALLOW=1 BASE_URL=http://127.0.0.1:3931 DATABASE_URL=postgres://.../riq_g3_e2e JWT_SECRET=... node test/software-updates-http.e2e.cjs
+//   ADG_E2E_ALLOW=1 BASE_URL=http://127.0.0.1:3931 DATABASE_URL=postgres://.../adg_g3_e2e JWT_SECRET=... node test/software-updates-http.e2e.cjs
 "use strict";
 
 const { assert, uuid, call, json, runner, setup } = require("./groupc-helpers.cjs");

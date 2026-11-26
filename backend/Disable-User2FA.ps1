@@ -29,4 +29,4 @@ LIMIT 1;
 "@
 
 docker compose -f docker-compose.db.yml exec -T postgres `
-    psql -U remoteiq -d remoteiq -v ON_ERROR_STOP=1 -c "$SQL"
+    psql -U adgrmm -d adgrmm -v ON_ERROR_STOP=1 -c "$SQL"

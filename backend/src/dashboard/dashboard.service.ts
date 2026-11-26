@@ -421,7 +421,7 @@ export class DashboardService {
             items: rows.map((r) => ({
                 id: r.id,
                 at: r.at.toISOString(),
-                actor: [r.first_name, r.last_name].filter(Boolean).join(" ") || r.actor_email || "RemoteIQ",
+                actor: [r.first_name, r.last_name].filter(Boolean).join(" ") || r.actor_email || "ADG RMM",
                 text: describeAudit(r.action, r.target_label, r.outcome),
                 failed: r.outcome !== "success",
             })),

@@ -16,8 +16,8 @@ let passed = 0, failed = 0;
 const tests = [];
 const check = (name, fn) => tests.push([name, fn]);
 const sha = (b) => crypto.createHash("sha256").update(b).digest("hex");
-const FILE = "remoteiq-agent-windows.zip";
-const root = fs.mkdtempSync(path.join(os.tmpdir(), "riq-rel-"));
+const FILE = "adgrmm-agent-windows.zip";
+const root = fs.mkdtempSync(path.join(os.tmpdir(), "adg-rel-"));
 let n = 0;
 const fresh = () => { const d = path.join(root, `t${++n}`); fs.mkdirSync(d); return { stable: path.join(d, "stable", "windows", FILE), candidate: path.join(d, "candidate", "windows", FILE), previous: path.join(d, "previous", "windows", FILE), dir: d }; };
 

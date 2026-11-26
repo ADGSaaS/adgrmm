@@ -1,4 +1,4 @@
-# RemoteIQ Feature Status
+# ADG RMM Feature Status
 
 What exists today, from a review of the code on 2026-11-06. The plan for what comes next is in [ROADMAP.md](ROADMAP.md).
 
@@ -160,7 +160,7 @@ These make no API calls. Some show a "saved" message, and nothing is saved anywh
 | Deploys with automatic rollback | ✅ | |
 | Clean, reproducible agent builds | ✅ | |
 | Cloudflare TURN | ✅ | |
-| RemoteIQ's own backups | 🧪 | Archives aren't encrypted, and a restore hasn't been tested |
+| ADG RMM's own backups | 🧪 | Archives aren't encrypted, and a restore hasn't been tested |
 | Automated tests | 🟡 | API and install checks. No unit or UI tests |
 
 ## Known problems right now

@@ -1,6 +1,6 @@
 // backend/src/system-health/system-health.core.ts
 //
-// Pure rules for the health of the RemoteIQ servers themselves. Each check turns a measurement into ok / warn / critical with a sentence
+// Pure rules for the health of the ADG RMM servers themselves. Each check turns a measurement into ok / warn / critical with a sentence
 // the Owner can read. The service measures; nothing here touches the database or the machine, so every rule can be tested by itself.
 export type Status = "ok" | "warn" | "critical";
 export type Result = { key: string; title: string; status: Status; detail: string };
@@ -66,7 +66,7 @@ export function backupCheck(lastGoodAt: Date | null, now: Date, lastFailedAt: Da
 }
 
 function backupCheckTime(lastGoodAt: Date | null, now: Date, lastFailedAt: Date | null): Result {
-    if (!lastGoodAt) return { key: "backup", title: "Backups", status: "critical", detail: "There is no completed backup of the RemoteIQ database." };
+    if (!lastGoodAt) return { key: "backup", title: "Backups", status: "critical", detail: "There is no completed backup of the ADG RMM database." };
     const hours = (+now - +lastGoodAt) / 3600_000;
     if (hours > BACKUP_CRITICAL_HOURS) return { key: "backup", title: "Backups", status: "critical", detail: `The last good backup was ${ago(hours)}.` };
     if (hours > BACKUP_WARN_HOURS) return { key: "backup", title: "Backups", status: "warn", detail: `The last good backup was ${ago(hours)}${lastFailedAt && +lastFailedAt > +lastGoodAt ? " and the one after it failed" : ""}.` };
@@ -102,9 +102,9 @@ export function shouldStartRestore(f: RestoreFacts, now: Date): boolean {
 
 /** The message for a change of state, or null when nothing changed (or a first reading that is fine). */
 export function changeMessage(r: Result, notified: Status | null): { subject: string; body: string } | null {
-    if (r.status === "ok") return notified && notified !== "ok" ? { subject: `RemoteIQ recovered: ${r.title}`, body: `${r.title} is fine again. ${r.detail}` } : null;
+    if (r.status === "ok") return notified && notified !== "ok" ? { subject: `ADG RMM recovered: ${r.title}`, body: `${r.title} is fine again. ${r.detail}` } : null;
     if (notified === r.status) return null;
-    return { subject: `RemoteIQ ${r.status === "critical" ? "CRITICAL" : "warning"}: ${r.title}`, body: `${r.title}: ${r.detail}` };
+    return { subject: `ADG RMM ${r.status === "critical" ? "CRITICAL" : "warning"}: ${r.title}`, body: `${r.title}: ${r.detail}` };
 }
 
 /** A web address that should answer: the console (front end) or the address agents connect to. */

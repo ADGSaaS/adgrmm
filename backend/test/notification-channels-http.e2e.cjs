@@ -1,6 +1,6 @@
 // The notification channel API over HTTP: the message format of a webhook channel can be chosen, left to the address ("auto") and changed,
 // a format that does not exist is refused, email channels have none, and the rights are checked. Throwaway database only.
-// Run: RIQ_E2E_ALLOW=1 ALLOW_PRIVATE_WEBHOOKS=true BASE_URL=http://127.0.0.1:3951 DATABASE_URL=postgres://.../riq_x_e2e JWT_SECRET=... node test/notification-channels-http.e2e.cjs
+// Run: ADG_E2E_ALLOW=1 ALLOW_PRIVATE_WEBHOOKS=true BASE_URL=http://127.0.0.1:3951 DATABASE_URL=postgres://.../adg_x_e2e JWT_SECRET=... node test/notification-channels-http.e2e.cjs
 "use strict";
 const { assert, call, runner, setup } = require("./groupc-helpers.cjs");
 
@@ -27,7 +27,7 @@ async function main() {
         assert.equal(b.format, "teams"); assert.equal(b.formatChosen, "teams");
         r = await make({ name: `${tag} auto`, kind: "webhook", url: "https://example.com/hook2", format: "auto" });
         assert.equal(r.status, 201); b = await r.json(); ids.push(b.id);
-        assert.equal(b.format, "remoteiq"); assert.equal(b.formatChosen, null);
+        assert.equal(b.format, "adgrmm"); assert.equal(b.formatChosen, null);
     });
     await test("the format is changed, and put back to Automatic, with PATCH", async () => {
         const id = ids[0];

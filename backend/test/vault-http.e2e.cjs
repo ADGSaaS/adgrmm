@@ -5,7 +5,7 @@
 // the reason, the rate limit, the reveal answer (no-store), bulk results, the access log, and that no planted secret is in the audit rows,
 // the access rows, any job record, any table or the captured server log.
 //
-//   RIQ_E2E_ALLOW=1 BASE_URL=http://127.0.0.1:3961 DATABASE_URL=postgres://.../riq_vault_e2e JWT_SECRET=... SERVER_LOG=<file> node test/vault-http.e2e.cjs
+//   ADG_E2E_ALLOW=1 BASE_URL=http://127.0.0.1:3961 DATABASE_URL=postgres://.../adg_vault_e2e JWT_SECRET=... SERVER_LOG=<file> node test/vault-http.e2e.cjs
 "use strict";
 const crypto = require("node:crypto");
 const fs = require("node:fs");
@@ -89,14 +89,14 @@ async function main() {
         try {
             const rows = (await q(`SELECT j.id, j.payload, a.device_id FROM jobs j JOIN agents a ON a.id = j.agent_id WHERE j.status = 'queued' AND a.device_id = ANY($1::uuid[])`, [devs])).rows;
             for (const r of rows) {
-                const tool = r.payload?.env?.RIQ_TOOL;
+                const tool = r.payload?.env?.ADG_TOOL;
                 if (!tool?.startsWith("vault.") || handled.has(r.id)) continue;
                 handled.add(r.id);
                 seen.push({ id: r.id, tool, device: r.device_id, payload: r.payload });
                 const m = mode.get(r.device_id) ?? {};
                 let stdout;
                 if (m.garbage) { const s = pw(); planted.push(s); stdout = `oops ${s}`; }
-                else if (tool === "vault.laps") { const s = pw(Number(r.payload.env.RIQ_LAPS_LENGTH)); planted.push(s); lastLaps.set(r.device_id, s); stdout = JSON.stringify({ ok: true, account: r.payload.env.RIQ_LAPS_ACCOUNT, created: true, verified: m.lapsVerified !== false, password: s }); }
+                else if (tool === "vault.laps") { const s = pw(Number(r.payload.env.ADG_LAPS_LENGTH)); planted.push(s); lastLaps.set(r.device_id, s); stdout = JSON.stringify({ ok: true, account: r.payload.env.ADG_LAPS_ACCOUNT, created: true, verified: m.lapsVerified !== false, password: s }); }
                 else { const k = { id: uuid(), pw: rpass() }; planted.push(k.pw); lastKey.set(r.device_id, k); stdout = JSON.stringify({ ok: true, keys: [{ mount: "C:", protectorId: `{${k.id.toUpperCase()}}`, recoveryPassword: k.pw }] }); }
                 await agentFinish(r.id, r.device_id, { status: "succeeded", exitCode: 0, stdout, stderr: "", durationMs: 12 });
             }
@@ -181,7 +181,7 @@ async function main() {
         assert.ok(!JSON.stringify(v).includes(KEYPW()), "the list never carries a key");
         assert.ok(!/ciphertext|v1:/.test(JSON.stringify(v)));
         const job = seen.find((s) => s.tool === "vault.bitlocker");
-        assert.deepEqual(job.payload.env, { RIQ_TOOL: "vault.bitlocker", RIQ_SECRET_JOB: "1" });
+        assert.deepEqual(job.payload.env, { ADG_TOOL: "vault.bitlocker", ADG_SECRET_JOB: "1" });
         const res = (await q(`SELECT stdout, stderr FROM job_results WHERE job_id = $1`, [job.id])).rows[0];
         assert.equal(res.stdout, "(secret output removed)"); assert.equal(res.stderr, "(secret output removed)");
         assert.equal((await q(`SELECT status FROM jobs WHERE id = $1`, [job.id])).rows[0].status, "succeeded");
@@ -192,7 +192,7 @@ async function main() {
         const it = v.items.find((i) => i.kind === "local_admin");
         assert.equal(it.label, "vault-admin"); assert.equal(it.status, "current"); assert.equal(v.laps.attempt, "ok"); assert.equal(v.laps.enabled, true); assert.equal(v.laps.account, "vault-admin");
         const job = seen.find((s) => s.tool === "vault.laps");
-        assert.equal(job.payload.env.RIQ_LAPS_ACCOUNT, "vault-admin"); assert.equal(job.payload.env.RIQ_LAPS_LENGTH, "20");
+        assert.equal(job.payload.env.ADG_LAPS_ACCOUNT, "vault-admin"); assert.equal(job.payload.env.ADG_LAPS_LENGTH, "20");
         assert.ok(!JSON.stringify(v).includes(lastLaps.get(w1.id)));
     });
     await test("a second Rotate now while one waits is reported as already waiting, not queued twice", async () => {

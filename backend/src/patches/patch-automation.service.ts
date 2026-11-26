@@ -132,8 +132,8 @@ export class PatchAutomationService {
                     agentId: row.agent_id,
                     language: linux ? "bash" : "powershell",
                     scriptText: linux
-                        ? 'shutdown -r +2 "RemoteIQ: restarting to finish installing updates" >/dev/null 2>&1 &'
-                        : 'shutdown.exe /r /t 120 /c "RemoteIQ: restarting to finish installing updates"',
+                        ? 'shutdown -r +2 "ADG RMM: restarting to finish installing updates" >/dev/null 2>&1 &'
+                        : 'shutdown.exe /r /t 120 /c "ADG RMM: restarting to finish installing updates"',
                     timeoutSec: 60,
                 } as any);
                 const src = this.sourceName(e, "patching.reboot");

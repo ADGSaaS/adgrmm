@@ -6,8 +6,8 @@
 //
 // The backend under test has to be started with:
 //   MONITOR_ALLOW_PRIVATE=true RDAP_BASE_URL=http://127.0.0.1:4871/domain/ MONITOR_DNS_SERVERS=127.0.0.1:4872
-//   NODE_EXTRA_CA_CERTS=<tmp>/riq-wm-e2e/ca.pem      (create the CA first: node test/web-monitors-http.e2e.cjs --prepare)
-//   RIQ_E2E_ALLOW=1 BASE_URL=http://127.0.0.1:3977 DATABASE_URL=postgres://.../riq_wm_e2e JWT_SECRET=... node test/web-monitors-http.e2e.cjs
+//   NODE_EXTRA_CA_CERTS=<tmp>/adg-wm-e2e/ca.pem      (create the CA first: node test/web-monitors-http.e2e.cjs --prepare)
+//   ADG_E2E_ALLOW=1 BASE_URL=http://127.0.0.1:3977 DATABASE_URL=postgres://.../adg_wm_e2e JWT_SECRET=... node test/web-monitors-http.e2e.cjs
 "use strict";
 const fs = require("node:fs");
 const os = require("node:os");
@@ -17,12 +17,12 @@ const http = require("node:http");
 const tls = require("node:tls");
 const { spawnSync } = require("node:child_process");
 
-const DIR = path.join(os.tmpdir(), "riq-wm-e2e");
+const DIR = path.join(os.tmpdir(), "adg-wm-e2e");
 const sh = (args) => { const r = spawnSync("openssl", args, { encoding: "utf8" }); if (r.status !== 0) throw new Error(`openssl ${args.join(" ")}: ${r.stderr}`); };
 function prepare() {
     fs.mkdirSync(DIR, { recursive: true });
     if (!fs.existsSync(path.join(DIR, "ca.pem"))) {
-        sh(["req", "-x509", "-newkey", "rsa:2048", "-nodes", "-keyout", path.join(DIR, "ca.key"), "-out", path.join(DIR, "ca.pem"), "-days", "3650", "-subj", "/CN=Riq Test CA", "-addext", "basicConstraints=critical,CA:TRUE", "-addext", "keyUsage=critical,keyCertSign,cRLSign"]);
+        sh(["req", "-x509", "-newkey", "rsa:2048", "-nodes", "-keyout", path.join(DIR, "ca.key"), "-out", path.join(DIR, "ca.pem"), "-days", "3650", "-subj", "/CN=Adg Test CA", "-addext", "basicConstraints=critical,CA:TRUE", "-addext", "keyUsage=critical,keyCertSign,cRLSign"]);
     }
 }
 if (process.argv.includes("--prepare")) { prepare(); console.log(path.join(DIR, "ca.pem")); process.exit(0); }
@@ -41,7 +41,7 @@ function makeCert({ san = "IP:127.0.0.1", fromDays = -1, toDays = 90, self = fal
     if (self) {
         sh(["req", "-x509", "-newkey", "rsa:2048", "-nodes", "-keyout", key, "-out", pem, "-days", String(Math.max(toDays, 1)), "-subj", "/CN=self-signed", "-addext", `subjectAltName=${san}`]);
     } else {
-        sh(["req", "-new", "-newkey", "rsa:2048", "-nodes", "-keyout", key, "-out", csr, "-subj", "/CN=riq-test-leaf"]);
+        sh(["req", "-new", "-newkey", "rsa:2048", "-nodes", "-keyout", key, "-out", csr, "-subj", "/CN=adg-test-leaf"]);
         fs.writeFileSync(ext, `subjectAltName=${san}\nbasicConstraints=CA:FALSE\n`);
         const day = 86_400_000;
         sh(["x509", "-req", "-in", csr, "-CA", path.join(DIR, "ca.pem"), "-CAkey", path.join(DIR, "ca.key"), "-CAcreateserial", "-out", pem, "-extfile", ext,

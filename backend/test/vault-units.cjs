@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Device-secrets vault, pure tests (no database, no server): vault crypto (round trip, tamper, wrong AAD, wrong key), the strict parsers
 // with hostile output, the password generator (run for real in PowerShell: charset, length, classes, uniqueness, no modulo bias),
-// the scripts (every one is parsed with the PowerShell parser; lapsRotate is run ONLY with RIQ_DRY_RUN=1, which changes nothing; the
+// the scripts (every one is parsed with the PowerShell parser; lapsRotate is run ONLY with ADG_DRY_RUN=1, which changes nothing; the
 // BitLocker script is never run here, it needs SYSTEM), the limiter and the password / reason checks.
 //
 //   npx tsc -p tsconfig.json   (in backend/)    then    node test/vault-units.cjs
@@ -28,7 +28,7 @@ async function test(name, fn) {
     try { await fn(); passed++; console.log(`  ok    ${name}`); } catch (e) { failures.push(name); console.log(`  FAIL  ${name}\n        ${e?.message ?? e}`); }
 }
 const throwsCode = (fn, code) => assert.throws(fn, (e) => e instanceof P.VaultParseError && e.code === code, `expected ${code}`);
-const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "riq-vault-"));
+const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "adg-vault-"));
 const PS = process.env.POWERSHELL || "powershell.exe";
 function ps(file, env = {}, timeout = 120000) {
     const t0 = Date.now();
@@ -125,16 +125,16 @@ async function main() {
 
     console.log("LAPS result parser and password check");
     const PW = "Ab3!Ab3!Ab3!Ab3!Ab3!";
-    const lr = (o = {}) => JSON.stringify({ ok: true, account: "riq-admin", created: false, verified: true, password: PW, ...o });
-    const exp = { account: "riq-admin", length: 20 };
+    const lr = (o = {}) => JSON.stringify({ ok: true, account: "adg-admin", created: false, verified: true, password: PW, ...o });
+    const exp = { account: "adg-admin", length: 20 };
     await test("a good answer; verified false is kept as such", () => {
-        assert.deepEqual(P.parseLapsResult(lr(), exp), { account: "riq-admin", created: false, verified: true, password: PW });
+        assert.deepEqual(P.parseLapsResult(lr(), exp), { account: "adg-admin", created: false, verified: true, password: PW });
         assert.equal(P.parseLapsResult(lr({ verified: false, created: true }), exp).verified, false);
     });
     await test("refused: a dry run, another account, another length, characters outside the alphabet, a missing class, wrong types", () => {
         throwsCode(() => P.parseLapsResult(lr({ dryRun: true }), exp), "dry_run");
         throwsCode(() => P.parseLapsResult(lr({ account: "Administrator" }), exp), "mismatch");
-        throwsCode(() => P.parseLapsResult(lr(), { account: "riq-admin", length: 21 }), "bad_password");
+        throwsCode(() => P.parseLapsResult(lr(), { account: "adg-admin", length: 21 }), "bad_password");
         for (const pw of ["Ab3!Ab3!Ab3!Ab3!Ab3 ", "Ab3!Ab3!Ab3!Ab3!Ab3\"", "Ab3!Ab3!Ab3!Ab3!Ab3\\", "Il3!Il3!Il3!Il3!Il3!", "Ob3!Ob3!Ob3!Ob3!Ob3!", "abcdefghijkmnpqrstuv", "ABCDEFGHJKLMNPQRSTUV", "23456789234567892345", "!#%&*+=?@^_!#%&*+=?@^", "Abcdefghijkmnpqrs23!".replace("!", "$"), 12345678901234567890, null]) throwsCode(() => P.parseLapsResult(lr({ password: pw }), exp), "bad_password");
         throwsCode(() => P.parseLapsResult(lr({ created: "yes" }), exp), "bad_shape");
         throwsCode(() => P.parseLapsResult(lr({ verified: 1 }), exp), "bad_shape");
@@ -186,8 +186,8 @@ async function main() {
     });
     await test("secret-job env marker and redaction texts are fixed", () => {
         assert.equal(J.REDACTED_TEXT, "(secret output removed)");
-        assert.equal(J.isSecretJobEnv({ RIQ_SECRET_JOB: "1" }), true);
-        for (const e of [{ RIQ_SECRET_JOB: "0" }, {}, null, [], "1"]) assert.equal(J.isSecretJobEnv(e), false);
+        assert.equal(J.isSecretJobEnv({ ADG_SECRET_JOB: "1" }), true);
+        for (const e of [{ ADG_SECRET_JOB: "0" }, {}, null, [], "1"]) assert.equal(J.isSecretJobEnv(e), false);
     });
 
     console.log("scripts: PowerShell parser");
@@ -212,16 +212,16 @@ async function main() {
             assert.ok(!/Write-Error|Write-Host|Write-Output|Write-Warning|Write-Verbose|Write-Debug|Out-File|Set-Content|Add-Content|Start-Transcript|Tee-Object|>>?\s*\$|ConvertTo-Json|Add-Type|Invoke-Expression|\biex\b|net\s+user|Start-Process|Out-String/i.test(text.replace(/#.*$/gm, "")), `${name} uses a forbidden way of printing or running`);
             assert.ok(/Out-Raw/.test(text) && text.includes("[Console]::Out.Write"));
         }
-        assert.ok(!/RIQ_[A-Z_]+\s*=/.test(S.LAPS_ROTATE_SCRIPT), "no environment is set by the script");
+        assert.ok(!/ADG_[A-Z_]+\s*=/.test(S.LAPS_ROTATE_SCRIPT), "no environment is set by the script");
         assert.ok(!/Remove-LocalUser|Disable-LocalUser|Remove-Item|\.Delete\(|net user .* \/delete|Disable|Enable-LocalUser/i.test(S.LAPS_ROTATE_SCRIPT.replace(/#.*$/gm, "")), "the rotation script never deletes or disables an account");
     });
 
     console.log("password generator (the real PowerShell function)");
     const gen = writePs("gen.ps1", `${S.LAPS_GENERATOR}
-foreach ($len in 14, 20, 64) { for ($i = 0; $i -lt 2500; $i++) { [Console]::Out.WriteLine($len.ToString() + ' ' + (New-RiqPassword $len)) } }
+foreach ($len in 14, 20, 64) { for ($i = 0; $i -lt 2500; $i++) { [Console]::Out.WriteLine($len.ToString() + ' ' + (New-AdgPassword $len)) } }
 $rng = [System.Security.Cryptography.RandomNumberGenerator]::Create()
-foreach ($n in 4, 10, 24, 67, 200) { $c = New-Object int[] $n; for ($i = 0; $i -lt 40000; $i++) { $c[(Get-RiqIndex $rng $n)]++ }; [Console]::Out.WriteLine('IDX ' + $n + ' ' + ($c -join ',')) }
-foreach ($p in 'Ab3!Ab3!Ab3!Ab3!Ab3!', 'ab3!ab3!ab3!ab3!ab3!', 'Ab3Ab3Ab3Ab3Ab3Ab3', 'Ab!Ab!Ab!Ab!Ab!Ab!', 'AbcAbc!Abc!Abc!Abc!', 'Il3!Il3!Il3!Il3!Il3!', 'Ab3!Ab3!Ab3!Ab3!Ab3 ', 'Ab3!Ab3!Ab3!Ab3!Ab3') { [Console]::Out.WriteLine('TEST ' + (Test-RiqPassword $p 20) + ' ' + $p) }
+foreach ($n in 4, 10, 24, 67, 200) { $c = New-Object int[] $n; for ($i = 0; $i -lt 40000; $i++) { $c[(Get-AdgIndex $rng $n)]++ }; [Console]::Out.WriteLine('IDX ' + $n + ' ' + ($c -join ',')) }
+foreach ($p in 'Ab3!Ab3!Ab3!Ab3!Ab3!', 'ab3!ab3!ab3!ab3!ab3!', 'Ab3Ab3Ab3Ab3Ab3Ab3', 'Ab!Ab!Ab!Ab!Ab!Ab!', 'AbcAbc!Abc!Abc!Abc!', 'Il3!Il3!Il3!Il3!Il3!', 'Ab3!Ab3!Ab3!Ab3!Ab3 ', 'Ab3!Ab3!Ab3!Ab3!Ab3') { [Console]::Out.WriteLine('TEST ' + (Test-AdgPassword $p 20) + ' ' + $p) }
 `);
     let genOut;
     await test("generates 7500 passwords at lengths 14, 20 and 64 in one run", () => {
@@ -260,42 +260,42 @@ foreach ($p in 'Ab3!Ab3!Ab3!Ab3!Ab3!', 'ab3!ab3!ab3!ab3!ab3!', 'Ab3Ab3Ab3Ab3Ab3A
         // and the reason a naive byte % n would fail: for n = 67 the first 55 values would be 25 percent more likely
         const naive = 256 / 67; assert.ok(Math.ceil(naive) / Math.floor(naive) > 1.2);
     });
-    await test("the device-side check (Test-RiqPassword) accepts a good one and rejects missing classes, look-alikes, spaces and the wrong length", () => {
+    await test("the device-side check (Test-AdgPassword) accepts a good one and rejects missing classes, look-alikes, spaces and the wrong length", () => {
         const t = genOut.filter((l) => l.startsWith("TEST ")).map((l) => l.split(" ")[1]);
         assert.deepEqual(t, ["True", "False", "False", "False", "False", "False", "False", "False"]);
     });
 
-    console.log("lapsRotate run for real, ONLY with RIQ_DRY_RUN=1 (changes nothing)");
+    console.log("lapsRotate run for real, ONLY with ADG_DRY_RUN=1 (changes nothing)");
     const lapsFile = writePs("lapsRotate.ps1", S.LAPS_ROTATE_SCRIPT);
     await test("dry run: exit 0, ASCII JSON in the real result shape, the server parser refuses it as a dry run and nothing is stored; time is measured", () => {
-        const r = ps(lapsFile, { RIQ_DRY_RUN: "1", RIQ_LAPS_ACCOUNT: "riq-admin", RIQ_LAPS_LENGTH: "20", RIQ_TOOL: "vault.laps", RIQ_SECRET_JOB: "1" });
+        const r = ps(lapsFile, { ADG_DRY_RUN: "1", ADG_LAPS_ACCOUNT: "adg-admin", ADG_LAPS_LENGTH: "20", ADG_TOOL: "vault.laps", ADG_SECRET_JOB: "1" });
         console.log(`        dry run took ${r.ms} ms (exit ${r.code})`);
         assert.equal(r.code, 0, r.err); assert.equal(r.err.trim(), "", "nothing on stderr");
         assert.ok(!/[^\x00-\x7F]/.test(r.out));
         const j = JSON.parse(r.out);
         assert.deepEqual(Object.keys(j).sort(), ["account", "created", "dryRun", "ok", "password", "verified"]);
-        assert.equal(j.ok, true); assert.equal(j.dryRun, true); assert.equal(j.account, "riq-admin"); assert.equal(j.created, false); assert.equal(j.verified, false);
+        assert.equal(j.ok, true); assert.equal(j.dryRun, true); assert.equal(j.account, "adg-admin"); assert.equal(j.created, false); assert.equal(j.verified, false);
         assert.ok(P.isValidLapsPassword(j.password, 20));
-        throwsCode(() => P.parseLapsResult(r.out, { account: "riq-admin", length: 20 }), "dry_run");
+        throwsCode(() => P.parseLapsResult(r.out, { account: "adg-admin", length: 20 }), "dry_run");
         // the same text without the dry-run flag would be accepted (so the parser is what stops a dry run being stored)
-        const live = P.parseLapsResult(JSON.stringify({ ...j, dryRun: undefined }), { account: "riq-admin", length: 20 });
+        const live = P.parseLapsResult(JSON.stringify({ ...j, dryRun: undefined }), { account: "adg-admin", length: 20 });
         assert.equal(live.password, j.password);
     });
     await test("dry run: other lengths and account names work, bad ones are refused with a reason code, exit 1 and no password", () => {
         for (const [len, acct] of [["14", "a"], ["64", "My.Admin_01-x"], ["33", "x".repeat(20)]]) {
-            const r = ps(lapsFile, { RIQ_DRY_RUN: "1", RIQ_LAPS_ACCOUNT: acct, RIQ_LAPS_LENGTH: len });
+            const r = ps(lapsFile, { ADG_DRY_RUN: "1", ADG_LAPS_ACCOUNT: acct, ADG_LAPS_LENGTH: len });
             assert.equal(r.code, 0, `${len} ${acct}: ${r.err}`);
             assert.ok(P.isValidLapsPassword(JSON.parse(r.out).password, Number(len)));
         }
-        for (const [len, acct, reason] of [["20", "Administrator", "reserved_account"], ["20", "GUEST", "reserved_account"], ["20", "SYSTEM", "reserved_account"], ["20", "DefaultAccount", "reserved_account"], ["20", "", "invalid_account"], ["20", "x".repeat(21), "invalid_account"], ["20", "bad name", "invalid_account"], ["20", "a;b", "invalid_account"], ["20", "a\"b", "invalid_account"], ["13", "riq-admin", "invalid_length"], ["65", "riq-admin", "invalid_length"], ["abc", "riq-admin", "invalid_length"], ["", "riq-admin", "invalid_length"]]) {
-            const r = ps(lapsFile, { RIQ_DRY_RUN: "1", RIQ_LAPS_ACCOUNT: acct, RIQ_LAPS_LENGTH: len });
+        for (const [len, acct, reason] of [["20", "Administrator", "reserved_account"], ["20", "GUEST", "reserved_account"], ["20", "SYSTEM", "reserved_account"], ["20", "DefaultAccount", "reserved_account"], ["20", "", "invalid_account"], ["20", "x".repeat(21), "invalid_account"], ["20", "bad name", "invalid_account"], ["20", "a;b", "invalid_account"], ["20", "a\"b", "invalid_account"], ["13", "adg-admin", "invalid_length"], ["65", "adg-admin", "invalid_length"], ["abc", "adg-admin", "invalid_length"], ["", "adg-admin", "invalid_length"]]) {
+            const r = ps(lapsFile, { ADG_DRY_RUN: "1", ADG_LAPS_ACCOUNT: acct, ADG_LAPS_LENGTH: len });
             assert.equal(r.code, 1, `${len} ${acct}`);
             const j = JSON.parse(r.out); assert.equal(j.ok, false); assert.equal(j.reason, reason); assert.ok(!("password" in j));
         }
     });
     await test("two dry runs give different passwords (the generator is fresh each time)", () => {
-        const a = JSON.parse(ps(lapsFile, { RIQ_DRY_RUN: "1", RIQ_LAPS_ACCOUNT: "riq-admin", RIQ_LAPS_LENGTH: "20" }).out).password;
-        const b = JSON.parse(ps(lapsFile, { RIQ_DRY_RUN: "1", RIQ_LAPS_ACCOUNT: "riq-admin", RIQ_LAPS_LENGTH: "20" }).out).password;
+        const a = JSON.parse(ps(lapsFile, { ADG_DRY_RUN: "1", ADG_LAPS_ACCOUNT: "adg-admin", ADG_LAPS_LENGTH: "20" }).out).password;
+        const b = JSON.parse(ps(lapsFile, { ADG_DRY_RUN: "1", ADG_LAPS_ACCOUNT: "adg-admin", ADG_LAPS_LENGTH: "20" }).out).password;
         assert.notEqual(a, b);
     });
 

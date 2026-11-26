@@ -1,4 +1,4 @@
-// remoteiq-frontend/lib/ws.ts
+// adgrmm-frontend/lib/ws.ts
 type Listener = (msg: any) => void;
 
 let socket: WebSocket | null = null;

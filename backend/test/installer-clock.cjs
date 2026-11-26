@@ -12,11 +12,11 @@ const assert = require("node:assert/strict");
 const { spawnSync, spawn } = require("node:child_process");
 
 const S = require(path.join(__dirname, "..", process.env.DIST || "dist", "provisioning", "installer-scripts.js"));
-const vals = { baseUrl: "https://riq.example.test", enrollmentKey: "k", packageSha256: "0".repeat(64) };
+const vals = { baseUrl: "https://adg.example.test", enrollmentKey: "k", packageSha256: "0".repeat(64) };
 let passed = 0, failed = 0;
 const run = (cmd, args, o = {}) => spawnSync(cmd, args, { encoding: "utf8", timeout: 120_000, ...o });
 const bash = (() => { for (const b of ["bash", "C:/Program Files/Git/bin/bash.exe"]) { if (run(b, ["-c", "true"]).status === 0) return b; } return null; })();
-const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "riq-clock-"));
+const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "adg-clock-"));
 const check = async (name, fn) => { try { await fn(); passed++; console.log(`ok   ${name}`); } catch (e) { failed++; console.log(`FAIL ${name}: ${e.message}`); } };
 const posix = (p) => p.replace(/\\/g, "/").replace(/^([A-Za-z]):/, (_, d) => `/${d.toLowerCase()}`);
 
@@ -42,7 +42,7 @@ const posix = (p) => p.replace(/\\/g, "/").replace(/^([A-Za-z]):/, (_, d) => `/$
             fs.writeFileSync(path.join(bin, "curl"), `#!/bin/bash\n${curlDead ? "exit 6\n" : `${curlFailsVerified ? 'case "$*" in *" -k "*) ;; *) exit 60;; esac\n' : ""}printf 'HTTP/1.1 404 Not Found\\r\\n${header ? `Date: ${header}\\r\\n` : ""}\\r\\n'\n`}`, { mode: 0o755 });
             fs.writeFileSync(path.join(bin, "date"), `#!/bin/bash\nif [ "$1" = "-u" ] && [ "$2" = "-s" ]; then echo "$3" >> "${posix(log)}"; exit 0; fi\nif [ "$1" = "-u" ] && [ "$2" = "+%s" ] && [ -n "${offsetSec}" ]; then echo $(( $("${posix(real)}" -u +%s) + ${offsetSec} )); exit 0; fi\nexec "${posix(real)}" "$@"\n`, { mode: 0o755 });
             fs.writeFileSync(path.join(bin, "timedatectl"), "#!/bin/bash\nexit 1\n", { mode: 0o755 });
-            const r = run(bash, ["-c", `set -euo pipefail\nBASE_URL='https://riq.example.test'\nPATH="${posix(bin)}:$PATH"\n${body}\nsync_clock || true\nexit 0`]);
+            const r = run(bash, ["-c", `set -euo pipefail\nBASE_URL='https://adg.example.test'\nPATH="${posix(bin)}:$PATH"\n${body}\nsync_clock || true\nexit 0`]);
             return { out: r.stdout + r.stderr, set: fs.existsSync(log) ? fs.readFileSync(log, "utf8").trim() : "" };
         };
         const rfc = (ms) => new Date(ms).toUTCString();

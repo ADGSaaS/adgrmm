@@ -12,7 +12,7 @@ class CreateChannelDto {
     @IsOptional() @IsBoolean() notifyOnResolve?: boolean;
     @IsOptional() @IsArray() @IsString({ each: true }) recipients?: string[];
     @IsOptional() @IsString() @MaxLength(2000) url?: string;
-    @IsOptional() @IsIn(["auto", "remoteiq", "slack", "discord", "teams"]) format?: "auto" | "remoteiq" | "slack" | "discord" | "teams";
+    @IsOptional() @IsIn(["auto", "adgrmm", "slack", "discord", "teams"]) format?: "auto" | "adgrmm" | "slack" | "discord" | "teams";
 }
 
 class UpdateChannelDto {
@@ -22,7 +22,7 @@ class UpdateChannelDto {
     @IsOptional() @IsBoolean() notifyOnResolve?: boolean;
     @IsOptional() @IsArray() @IsString({ each: true }) recipients?: string[];
     @IsOptional() @IsString() @MaxLength(2000) url?: string;
-    @IsOptional() @IsIn(["auto", "remoteiq", "slack", "discord", "teams"]) format?: "auto" | "remoteiq" | "slack" | "discord" | "teams";
+    @IsOptional() @IsIn(["auto", "adgrmm", "slack", "discord", "teams"]) format?: "auto" | "adgrmm" | "slack" | "discord" | "teams";
 }
 
 @UsePipes(new ValidationPipe({ whitelist: true, transform: true }))

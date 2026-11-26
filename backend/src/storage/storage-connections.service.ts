@@ -144,11 +144,11 @@ export class StorageConnectionsService {
       if (!base.sse) base.sse = "none";
     }
     if (kind === "nextcloud") {
-      if (!base.path) base.path = "/Backups/RemoteIQ";
+      if (!base.path) base.path = "/Backups/AdgRmm";
     }
     if (kind === "sftp") {
       if (!base.port) base.port = 22;
-      if (!base.path) base.path = "/srv/remoteiq/backups";
+      if (!base.path) base.path = "/srv/adgrmm/backups";
     }
     return base;
   }
@@ -452,7 +452,7 @@ export class StorageConnectionsService {
     if (body.kind === "s3") {
       const bucket = cfg.bucket;
       const prefix = (cfg.prefix || "").replace(/^\/+|\/+$/g, "");
-      const key = (prefix ? `${prefix}/` : "") + `.remoteiq_probe_${Date.now()}.txt`;
+      const key = (prefix ? `${prefix}/` : "") + `.adgrmm_probe_${Date.now()}.txt`;
       const secret = {
         region: cfg.region,
         endpoint: cfg.endpoint,

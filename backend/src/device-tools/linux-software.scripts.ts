@@ -1,5 +1,5 @@
 // Installing and removing one package on a Linux device, as a fixed signed bash job.
-//   - The package name and the action reach the script only through the environment (RIQ_PKG, RIQ_PKG_ACTION). Bash never parses them
+//   - The package name and the action reach the script only through the environment (ADG_PKG, ADG_PKG_ACTION). Bash never parses them
 //     as code, and the server checks the name against a strict shape before a job is made.
 //   - Only the system's own package manager is used (apt, dnf, yum, zypper or Alpine's apk), non-interactively, with a lock wait and a time limit.
 //   - A removal is refused when it would take anything else with it (apt: a dry run lists every package it would remove; rpm systems:
@@ -15,7 +15,7 @@ export const LINUX_PACKAGE_NAME = /^[A-Za-z0-9][A-Za-z0-9+._:-]{0,99}$/;
 
 /** Packages that are never removed from here: the agent itself, the remote-access and login stack, the init system, the package manager, the kernel. */
 const PROTECTED: RegExp[] = [
-    /^remoteiq/i,
+    /^adgrmm/i,
     /^(openssh-server|openssh-clients|openssh|ssh|sshd)$/i,
     /^(systemd|systemd-sysv|systemd-libs|init|dbus|dbus-daemon|dbus-broker|polkit|policykit-1|udev|util-linux|coreutils|bash|dash|sudo|login|passwd|shadow|shadow-utils)$/i,
     /^(libc6|libc-bin|glibc|glibc-common|libssl[0-9.]*|openssl|openssl-libs|ca-certificates|base-files|base-passwd|filesystem|setup)$/i,
@@ -37,7 +37,7 @@ export function checkPackageName(raw: unknown, action: LinuxPackageAction): stri
     if (!name) throw new BadRequestException("Say which package.");
     if (!LINUX_PACKAGE_NAME.test(name)) throw new BadRequestException("A package name uses letters, digits and the characters + . _ - : only, and starts with a letter or digit.");
     if (action === "remove" && isProtectedPackage(name)) throw new BadRequestException(`${name} is needed to keep the device working or reachable, so it is not removed from here.`);
-    if (action === "install" && /^remoteiq/i.test(name)) throw new BadRequestException("The RemoteIQ agent is installed and updated through its own installer.");
+    if (action === "install" && /^adgrmm/i.test(name)) throw new BadRequestException("The ADG RMM agent is installed and updated through its own installer.");
     return name;
 }
 
@@ -46,8 +46,8 @@ export LC_ALL=C DEBIAN_FRONTEND=noninteractive
 export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:$PATH
 fail() { echo "$1" >&2; exit "$2"; }
 have() { command -v "$1" >/dev/null 2>&1; }
-PKG="$RIQ_PKG"
-ACT="$RIQ_PKG_ACTION"
+PKG="$ADG_PKG"
+ACT="$ADG_PKG_ACTION"
 case "$ACT" in install|remove) ;; *) fail "Unknown action." 64;; esac
 printf '%s' "$PKG" | grep -Eq '^[A-Za-z0-9][A-Za-z0-9+._:-]{0,99}$' || fail "That is not a package name." 64
 [ "$(id -u)" = "0" ] || fail "The agent is not running as root, so it cannot change packages." 77

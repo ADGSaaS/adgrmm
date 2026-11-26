@@ -135,10 +135,10 @@ export class PortalSettingsService {
         if (error || !host) return { ok: false, message: error ?? "Enter the portal address first." };
         try {
             const res = await fetch(`https://${host}/api/portal/config`, { signal: AbortSignal.timeout(8000), redirect: "manual", headers: { accept: "application/json" } });
-            if (!res.ok) return { ok: false, message: `The address answered, but not with the portal (HTTP ${res.status}). Check that the proxy points at the RemoteIQ web app.` };
+            if (!res.ok) return { ok: false, message: `The address answered, but not with the portal (HTTP ${res.status}). Check that the proxy points at the ADG RMM web app.` };
             const body = (await res.json().catch(() => null)) as { domain?: string | null } | null;
-            if (!body || !("modules" in (body as object))) return { ok: false, message: "The address answered, but it is not this RemoteIQ system." };
-            if ((body.domain ?? "").toLowerCase() !== host) return { ok: false, message: "The address reaches RemoteIQ, but the address saved here is different. Save the address first." };
+            if (!body || !("modules" in (body as object))) return { ok: false, message: "The address answered, but it is not this ADG RMM system." };
+            if ((body.domain ?? "").toLowerCase() !== host) return { ok: false, message: "The address reaches ADG RMM, but the address saved here is different. Save the address first." };
             return { ok: true, message: "The portal is reachable at this address." };
         } catch (e: any) {
             const code = e?.cause?.code || e?.code || "";

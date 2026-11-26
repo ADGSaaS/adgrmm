@@ -3,7 +3,7 @@
 // time off, working hours), the invite with its calendar file, status and time logging, customer-limited people,
 // the list of tickets with no visit, and the audit trail. A small SMTP server catches the mail.
 //
-//   RIQ_E2E_ALLOW=1 BASE_URL=http://127.0.0.1:3951 DATABASE_URL=postgres://.../riq_x_e2e JWT_SECRET=... node test/schedule-http.e2e.cjs
+//   ADG_E2E_ALLOW=1 BASE_URL=http://127.0.0.1:3951 DATABASE_URL=postgres://.../adg_x_e2e JWT_SECRET=... node test/schedule-http.e2e.cjs
 "use strict";
 const net = require("node:net");
 const { assert, call, json, runner, setup, uuid } = require("./groupc-helpers.cjs");
@@ -82,8 +82,8 @@ async function main() {
     const savedMail = (await q(`SELECT * FROM email_settings`)).rows;
     for (const p of ["alerts", "invites", "password_resets", "reports", "tickets"]) {
         await q(`INSERT INTO email_settings (purpose, enabled, smtp_host, smtp_port, smtp_username, smtp_use_tls, smtp_use_ssl, smtp_from_address)
-                 VALUES ($1, true, '127.0.0.1', $2, '', false, false, 'riq@example.test')
-                 ON CONFLICT (purpose) DO UPDATE SET enabled = true, smtp_host = '127.0.0.1', smtp_port = $2, smtp_username = '', smtp_password = NULL, smtp_use_tls = false, smtp_use_ssl = false, smtp_from_address = 'riq@example.test'`, [p, sink.port]);
+                 VALUES ($1, true, '127.0.0.1', $2, '', false, false, 'adg@example.test')
+                 ON CONFLICT (purpose) DO UPDATE SET enabled = true, smtp_host = '127.0.0.1', smtp_port = $2, smtp_username = '', smtp_password = NULL, smtp_use_tls = false, smtp_use_ssl = false, smtp_from_address = 'adg@example.test'`, [p, sink.port]);
     }
     await q(`DELETE FROM email_templates WHERE key LIKE 'visit_%'`);
 
@@ -149,7 +149,7 @@ async function main() {
         const mails = sinceMail(n);
         assert.equal(mails.length, 2);
         const ics = attachedIcs(mails[0].raw);
-        assert.ok(ics && ics.includes("BEGIN:VCALENDAR") && ics.includes(`UID:${v1.id}@remoteiq`), "calendar file attached");
+        assert.ok(ics && ics.includes("BEGIN:VCALENDAR") && ics.includes(`UID:${v1.id}@adgrmm`), "calendar file attached");
         assert.ok(ics.includes(`DTSTART:${iso(mon9).replace(/[-:]|\.\d{3}/g, "")}`));
         assert.ok(qp(mails[0].raw).includes("12 High St"));
     });

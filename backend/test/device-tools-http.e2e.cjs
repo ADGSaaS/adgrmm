@@ -3,7 +3,7 @@
 // signed script jobs: rights, input checks, nothing typed ever reaches the script text, parsing for Windows and Linux,
 // the customer limit, offline and no-agent devices, the security log right, CSV, audit, and a slow device.
 //
-//   RIQ_E2E_ALLOW=1 BASE_URL=http://127.0.0.1:3951 DATABASE_URL=postgres://.../riq_g1_e2e JWT_SECRET=... node test/device-tools-http.e2e.cjs
+//   ADG_E2E_ALLOW=1 BASE_URL=http://127.0.0.1:3951 DATABASE_URL=postgres://.../adg_g1_e2e JWT_SECRET=... node test/device-tools-http.e2e.cjs
 "use strict";
 const { assert, call, json, runner, setup, uuid } = require("./groupc-helpers.cjs");
 
@@ -72,12 +72,12 @@ async function main() {
         try {
             const rows = (await q(`SELECT j.id, j.payload, a.facts->>'os' AS os FROM jobs j JOIN agents a ON a.id = j.agent_id WHERE j.status = 'queued' AND a.device_id = ANY($1::uuid[])`, [devs])).rows;
             for (const r of rows) {
-                const kind = r.payload?.env?.RIQ_TOOL;
+                const kind = r.payload?.env?.ADG_TOOL;
                 if (!kind || handled.has(r.id)) continue;
                 handled.add(r.id);
                 if (kind === delayKind) { delayKind = null; await new Promise((x) => setTimeout(x, 27_000)); }
                 seen.push({ id: r.id, kind, os: r.os, payload: r.payload });
-                const failing = r.payload?.env?.RIQ_SERVICE === "BrokenSvc";
+                const failing = r.payload?.env?.ADG_SERVICE === "BrokenSvc";
                 const out = failing ? JSON.stringify({ ok: false, error: "Cannot open BrokenSvc service on computer '.'." }) : answers[r.os][kind];
                 await q(`UPDATE jobs SET status='succeeded', finished_at=now() WHERE id=$1`, [r.id]);
                 await q(`INSERT INTO job_results (job_id, exit_code, stdout, stderr) VALUES ($1,0,$2,'') ON CONFLICT (job_id) DO NOTHING`, [r.id, out]);
@@ -126,11 +126,11 @@ async function main() {
         assert.equal(e.items.length, 2);
         assert.equal(e.items[1].level, "Error");
         const job = seen[seen.length - 1];
-        assert.equal(job.payload.env.RIQ_LOG, "System");
-        assert.equal(job.payload.env.RIQ_HOURS, "6");
-        assert.equal(job.payload.env.RIQ_MAX, "50");
-        assert.equal(job.payload.env.RIQ_LEVELS, "2,3");
-        assert.equal(job.payload.env.RIQ_TEXT, "it's \"quoted\"; $(x)");
+        assert.equal(job.payload.env.ADG_LOG, "System");
+        assert.equal(job.payload.env.ADG_HOURS, "6");
+        assert.equal(job.payload.env.ADG_MAX, "50");
+        assert.equal(job.payload.env.ADG_LEVELS, "2,3");
+        assert.equal(job.payload.env.ADG_TEXT, "it's \"quoted\"; $(x)");
         assert.ok(!job.payload.scriptText.includes("quoted") && !job.payload.scriptText.includes("$(x)"));
     });
 
@@ -139,13 +139,13 @@ async function main() {
         assert.equal(r.ok, true);
         assert.equal(r.state, "running");
         const j = seen[seen.length - 1];
-        assert.equal(j.payload.env.RIQ_SERVICE, "Spooler");
-        assert.equal(j.payload.env.RIQ_ACTION, "restart");
-        assert.equal(j.payload.env.RIQ_FORCE, "1");
+        assert.equal(j.payload.env.ADG_SERVICE, "Spooler");
+        assert.equal(j.payload.env.ADG_ACTION, "restart");
+        assert.equal(j.payload.env.ADG_FORCE, "1");
         assert.ok(!j.payload.scriptText.includes("Spooler"));
         const st = await act(win.id, "services/action", admin, { name: "Spooler", action: "startup", startType: "delayed" });
         assert.equal(st.status, 200);
-        assert.equal(seen[seen.length - 1].payload.env.RIQ_STARTTYPE, "delayed");
+        assert.equal(seen[seen.length - 1].payload.env.ADG_STARTTYPE, "delayed");
         assert.equal((await act(win.id, "services/action", admin, { name: "Spooler", action: "startup" })).status, 400, "a start type is needed");
     });
 
@@ -159,7 +159,7 @@ async function main() {
         const r = await (await act(win.id, "processes/end", admin, { pid: 4000 })).json();
         assert.equal(r.ok, true);
         assert.equal(r.name, "chrome");
-        assert.equal(seen[seen.length - 1].payload.env.RIQ_PID, "4000");
+        assert.equal(seen[seen.length - 1].payload.env.ADG_PID, "4000");
     });
 
     console.log("input is checked before anything is sent");
@@ -216,9 +216,9 @@ async function main() {
         assert.equal(e.items[0].provider, "kernel");
         const a = await (await act(lin.id, "services/action", admin, { name: "ssh", action: "restart" })).json();
         assert.equal(a.state, "active");
-        assert.equal(seen[seen.length - 1].payload.env.RIQ_SERVICE, "ssh.service");
+        assert.equal(seen[seen.length - 1].payload.env.ADG_SERVICE, "ssh.service");
         await act(lin.id, "services/action", admin, { name: "ssh", action: "startup", startType: "disabled" });
-        assert.equal(seen[seen.length - 1].payload.env.RIQ_ACTION, "mask");
+        assert.equal(seen[seen.length - 1].payload.env.ADG_ACTION, "mask");
         assert.equal((await act(lin.id, "services/action", admin, { name: "ssh", action: "startup", startType: "delayed" })).status, 400);
         assert.equal((await act(lin.id, "services/action", admin, { name: "a b.service", action: "stop" })).status, 400);
         assert.equal((await get(`${lin.id}/tools/eventlog?log=Application`, viewer)).status, 400, "a Windows log name on Linux");

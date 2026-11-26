@@ -2,7 +2,7 @@
 // Secrets status, System, Migrations, Feature flags, Compliance, the roles matrix's API and CSV import/export,
 // behind the real sign-in and permission checks. Run against a throwaway backend and database only:
 //
-//   RIQ_E2E_ALLOW=1 BASE_URL=http://127.0.0.1:3961 DATABASE_URL=postgres://.../riq_e2e JWT_SECRET=... node test/platform-http.e2e.cjs
+//   ADG_E2E_ALLOW=1 BASE_URL=http://127.0.0.1:3961 DATABASE_URL=postgres://.../adg_e2e JWT_SECRET=... node test/platform-http.e2e.cjs
 //
 // The server under test must have been started with the same JWT_SECRET, and with DATA_ENCRYPTION_KEY and
 // JWT_SECRET set, which the secrets checks look for. SECRET_MARKERS lists text that must never appear in a response.
@@ -19,8 +19,8 @@ const SECRET = process.env.JWT_SECRET || "";
 const COOKIE = process.env.AUTH_COOKIE_NAME || "auth_token";
 const SECRET_MARKERS = (process.env.SECRET_MARKERS || `${SECRET},groupb-test-data-key`).split(",").filter(Boolean);
 
-if (process.env.RIQ_E2E_ALLOW !== "1" || !/e2e/.test(new URL(DB_URL).pathname) || !SECRET) {
-    console.error("Refusing to run: set RIQ_E2E_ALLOW=1, JWT_SECRET, and a DATABASE_URL naming an e2e database.");
+if (process.env.ADG_E2E_ALLOW !== "1" || !/e2e/.test(new URL(DB_URL).pathname) || !SECRET) {
+    console.error("Refusing to run: set ADG_E2E_ALLOW=1, JWT_SECRET, and a DATABASE_URL naming an e2e database.");
     process.exit(2);
 }
 

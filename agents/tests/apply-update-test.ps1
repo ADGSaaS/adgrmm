@@ -5,17 +5,17 @@
 #   powershell -NoProfile -ExecutionPolicy Bypass -File agents/tests/apply-update-test.ps1
 param([string]$Scenario = '', [string]$Root = '')
 
-$script = Join-Path $PSScriptRoot '..\windows\RemoteIQ.Agent\scripts\apply-update.ps1'
+$script = Join-Path $PSScriptRoot '..\windows\AdgRmm.Agent\scripts\apply-update.ps1'
 
 function New-Sandbox {
-    $dir = Join-Path $env:TEMP ('riq-apply-' + [Guid]::NewGuid().ToString('N'))
+    $dir = Join-Path $env:TEMP ('adg-apply-' + [Guid]::NewGuid().ToString('N'))
     New-Item -ItemType Directory -Force -Path (Join-Path $dir 'Agent'), (Join-Path $dir 'Agent.update\new'), (Join-Path $dir 'state') | Out-Null
-    Set-Content (Join-Path $dir 'Agent\RemoteIQ.Agent.exe') 'old'
-    Set-Content (Join-Path $dir 'Agent.update\new\RemoteIQ.Agent.exe') 'new'
+    Set-Content (Join-Path $dir 'Agent\AdgRmm.Agent.exe') 'old'
+    Set-Content (Join-Path $dir 'Agent.update\new\AdgRmm.Agent.exe') 'new'
     Set-Content (Join-Path $dir 'state\config-like.json') 'identity'
     Set-Content (Join-Path $dir 'state\pending.txt') '1.3.0'
     @{ installDir = (Join-Path $dir 'Agent'); stateDir = (Join-Path $dir 'state'); targetVersion = '1.3.0';
-       serviceName = 'Fake'; taskName = 'Fake'; exeName = 'RemoteIQ.Agent.exe'; healthSeconds = 4 } |
+       serviceName = 'Fake'; taskName = 'Fake'; exeName = 'AdgRmm.Agent.exe'; healthSeconds = 4 } |
         ConvertTo-Json | Set-Content (Join-Path $dir 'params.json')
     return $dir
 }
@@ -33,7 +33,7 @@ if ($Scenario) {
     }
     function Start-Service { param($Name)
         Add-Content (Join-Path $Sandbox 'calls.txt') 'start'
-        $exe = (Get-Content (Join-Path $Sandbox 'Agent\RemoteIQ.Agent.exe') -ErrorAction SilentlyContinue | Select-Object -First 1)
+        $exe = (Get-Content (Join-Path $Sandbox 'Agent\AdgRmm.Agent.exe') -ErrorAction SilentlyContinue | Select-Object -First 1)
         switch ($Scenario) {
             'good' { $global:running = $true; if ($exe -eq 'new') { Set-Content (Join-Path $Sandbox 'state\ok.txt') '1.3.0' } }
             'neverconfirms' { $global:running = ($exe -ne 'new') }
@@ -61,7 +61,7 @@ function Assert-That([string]$Name, [bool]$Ok) {
 function Run-Scenario([string]$Name, [string]$Dir) {
     & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $PSCommandPath -Scenario $Name -Root $Dir *>&1 | Out-Null
 }
-function Installed([string]$Dir) { (Get-Content (Join-Path $Dir 'Agent\RemoteIQ.Agent.exe') -ErrorAction SilentlyContinue | Select-Object -First 1) }
+function Installed([string]$Dir) { (Get-Content (Join-Path $Dir 'Agent\AdgRmm.Agent.exe') -ErrorAction SilentlyContinue | Select-Object -First 1) }
 function Outcome([string]$Dir) {
     $file = Join-Path $Dir 'state\result.json'
     if (Test-Path $file) { (Get-Content $file -Raw | ConvertFrom-Json).outcome } else { '' }

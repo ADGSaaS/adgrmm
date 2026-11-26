@@ -1,7 +1,7 @@
 using System.Text;
 using System.Text.RegularExpressions;
 
-namespace RemoteIQ.Agent.Shared;
+namespace AdgRmm.Agent.Shared;
 
 /// <summary>A software_install task, checked strictly before anything runs.</summary>
 public sealed class SoftwareInstallRequest

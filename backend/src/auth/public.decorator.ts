@@ -1,6 +1,6 @@
 import { SetMetadata } from "@nestjs/common";
 
-export const IS_PUBLIC_KEY = "remoteiq:isPublic";
+export const IS_PUBLIC_KEY = "adgrmm:isPublic";
 
 
 /**

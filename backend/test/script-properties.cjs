@@ -21,9 +21,9 @@ check("properties are filled in, in any case and with spaces inside the braces",
 
 check("every property is also an environment variable when a script uses any", () => {
     const r = m.applyAgentProperties("bash", "echo {{agent.hostname}}", values);
-    assert.equal(r.env.RIQ_AGENT_HOSTNAME, "PC-01");
-    assert.equal(r.env.RIQ_AGENT_CUSTOMER, "Acme Dental");
-    assert.equal(r.env.RIQ_AGENT_TAGS, "vip,kiosk");
+    assert.equal(r.env.ADG_AGENT_HOSTNAME, "PC-01");
+    assert.equal(r.env.ADG_AGENT_CUSTOMER, "Acme Dental");
+    assert.equal(r.env.ADG_AGENT_TAGS, "vip,kiosk");
     assert.equal(Object.keys(r.env).length, Object.keys(m.AGENT_PROPERTIES).length);
 });
 
@@ -49,7 +49,7 @@ check("values a shell could act on are never put into the text, and the message 
     for (const bad of ["O'Brien", "Smith & Sons", "a;b", "x$(calc)", "`id`", 'say "hi"', "a|b", "Dental (HQ)", "a<b", "{x}", "line\nbreak"]) {
         const r = m.applyAgentProperties("powershell", "Write-Output {{agent.customer}}", { ...values, customer: bad });
         assert.equal(r.ok, false, bad);
-        assert.match(r.problems[0], /RIQ_AGENT_CUSTOMER/, bad);
+        assert.match(r.problems[0], /ADG_AGENT_CUSTOMER/, bad);
     }
     for (const good of ["Acme Dental", "PC-01", "Front desk #2", "user@example.com", "10.1.4.20", "C:\\Program Files", "a/b", "vip,kiosk", "Müller Praxis"]) {
         assert.equal(m.applyAgentProperties("bash", "echo {{agent.customer}}", { ...values, customer: good }).ok, true, good);
@@ -69,7 +69,7 @@ check("a CMD script is stopped with a CMD script that cannot be broken out of", 
     const r = m.applyAgentProperties("cmd", "echo {{agent.nope}} & del /q C:\\x", values);
     assert.equal(r.ok, false);
     assert.ok(!r.scriptText.includes("del /q"));
-    assert.match(r.scriptText, /^@echo off\r\necho RemoteIQ did not run this script/);
+    assert.match(r.scriptText, /^@echo off\r\necho ADG RMM did not run this script/);
     assert.match(r.scriptText, /exit \/b 1/);
     // the echoed message holds none of the characters CMD would act on (the 1>&2 after it is the redirect we add)
     const echoed = r.scriptText.split("\r\n")[1].replace(/^echo /, "").replace(/ 1>&2$/, "");
@@ -93,9 +93,9 @@ check("a script that uses only customer fields still counts, and gets them as en
     assert.deepEqual(m.referencedCustomFields("{{customer.A_b}} {{customer.a_b}} {{customer.x}} {{agent.id}}"), ["a_b", "x"]);
     const r = m.applyAgentProperties("bash", "echo {{customer.contract}}", values, custom);
     assert.equal(r.ok, true);
-    assert.equal(r.env.RIQ_CUSTOMER_CONTRACT, "C-100");
-    assert.equal(r.env.RIQ_CUSTOMER_ACCOUNT_MANAGER, "Pat Lee");
-    assert.ok(!("RIQ_AGENT_HOSTNAME" in r.env), "agent variables only when agent properties are used");
+    assert.equal(r.env.ADG_CUSTOMER_CONTRACT, "C-100");
+    assert.equal(r.env.ADG_CUSTOMER_ACCOUNT_MANAGER, "Pat Lee");
+    assert.ok(!("ADG_AGENT_HOSTNAME" in r.env), "agent variables only when agent properties are used");
     assert.deepEqual(m.applyAgentProperties("bash", "echo {{custom.x}} {{customer}}", values, custom), { used: false });
 });
 
@@ -115,7 +115,7 @@ check("a field that does not exist, or is empty for this customer, stops the scr
 check("a custom value that a shell could act on is never put into the script text", () => {
     const r = m.applyAgentProperties("bash", "echo {{customer.risky}} {{customer.contract}}", values, custom);
     assert.equal(r.ok, false);
-    assert.match(r.problems[0], /RIQ_CUSTOMER_RISKY/);
+    assert.match(r.problems[0], /ADG_CUSTOMER_RISKY/);
     assert.ok(!r.scriptText.includes("a;b"));
 });
 

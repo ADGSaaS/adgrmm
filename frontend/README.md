@@ -1,6 +1,6 @@
-# RemoteIQ Frontend
+# ADG RMM Frontend
 
-The web dashboard for **RemoteIQ**, an all-in-one platform for managed service providers (MSPs): remote monitoring and management (RMM), a service desk, documentation, billing and client-facing tools.
+The web dashboard for **AdgRmm**, an all-in-one platform for managed service providers (MSPs): remote monitoring and management (RMM), a service desk, documentation, billing and client-facing tools.
 
 This folder is the dashboard. The API, the database, the agents and the operations documentation live in the other folders of this repository (`backend/`, `agents/`, `docs/`), and the dashboard cannot do anything useful without a running backend.
 
@@ -43,7 +43,7 @@ This folder is the dashboard. The API, the database, the agents and the operatio
 ### Prerequisites
 
 - Node.js and npm (the repository uses `package-lock.json`)
-- A running RemoteIQ backend, by default at `http://localhost:3001`
+- A running ADG RMM backend, by default at `http://localhost:3001`
 
 ### Run it
 
@@ -80,7 +80,7 @@ Settings are environment variables, normally in `.env.local` (never commit it).
 | `NEXT_PUBLIC_BACKEND_URL`, `BACKEND_URL` | Backend address used by a few server-side and client helpers | |
 | `NEXT_PUBLIC_AVATAR_MAX_MB` | Largest avatar upload the form accepts | |
 | `NEXT_PUBLIC_PASSWORD_MIN_LEN` | Minimum password length the forms enforce | |
-| `REMOTEIQ_API_KEY` | Server-side API key for dashboard-only API routes | |
+| `ADG_API_KEY` | Server-side API key for dashboard-only API routes | |
 
 `NEXT_PUBLIC_*` values are compiled into the browser bundle at build time, so change them **before** `npm run build`, not after.
 

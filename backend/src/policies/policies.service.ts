@@ -110,7 +110,7 @@ export class PoliciesService {
             "security.scanHours": { value: 24, label: "Default: a security scan every day" },
             "security.bitlockerEscrow": { value: "off", label: "Default: recovery keys are not stored" },
             "laps.enabled": { value: false, label: "Default: the local administrator password is not managed" },
-            "laps.account": { value: "riq-admin", label: "Default account name" },
+            "laps.account": { value: "adg-admin", label: "Default account name" },
             "laps.passwordLength": { value: 20, label: "Default password length" },
             "laps.rotateDays": { value: 30, label: "Default: every 30 days" },
             "laps.rotateAfterRevealMinutes": { value: 60, label: "Default: 60 minutes after a reveal" },

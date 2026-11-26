@@ -7,8 +7,8 @@
 const crypto = require("node:crypto");
 const path = require("node:path");
 
-if (process.env.RIQ_E2E_ALLOW !== "1" || !/e2e/.test(process.env.DATABASE_URL || "")) {
-    console.error("Refusing to run: set RIQ_E2E_ALLOW=1 and an e2e-named DATABASE_URL.");
+if (process.env.ADG_E2E_ALLOW !== "1" || !/e2e/.test(process.env.DATABASE_URL || "")) {
+    console.error("Refusing to run: set ADG_E2E_ALLOW=1 and an e2e-named DATABASE_URL.");
     process.exit(2);
 }
 process.env.JWT_SECRET ||= "e2e-only-not-a-real-secret-e2e-only-not-a-real-secret";
@@ -62,7 +62,7 @@ const outputWith = (over = {}) => HEALTHY.map((l) => { const k = Object.keys(ove
         const agent = await prisma.agents.create({ data: { device_id: dev.id, agent_uuid: crypto.randomUUID(), version: "1.3.37", last_check_in_at: new Date(), facts: { os } } });
         return { dev, agent };
     }
-    const scanJobs = async (d) => (await prisma.jobs.findMany({ where: { agent_id: d.agent.id }, orderBy: { created_at: "asc" } })).filter((j) => j.payload?.env?.RIQ_TOOL === "security.scan");
+    const scanJobs = async (d) => (await prisma.jobs.findMany({ where: { agent_id: d.agent.id }, orderBy: { created_at: "asc" } })).filter((j) => j.payload?.env?.ADG_TOOL === "security.scan");
     const row = async (d) => (await prisma.$queryRaw`SELECT * FROM public.device_security_scans WHERE device_id = ${d.dev.id}::uuid`)[0] ?? null;
     async function answer(d, stdout, status = "succeeded", stderr = "") {
         const j = (await scanJobs(d)).pop();
@@ -92,8 +92,8 @@ const outputWith = (over = {}) => HEALTHY.map((l) => { const k = Object.keys(ove
     // ---------------------------------------------------------------- asking for a scan
     const q = await security.startScan(dLx);
     const jobs = await scanJobs(lx);
-    check("a Linux scan is queued as a bash job with the Linux marker", jobs.length === 1 && jobs[0].payload?.language === "bash" && jobs[0].payload?.env?.RIQ_PLATFORM === "linux" && /^#!\/bin\/bash/.test(jobs[0].payload?.scriptText ?? ""), jobs[0]?.payload && { l: jobs[0].payload.language, e: jobs[0].payload.env });
-    check("a Windows scan is still a PowerShell job without it", (await security.startScan(dWin), (await scanJobs(win))[0]?.payload?.language === "powershell" && !(await scanJobs(win))[0]?.payload?.env?.RIQ_PLATFORM));
+    check("a Linux scan is queued as a bash job with the Linux marker", jobs.length === 1 && jobs[0].payload?.language === "bash" && jobs[0].payload?.env?.ADG_PLATFORM === "linux" && /^#!\/bin\/bash/.test(jobs[0].payload?.scriptText ?? ""), jobs[0]?.payload && { l: jobs[0].payload.language, e: jobs[0].payload.env });
+    check("a Windows scan is still a PowerShell job without it", (await security.startScan(dWin), (await scanJobs(win))[0]?.payload?.language === "powershell" && !(await scanJobs(win))[0]?.payload?.env?.ADG_PLATFORM));
     check("asking again while it waits does not queue a second scan", (await security.startScan(dLx)).alreadyWaiting === true && (await scanJobs(lx)).length === 1);
     const waiting = await security.view(dLx);
     check("the view says it is waiting", waiting.state === "not_scanned" && waiting.pending === true && waiting.linux === true, waiting);

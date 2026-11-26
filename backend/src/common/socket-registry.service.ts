@@ -1,4 +1,4 @@
-//remoteiq-minimal-e2e\backend\src\common\socket-registry.service.ts
+//adgrmm-minimal-e2e\backend\src\common\socket-registry.service.ts
 
 import { Injectable } from "@nestjs/common";
 import type { WebSocket } from "ws";

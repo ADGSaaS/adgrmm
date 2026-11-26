@@ -4,7 +4,7 @@
 // through the real agent update route with fake agents, the health gate, promote (force + reason, changed-since refusal, files on
 // disk), withdraw. The server must run with AGENT_PKG_DIR set to a TEMP folder this test also gets (it writes packages into it).
 //
-//   RIQ_E2E_ALLOW=1 AGENT_PKG_DIR=<temp> BASE_URL=http://127.0.0.1:3961 DATABASE_URL=postgres://.../riq_ring_e2e JWT_SECRET=... node test/agent-releases-http.e2e.cjs
+//   ADG_E2E_ALLOW=1 AGENT_PKG_DIR=<temp> BASE_URL=http://127.0.0.1:3961 DATABASE_URL=postgres://.../adg_ring_e2e JWT_SECRET=... node test/agent-releases-http.e2e.cjs
 "use strict";
 const fs = require("node:fs");
 const path = require("node:path");
@@ -13,7 +13,7 @@ const { assert, call, json, runner, setup, uuid, sha256, BASE } = require("./gro
 
 const PKG = process.env.AGENT_PKG_DIR;
 if (!PKG || !/(tmp|temp)/i.test(PKG)) { console.error("Set AGENT_PKG_DIR to a temp folder (the same one the server runs with)."); process.exit(2); }
-const FILES = { windows: "remoteiq-agent-windows.zip", linux: "remoteiq-agent-linux-x64.tar.gz" };
+const FILES = { windows: "adgrmm-agent-windows.zip", linux: "adgrmm-agent-linux-x64.tar.gz" };
 const slotDir = (slot, os) => (slot === "stable" ? path.join(PKG, os) : path.join(PKG, slot, os));
 const pkgPath = (slot, os) => path.join(slotDir(slot, os), FILES[os]);
 const verPath = (slot, os) => path.join(slotDir(slot, os), "version.json");

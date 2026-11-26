@@ -24,7 +24,7 @@ function ConvertTo-Ascii([string]$s) {
   $bs = [string][char]92
   return [regex]::Replace($s, '[^\x00-\x7F]', { param($m) $bs + 'u' + ('{0:x4}' -f [int][char]$m.Value) })
 }
-function Out-Riq($obj) { [Console]::Out.Write((ConvertTo-Ascii ($obj | ConvertTo-Json -Compress -Depth 6))) }
+function Out-Adg($obj) { [Console]::Out.Write((ConvertTo-Ascii ($obj | ConvertTo-Json -Compress -Depth 6))) }
 
 # Helpers every probe can use (they are also given to the probes that run in their own runspace).
 $HELPERS = @'
@@ -331,7 +331,7 @@ Probe 'lastUpdate' 8000 {
   @{ at = (Iso $best); ageDays = (Days $best) }
 }
 
-Out-Riq @{ ok = $true; v = 1; ms = [int]$T0.ElapsedMilliseconds; probes = $probes }
+Out-Adg @{ ok = $true; v = 1; ms = [int]$T0.ElapsedMilliseconds; probes = $probes }
 `;
 
 const PS_HEAD = String.raw`$ErrorActionPreference = 'Stop'
@@ -340,15 +340,15 @@ function ConvertTo-Ascii([string]$s) {
   $bs = [string][char]92
   return [regex]::Replace($s, '[^\x00-\x7F]', { param($m) $bs + 'u' + ('{0:x4}' -f [int][char]$m.Value) })
 }
-function Out-Riq($obj) { [Console]::Out.Write((ConvertTo-Ascii ($obj | ConvertTo-Json -Compress -Depth 4))) }
-function Fail($e) { Out-Riq @{ ok = $false; error = [string]$e.Exception.Message } }
+function Out-Adg($obj) { [Console]::Out.Write((ConvertTo-Ascii ($obj | ConvertTo-Json -Compress -Depth 4))) }
+function Fail($e) { Out-Adg @{ ok = $false; error = [string]$e.Exception.Message } }
 `;
 
 const psc = (body: string) => `${PS_HEAD}try {\n${body}\n} catch { Fail $_ }\n`;
 
 export type DefenderAction = "update" | "quick-scan" | "full-scan";
 export const DEFENDER_ACTIONS: DefenderAction[] = ["update", "quick-scan", "full-scan"];
-/** The tool kind (RIQ_TOOL) each action's job carries. */
+/** The tool kind (ADG_TOOL) each action's job carries. */
 export const DEFENDER_KIND: Record<DefenderAction, string> = { update: "security.defender.update", "quick-scan": "security.defender.quick-scan", "full-scan": "security.defender.full-scan" };
 
 export const DEFENDER_SCRIPTS = {
@@ -358,12 +358,12 @@ Update-MpSignature
 $s = Get-MpComputerStatus
 $at = $s.AntivirusSignatureLastUpdated
 $iso = $null; if ($at -and $at.ToUniversalTime().Year -ge 2000) { $iso = $at.ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ') }
-Out-Riq @{ ok = $true; action = 'update'; before = $before; after = [string]$s.AntivirusSignatureVersion; updatedAt = $iso }`),
+Out-Adg @{ ok = $true; action = 'update'; before = $before; after = [string]$s.AntivirusSignatureVersion; updatedAt = $iso }`),
 
     // A scan takes minutes to hours, so it is started in a process Windows creates on its own (Win32_Process.Create: it outlives
-    // this job, which ends at once). RIQ_SCAN_TYPE is QuickScan or FullScan (checked on the server and again here); the two command
+    // this job, which ends at once). ADG_SCAN_TYPE is QuickScan or FullScan (checked on the server and again here); the two command
     // lines are fixed text.
-    scan: psc(String.raw`$type = $env:RIQ_SCAN_TYPE
+    scan: psc(String.raw`$type = $env:ADG_SCAN_TYPE
 if ($type -ne 'QuickScan' -and $type -ne 'FullScan') { throw 'Unknown scan type.' }
 $s = Get-MpComputerStatus
 if (-not $s.AMServiceEnabled) { throw 'Microsoft Defender is not running on this device, so it cannot scan.' }
@@ -372,7 +372,7 @@ if ($type -eq 'FullScan') { $cmd = '"' + $exe + '" -NoProfile -NonInteractive -W
 else { $cmd = '"' + $exe + '" -NoProfile -NonInteractive -WindowStyle Hidden -Command "Start-MpScan -ScanType QuickScan"' }
 $r = Invoke-CimMethod -ClassName Win32_Process -MethodName Create -Arguments @{ CommandLine = $cmd }
 if ($r.ReturnValue -ne 0) { throw ('Windows could not start the scan (code ' + $r.ReturnValue + ').') }
-Out-Riq @{ ok = $true; action = 'scan'; scanType = $type; started = $true }`),
+Out-Adg @{ ok = $true; action = 'scan'; scanType = $type; started = $true }`),
 };
 
 export const SCAN_TYPES = { "quick-scan": "QuickScan", "full-scan": "FullScan" } as const;

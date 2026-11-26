@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 "use strict";
-// The one door into a RemoteIQ install: everything the browser asks for goes to the web app, and WebSocket
+// The one door into a ADG RMM install: everything the browser asks for goes to the web app, and WebSocket
 // connections (remote console, agents) go straight to the API. Put HTTPS (Caddy) or your own reverse proxy in
 // front of this single port and nothing else needs routing rules.
 //
@@ -45,7 +45,7 @@ const server = http.createServer((req, res) => {
         }
     );
     up.setTimeout(10 * 60_000, () => up.destroy(new Error("timeout")));
-    up.on("error", () => bad(res, 502, "RemoteIQ is starting or the web app is not answering. Try again in a moment."));
+    up.on("error", () => bad(res, 502, "ADG RMM is starting or the web app is not answering. Try again in a moment."));
     req.on("aborted", () => up.destroy());
     req.pipe(up);
 });

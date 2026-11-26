@@ -191,7 +191,7 @@ export class AutoRepairService {
             const custom = platform === "windows" ? await this.playbooks.matching(input.orgId, { category: input.category, app: input.app?.name ?? null }) : [];
             if (!checks.length && !custom.length) return null;
             const diagScript = platform === "windows" ? composeDiagnose(sc.diag, custom) : sc.diag;
-            const job = await this.jobs.createRunScriptJob({ agentId: d.agent_id, language: sc.language, scriptText: diagScript, env: { RIQ_TOOL: sc.diagKind, RIQ_CHECKS: checks.join(","), RIQ_APP: input.app?.name ?? "" }, timeoutSec: 180 });
+            const job = await this.jobs.createRunScriptJob({ agentId: d.agent_id, language: sc.language, scriptText: diagScript, env: { ADG_TOOL: sc.diagKind, ADG_CHECKS: checks.join(","), ADG_APP: input.app?.name ?? "" }, timeoutSec: 180 });
             const id = randomUUID();
             await this.prisma.$executeRaw`INSERT INTO public.auto_repair_runs (id, organization_id, ticket_id, device_id, category, app_name, checks, custom_ids, state, diag_job_id)
                 VALUES (${id}::uuid, ${input.orgId}::uuid, ${input.ticketId}::uuid, ${input.deviceId}::uuid, ${input.category}, ${input.app?.name ?? null}, ${checks}::text[], ${custom.map((c) => c.key)}::text[], 'diagnosing', ${job.id}::uuid)`;
@@ -203,7 +203,7 @@ export class AutoRepairService {
                 `Settings: repair ${s.autoRepair ? "on" : "off (checks only)"}, knowledge base articles ${s.createKb ? "on" : "off"}.`,
                 "What happens next: the computer is checked (read only); a problem with a safe repair is repaired; the checks run again to confirm; the person is asked to test; anything else comes to a technician. Every step is written here.",
             ].join("\n"), true);
-            await this.say({ id, ticket_id: input.ticketId, alert_id: null, source: "ticket" }, scriptStartNote({ step: "1. Checks (read only)", purpose: "Look for the problems this category can have. Nothing on the computer is changed.", jobId: job.id, language: sc.language, env: { RIQ_CHECKS: checks.join(","), RIQ_APP: input.app?.name ?? "" }, script: diagScript, scriptName: sc.diagKind }), true);
+            await this.say({ id, ticket_id: input.ticketId, alert_id: null, source: "ticket" }, scriptStartNote({ step: "1. Checks (read only)", purpose: "Look for the problems this category can have. Nothing on the computer is changed.", jobId: job.id, language: sc.language, env: { ADG_CHECKS: checks.join(","), ADG_APP: input.app?.name ?? "" }, script: diagScript, scriptName: sc.diagKind }), true);
             return id;
         } catch (e) {
             this.logger.warn(`Could not start the automatic repair: ${(e as Error).message}`);
@@ -285,7 +285,7 @@ export class AutoRepairService {
             const customFix = (await this.playbooks.byKeys(r.organization_id, r.custom_ids)).filter((c) => repairable.some((d) => d.id === c.key));
             const sc = scriptsFor(await this.platformOfDevice(r.device_id));
             const repairScript = sc.language === "powershell" ? composeRepair(sc.repair, customFix) : sc.repair;
-            const job = await this.jobs.createRunScriptJob({ agentId: agent, language: sc.language, scriptText: repairScript, env: { RIQ_TOOL: sc.repairKind, RIQ_FIX: repairable.map((d) => d.id).join(",") }, timeoutSec: 420 });
+            const job = await this.jobs.createRunScriptJob({ agentId: agent, language: sc.language, scriptText: repairScript, env: { ADG_TOOL: sc.repairKind, ADG_FIX: repairable.map((d) => d.id).join(",") }, timeoutSec: 420 });
             await this.setState(r, "repairing", { repairJob: job.id, diagnosis: stored, repairIssues: repairable.map((d) => d.id) });
             await this.say(r, [
                 "Decision after the checks:",
@@ -293,7 +293,7 @@ export class AutoRepairService {
                 `Repairing automatically: ${repairable.map((d) => `${d.id}: ${d.fix}`).join(" | ")}`,
                 skipped.length ? `Not repaired automatically: ${skipped.join("; ")}.` : "",
             ].filter(Boolean).join("\n"), true);
-            await this.say(r, scriptStartNote({ step: "2. Repair", purpose: `Repair ${repairable.map((d) => d.id).join(", ")}. It only does what is written in the script for those problems and says for each whether it worked.`, jobId: job.id, language: sc.language, env: { RIQ_FIX: repairable.map((d) => d.id).join(",") }, script: repairScript, scriptName: sc.repairKind }), true);
+            await this.say(r, scriptStartNote({ step: "2. Repair", purpose: `Repair ${repairable.map((d) => d.id).join(", ")}. It only does what is written in the script for those problems and says for each whether it worked.`, jobId: job.id, language: sc.language, env: { ADG_FIX: repairable.map((d) => d.id).join(",") }, script: repairScript, scriptName: sc.repairKind }), true);
             return;
         }
         await this.say(r, [
@@ -340,14 +340,14 @@ export class AutoRepairService {
         const since = (repairJob?.finished_at ?? new Date()).toISOString();
         const sc = scriptsFor(await this.platformOfDevice(r.device_id));
         const verifyScript = sc.language === "powershell" ? composeDiagnose(sc.diag, await this.playbooks.byKeys(r.organization_id, r.custom_ids)) : sc.diag;
-        const job = await this.jobs.createRunScriptJob({ agentId: agent, language: sc.language, scriptText: verifyScript, env: { RIQ_TOOL: sc.diagKind, RIQ_CHECKS: r.checks.join(","), RIQ_APP: r.app_name ?? "", RIQ_SINCE: since }, timeoutSec: 180 });
+        const job = await this.jobs.createRunScriptJob({ agentId: agent, language: sc.language, scriptText: verifyScript, env: { ADG_TOOL: sc.diagKind, ADG_CHECKS: r.checks.join(","), ADG_APP: r.app_name ?? "", ADG_SINCE: since }, timeoutSec: 180 });
         await this.setState(r, "verifying", { verifyJob: job.id, repairs: lines });
         await this.say(r, [
             "Decision after the repair:",
             ...lines.map((l) => `${l.id}: ${l.ok ? "the repair says it worked" : "the repair did not work"}. ${l.message}`),
             "The checks now run again to confirm the problem is really gone. A repair only counts if they come back clean.",
         ].join("\n"), true);
-        await this.say(r, scriptStartNote({ step: "3. Checks again, to confirm the repair", purpose: "Run the same checks again and compare with the first run.", jobId: job.id, language: sc.language, env: { RIQ_CHECKS: r.checks.join(","), RIQ_APP: r.app_name ?? "", RIQ_SINCE: since }, script: null, scriptName: sc.diagKind }), true);
+        await this.say(r, scriptStartNote({ step: "3. Checks again, to confirm the repair", purpose: "Run the same checks again and compare with the first run.", jobId: job.id, language: sc.language, env: { ADG_CHECKS: r.checks.join(","), ADG_APP: r.app_name ?? "", ADG_SINCE: since }, script: null, scriptName: sc.diagKind }), true);
     }
 
     private async afterVerify(r: Run, status: string, out: string, err: string) {
@@ -471,7 +471,7 @@ export class AutoRepairService {
             ON CONFLICT (alert_id) WHERE alert_id IS NOT NULL DO NOTHING RETURNING id::text AS id`;
         if (!claim.length) return;
         const diagScript = platform === "windows" ? composeDiagnose(sc.diag, input.custom) : sc.diag;
-        const job = await this.jobs.createRunScriptJob({ agentId: d.agent_id, language: sc.language, scriptText: diagScript, env: { RIQ_TOOL: sc.diagKind, RIQ_CHECKS: heal.checks.join(","), RIQ_APP: "" }, timeoutSec: 180 });
+        const job = await this.jobs.createRunScriptJob({ agentId: d.agent_id, language: sc.language, scriptText: diagScript, env: { ADG_TOOL: sc.diagKind, ADG_CHECKS: heal.checks.join(","), ADG_APP: "" }, timeoutSec: 180 });
         await this.prisma.$executeRaw`UPDATE public.auto_repair_runs SET diag_job_id = ${job.id}::uuid WHERE id = ${id}::uuid`;
         const ref = { id, ticket_id: input.ticketId, alert_id: input.alertId, source: "alert" };
         await this.say(ref, [
@@ -483,7 +483,7 @@ export class AutoRepairService {
             `Settings: repair ${input.settings.autoRepair ? "on" : "off (checks only)"}, knowledge base articles ${input.settings.createKb ? "on" : "off"}.`,
             "What happens next: the computer is checked (read only); a problem with a safe repair is repaired; the checks run again to confirm; if they come back clean the alert is resolved. Anything else is left for a technician, with this log. Every step is written here.",
         ].join("\n"), true);
-        await this.say(ref, scriptStartNote({ step: "1. Checks (read only)", purpose: "Look for the cause of the failed check. Nothing on the computer is changed.", jobId: job.id, language: sc.language, env: { RIQ_CHECKS: heal.checks.join(","), RIQ_APP: "" }, script: diagScript, scriptName: sc.diagKind }), true);
+        await this.say(ref, scriptStartNote({ step: "1. Checks (read only)", purpose: "Look for the cause of the failed check. Nothing on the computer is changed.", jobId: job.id, language: sc.language, env: { ADG_CHECKS: heal.checks.join(","), ADG_APP: "" }, script: diagScript, scriptName: sc.diagKind }), true);
     }
 
     /** Hands a run to a technician with a note of what was seen and done, and tells the person someone will follow up. */

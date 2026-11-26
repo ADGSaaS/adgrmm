@@ -74,19 +74,19 @@ console.log("Linux script, real hosts in a Docker network");
 if (run("docker", ["info", "--format", "{{.ServerVersion}}"]).status !== 0) console.log("     (Docker is not running, skipped)");
 else {
     const fs = require("node:fs"), os = require("node:os");
-    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "riq-disc-"));
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "adg-disc-"));
     fs.writeFileSync(path.join(tmp, "scan.sh"), D.LINUX_DISCOVERY_SCRIPT, { mode: 0o755 });
-    const NET = `riq-disc-${Date.now()}`, names = [];
+    const NET = `adg-disc-${Date.now()}`, names = [];
     const dk = (...a) => run("docker", a);
     const cleanup = () => { for (const n of names) dk("rm", "-f", n); dk("network", "rm", NET); };
     try {
         assert.equal(dk("network", "create", "--subnet", "172.29.7.0/24", NET).status, 0);
         // one image with the tools: ping, nc, ip
-        const base = `riq-disc-base-${Date.now()}`; names.push(base);
+        const base = `adg-disc-base-${Date.now()}`; names.push(base);
         dk("run", "-d", "--name", base, "debian:12", "sleep", "600");
         const inst = run("docker", ["exec", base, "bash", "-c", "apt-get update -qq >/dev/null 2>&1; apt-get install -y -qq iputils-ping netcat-openbsd iproute2 >/dev/null 2>&1; command -v ping nc ip"]);
         assert.match(inst.stdout, /ping[\s\S]*nc[\s\S]*ip/, inst.stderr);
-        const img = `riq-disc-img:${Date.now()}`;
+        const img = `adg-disc-img:${Date.now()}`;
         assert.equal(dk("commit", base, img).status, 0);
         const start = (name, ip, cmd) => { names.push(name); const r = dk("run", "-d", "--name", name, "--network", NET, "--ip", ip, img, "bash", "-c", cmd); assert.equal(r.status, 0, r.stderr); };
         start(`${NET}-printer`, "172.29.7.20", "nc -lk 9100 >/dev/null & nc -lk 515 >/dev/null & sleep 600");
@@ -95,7 +95,7 @@ else {
         names.push(`${NET}-scanner`);
         assert.equal(dk("run", "-d", "--name", `${NET}-scanner`, "--network", NET, "--ip", "172.29.7.2", "--cap-add", "NET_RAW", "-v", `${tmp.replace(/\\/g, "/")}:/w:ro`, img, "sleep", "600").status, 0);
         run("sleep", ["2"]);
-        const go = (ranges) => run("docker", ["exec", "-e", `RIQ_RANGES=${ranges}`, `${NET}-scanner`, "bash", "/w/scan.sh"]);
+        const go = (ranges) => run("docker", ["exec", "-e", `ADG_RANGES=${ranges}`, `${NET}-scanner`, "bash", "/w/scan.sh"]);
 
         check("it finds the printer, the server and the idle host with ports and MACs, and nothing else", () => {
             const r = go("172.29.7.0/24");
@@ -138,11 +138,11 @@ console.log("Windows script, PowerShell on this machine's own address");
     const fs = require("node:fs"), os = require("node:os");
     const own = run(ps, ["-NoProfile", "-Command", "(Get-NetIPAddress -AddressFamily IPv4 | Where-Object { $_.IPAddress -match '^(10\\.|192\\.168\\.|172\\.(1[6-9]|2\\d|3[01])\\.)' } | Select-Object -First 1).IPAddress"]).stdout.trim();
     if (!own) return console.log("     (no private address on this machine, skipped)");
-    const f = path.join(os.tmpdir(), `riq-disc-${Date.now()}.ps1`);
+    const f = path.join(os.tmpdir(), `adg-disc-${Date.now()}.ps1`);
     fs.writeFileSync(f, D.WINDOWS_DISCOVERY_SCRIPT);
     // a listener on 9100 (what a printer has), then the script is told to scan only this machine's own address
-    const wrapper = `$l = New-Object Net.Sockets.TcpListener([Net.IPAddress]::Any, 9100); $l.Start(); try { $env:RIQ_RANGES = '${own}/32'; $env:RIQ_INCLUDE_SELF = '1'; & '${f}' } finally { $l.Stop() }`;
-    const wrapperPlain = `$l = New-Object Net.Sockets.TcpListener([Net.IPAddress]::Any, 9100); $l.Start(); try { $env:RIQ_RANGES = '${own}/32'; & '${f}' } finally { $l.Stop() }`;
+    const wrapper = `$l = New-Object Net.Sockets.TcpListener([Net.IPAddress]::Any, 9100); $l.Start(); try { $env:ADG_RANGES = '${own}/32'; $env:ADG_INCLUDE_SELF = '1'; & '${f}' } finally { $l.Stop() }`;
+    const wrapperPlain = `$l = New-Object Net.Sockets.TcpListener([Net.IPAddress]::Any, 9100); $l.Start(); try { $env:ADG_RANGES = '${own}/32'; & '${f}' } finally { $l.Stop() }`;
     check(`with the self-exclusion switched off for the test, it finds this machine (${own}) with port 9100 open, and prints a well formed scan`, () => {
         const r = run(ps, ["-NoProfile", "-Command", wrapper]);
         const s = D.parseDiscovery(r.stdout, r.stderr);
@@ -156,11 +156,11 @@ console.log("Windows script, PowerShell on this machine's own address");
         assert.deepEqual(s.hosts, [], "scanning only its own address finds nothing");
     });
     check("a public range given to the script is refused by the script itself", () => {
-        const r = run(ps, ["-NoProfile", "-Command", `$env:RIQ_RANGES = '8.8.8.0/24'; & '${f}'; "EXIT=$LASTEXITCODE"`]);
+        const r = run(ps, ["-NoProfile", "-Command", `$env:ADG_RANGES = '8.8.8.0/24'; & '${f}'; "EXIT=$LASTEXITCODE"`]);
         assert.match(r.stdout + r.stderr, /No address to scan/); assert.ok(!/^H /m.test(r.stdout));
     });
     check("with no range given it picks the subnets of its own cards (private only)", () => {
-        const r = run(ps, ["-NoProfile", "-Command", `Remove-Item Env:RIQ_RANGES -ErrorAction SilentlyContinue; $env:RIQ_RANGES=''; $x = Get-Content '${f}' -Raw; $x = $x -replace '(?s)# ---- who is there.*$', 'Write-Output ''E 0'''; Invoke-Expression $x`]);
+        const r = run(ps, ["-NoProfile", "-Command", `Remove-Item Env:ADG_RANGES -ErrorAction SilentlyContinue; $env:ADG_RANGES=''; $x = Get-Content '${f}' -Raw; $x = $x -replace '(?s)# ---- who is there.*$', 'Write-Output ''E 0'''; Invoke-Expression $x`]);
         const s = D.parseDiscovery(r.stdout, r.stderr);
         assert.ok(s.ranges.length >= 1 && s.ranges.every((x) => D.isPrivateV4(x.split("/")[0])), JSON.stringify(s.ranges));
     });

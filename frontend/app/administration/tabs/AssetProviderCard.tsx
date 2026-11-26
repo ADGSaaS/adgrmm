@@ -1,6 +1,6 @@
 "use client";
 
-// Administration > Integrations > Assets: who owns assets. RemoteIQ has a built-in asset manager. When another system (the owner's Killian
+// Administration > Integrations > Assets: who owns assets. ADG RMM has a built-in asset manager. When another system (the owner's Killian
 // software) takes over assets, the built-in one is switched off: its list, the agent fill-in and the expiry emails stop, reports fall back
 // to what agents report, and NOTHING is deleted, so switching back brings everything back. Only a person with the right to manage
 // integrations (the Owner) can switch; everyone else sees who owns assets.
@@ -59,7 +59,7 @@ export default function AssetProviderCard({ push }: { push: ToastFn }) {
             <div>
                 <h2 id="assets-h" className="flex items-center gap-2 text-xl font-semibold tracking-tight"><Boxes className="h-5 w-5" aria-hidden /> Assets</h2>
                 <p className="mt-1 max-w-3xl text-sm text-muted-foreground">
-                    RemoteIQ has a built-in asset manager. If another system, such as Killian, manages your assets, switch the built-in one off so only one is in use. Switching deletes nothing and can be undone.
+                    ADG RMM has a built-in asset manager. If another system, such as Killian, manages your assets, switch the built-in one off so only one is in use. Switching deletes nothing and can be undone.
                 </p>
             </div>
             {error ? <p role="alert" className="text-sm text-destructive">{error}</p> : null}

@@ -100,11 +100,11 @@ export function buildIcs(v: { id: string; title: string; description?: string | 
     const lines = [
         "BEGIN:VCALENDAR",
         "VERSION:2.0",
-        "PRODID:-//RemoteIQ//Dispatch//EN",
+        "PRODID:-//AdgRmm//Dispatch//EN",
         "CALSCALE:GREGORIAN",
         `METHOD:${v.cancelled ? "CANCEL" : "PUBLISH"}`,
         "BEGIN:VEVENT",
-        `UID:${v.id}@remoteiq`,
+        `UID:${v.id}@adgrmm`,
         `DTSTAMP:${icsStamp(v.updatedAt ?? new Date())}`,
         `SEQUENCE:${v.sequence}`,
         `DTSTART:${icsStamp(v.startsAt)}`,

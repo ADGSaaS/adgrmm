@@ -89,7 +89,7 @@ export class DiagnosticsService {
         }
         const mem = process.memoryUsage();
         return {
-            name: "remoteiq-backend",
+            name: "adgrmm-backend",
             packageVersion: version,
             commit: gitCommit(),
             node: process.version,

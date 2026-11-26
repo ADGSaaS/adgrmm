@@ -17,7 +17,7 @@ const CROSS = C.CROSS_SCRIPTS;
 let passed = 0, failed = 0;
 const check = (name, fn) => { try { fn(); passed++; console.log(`ok   ${name}`); } catch (e) { failed++; console.log(`FAIL ${name}: ${e.message}`); } };
 const run = (cmd, args, o = {}) => spawnSync(cmd, args, { encoding: "utf8", maxBuffer: 1e8, timeout: 600_000, ...o });
-const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "riq-cross-"));
+const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "adg-cross-"));
 const texts = (s) => [["windows", s.script], ["linux", s.linuxScript], ["macos", s.macosScript]];
 
 console.log("the catalog");
@@ -51,8 +51,8 @@ check("parameters: valid unique names; every one is read by EVERY text, and no t
             assert.ok(!seen.has(p.name.toLowerCase()), `${s.key}: duplicate ${p.name}`); seen.add(p.name.toLowerCase());
         }
         for (const [sys, t] of texts(s)) {
-            for (const p of s.parameters) assert.ok(t.includes(`RIQ_${p.name.toUpperCase()}`), `${s.key}: the ${sys} text never reads ${p.name}`);
-            for (const m of t.matchAll(/RIQ_([A-Z][A-Z0-9_]*)/g)) assert.ok(seen.has(m[1].toLowerCase()), `${s.key}: the ${sys} text reads RIQ_${m[1]} but it is not declared`);
+            for (const p of s.parameters) assert.ok(t.includes(`ADG_${p.name.toUpperCase()}`), `${s.key}: the ${sys} text never reads ${p.name}`);
+            for (const m of t.matchAll(/ADG_([A-Z][A-Z0-9_]*)/g)) assert.ok(seen.has(m[1].toLowerCase()), `${s.key}: the ${sys} text reads ADG_${m[1]} but it is not declared`);
         }
     }
 });
@@ -63,7 +63,7 @@ check("text safety on all three texts: no dollar-brace, no double curly braces, 
         assert.ok(!t.includes("\r"), `${s.key}/${sys}: carriage return`);
         if (sys === "windows") {
             assert.ok(!/Invoke-Expression|\biex\b|Invoke-Command|-EncodedCommand|\bcmd(\.exe)?\s+\/c/i.test(t), `${s.key}: runs a string as code`);
-            for (const m of t.matchAll(/^.*\$env:RIQ_\w+.*$/gm)) assert.ok(!/(Start-Process|&\s*"|&\s*\$)/.test(m[0]), `${s.key}: a parameter on a line that starts a program`);
+            for (const m of t.matchAll(/^.*\$env:ADG_\w+.*$/gm)) assert.ok(!/(Start-Process|&\s*"|&\s*\$)/.test(m[0]), `${s.key}: a parameter on a line that starts a program`);
         } else {
             assert.ok(!/\beval\b/.test(t), `${s.key}/${sys}: eval`); assert.ok(!/\b(?:ba)?sh\s+-c\s+"/.test(t), `${s.key}/${sys}: sh -c with an interpolating string`);
             assert.ok(!/xargs[^\n]*\{\}/.test(t), `${s.key}/${sys}: xargs {}`);
@@ -76,12 +76,12 @@ check("anything that changes the device needs Confirm = YES (default NO) in all 
         assert.equal(changes, hasConfirm, `${s.key}: confirm parameter and name disagree`);
         if (changes) {
             assert.equal(s.parameters.find((p) => p.name === "confirm").defaultValue, "NO", s.key);
-            assert.ok(/RIQ_CONFIRM\s*(-cne|-ceq)\s*'YES'/.test(s.script), `${s.key}: the Windows text never compares Confirm with YES (case-sensitively)`);
-            for (const [sys, t] of texts(s).slice(1)) assert.ok(/"\$RIQ_CONFIRM"\s*(!=|=)\s*"YES"/.test(t), `${s.key}: the ${sys} text never compares Confirm with YES`);
+            assert.ok(/ADG_CONFIRM\s*(-cne|-ceq)\s*'YES'/.test(s.script), `${s.key}: the Windows text never compares Confirm with YES (case-sensitively)`);
+            for (const [sys, t] of texts(s).slice(1)) assert.ok(/"\$ADG_CONFIRM"\s*(!=|=)\s*"YES"/.test(t), `${s.key}: the ${sys} text never compares Confirm with YES`);
         }
         const dry = s.parameters.find((p) => p.name === "dry_run");
         if (dry) assert.equal(dry.defaultValue, "yes", s.key);
-        assert.ok(!/RIQ_(CONFIRM|DRY_RUN|CANCEL)\s+-(eq|ne)\b/i.test(s.script), `${s.key}: a case-insensitive comparison`);
+        assert.ok(!/ADG_(CONFIRM|DRY_RUN|CANCEL)\s+-(eq|ne)\b/i.test(s.script), `${s.key}: a case-insensitive comparison`);
     }
 });
 check("macOS texts keep to bash 3.2 and the BSD tools (no GNU-only habits, no Linux-only files or tools)", () => {
@@ -123,14 +123,14 @@ const ALLOWED = { "all-uptime-restart": [0, 1], "all-disk-usage": [0, 1], "all-t
 const allowedOf = (k) => ALLOWED[k] ?? [0];
 const envFor = (s, sys, extra = {}) => {
     const env = {};
-    for (const p of s.parameters) env[`RIQ_${p.name.toUpperCase()}`] = p.defaultValue ?? "";
-    if (s.key === "all-restart-service") env.RIQ_SERVICE = sys === "windows" ? "Spooler" : "cron";
-    if (s.key === "all-test-connection") env.RIQ_HOST = "localhost";
-    if (s.key === "all-dns-lookup") env.RIQ_NAME = "localhost";
-    if (s.key === "all-stop-process") env.RIQ_PROCESS = "riq-no-such-program";
-    if (s.key === "all-recent-errors") env.RIQ_HOURS = "1";
-    if (s.key === "all-disk-usage") env.RIQ_PATH = sys === "windows" ? psDir : "/etc";
-    if (s.key === "all-file-hash") env.RIQ_PATH = sys === "windows" ? path.join(psDir, "all-file-hash.ps1") : "/etc/hostname";
+    for (const p of s.parameters) env[`ADG_${p.name.toUpperCase()}`] = p.defaultValue ?? "";
+    if (s.key === "all-restart-service") env.ADG_SERVICE = sys === "windows" ? "Spooler" : "cron";
+    if (s.key === "all-test-connection") env.ADG_HOST = "localhost";
+    if (s.key === "all-dns-lookup") env.ADG_NAME = "localhost";
+    if (s.key === "all-stop-process") env.ADG_PROCESS = "adg-no-such-program";
+    if (s.key === "all-recent-errors") env.ADG_HOURS = "1";
+    if (s.key === "all-disk-usage") env.ADG_PATH = sys === "windows" ? psDir : "/etc";
+    if (s.key === "all-file-hash") env.ADG_PATH = sys === "windows" ? path.join(psDir, "all-file-hash.ps1") : "/etc/hostname";
     return { ...env, ...extra };
 };
 const badOutput = (o) => /command not found|syntax error|unbound variable|bad substitution|ParserError|is not recognized as the name/i.test(o);
@@ -151,28 +151,28 @@ if (havePs) {
     const by = (k) => CROSS.find((s) => s.key === k);
     check("Windows: bad names and paths exit 2, injected text is not run, the refused-process list holds", () => {
         const marker = path.join(tmp, "pwned-ps"); const q = marker.replace(/\\/g, "/");
-        assert.equal(ps("all-dns-lookup", { RIQ_NAME: "x; New-Item " + q }).status, 2);
-        assert.equal(ps("all-stop-process", { RIQ_PROCESS: "x; New-Item " + q, RIQ_CONFIRM: "YES" }).status, 2);
-        assert.equal(ps("all-stop-process", { RIQ_PROCESS: "lsass", RIQ_CONFIRM: "YES" }).status, 2);
-        assert.equal(ps("all-stop-process", { RIQ_PROCESS: "RemoteIQ.Agent", RIQ_CONFIRM: "YES" }).status, 2);
-        assert.equal(ps("all-file-hash", { RIQ_PATH: path.join(tmp, "no-such-file") }).status, 2);
-        assert.equal(ps("all-restart-service", { RIQ_SERVICE: "bad;name" }).status, 2);
+        assert.equal(ps("all-dns-lookup", { ADG_NAME: "x; New-Item " + q }).status, 2);
+        assert.equal(ps("all-stop-process", { ADG_PROCESS: "x; New-Item " + q, ADG_CONFIRM: "YES" }).status, 2);
+        assert.equal(ps("all-stop-process", { ADG_PROCESS: "lsass", ADG_CONFIRM: "YES" }).status, 2);
+        assert.equal(ps("all-stop-process", { ADG_PROCESS: "AdgRmm.Agent", ADG_CONFIRM: "YES" }).status, 2);
+        assert.equal(ps("all-file-hash", { ADG_PATH: path.join(tmp, "no-such-file") }).status, 2);
+        assert.equal(ps("all-restart-service", { ADG_SERVICE: "bad;name" }).status, 2);
         assert.ok(!fs.existsSync(marker) && !fs.existsSync(q), "the injected command ran");
         assert.ok(by("all-schedule-restart"));
     });
     check("Windows: file hash is the real SHA-256 of the file", () => {
         const f = path.join(tmp, "hash-me.txt"); fs.writeFileSync(f, "hello cross platform");
         const want = require("node:crypto").createHash("sha256").update("hello cross platform").digest("hex");
-        const r = ps("all-file-hash", { RIQ_PATH: f }); assert.equal(r.status, 0); assert.ok(r.stdout.includes(want), r.stdout);
+        const r = ps("all-file-hash", { ADG_PATH: f }); assert.equal(r.status, 0); assert.ok(r.stdout.includes(want), r.stdout);
     });
     check("Windows: stop-process without Confirm lists a real process and stops nothing", () => {
-        const r = ps("all-stop-process", { RIQ_PROCESS: "powershell", RIQ_CONFIRM: "NO" });
+        const r = ps("all-stop-process", { ADG_PROCESS: "powershell", ADG_CONFIRM: "NO" });
         assert.equal(r.status, 0); assert.match(r.stdout, /Nothing was stopped/);
     });
     check("Windows: schedule-restart without Confirm changes nothing (and never starts a restart)", () => {
-        const r = ps("all-schedule-restart", { RIQ_MINUTES: "5", RIQ_CONFIRM: "NO", RIQ_CANCEL: "NO" });
+        const r = ps("all-schedule-restart", { ADG_MINUTES: "5", ADG_CONFIRM: "NO", ADG_CANCEL: "NO" });
         assert.equal(r.status, 0); assert.match(r.stdout, /Nothing was changed/);
-        const c = ps("all-schedule-restart", { RIQ_MINUTES: "5", RIQ_CONFIRM: "NO", RIQ_CANCEL: "YES" }); assert.match(c.stdout, /Nothing was changed/);
+        const c = ps("all-schedule-restart", { ADG_MINUTES: "5", ADG_CONFIRM: "NO", ADG_CANCEL: "YES" }); assert.match(c.stdout, /Nothing was changed/);
     });
 }
 
@@ -188,7 +188,7 @@ else {
         for (const s of CROSS) fs.writeFileSync(path.join(dirs[sys], `${s.key}.sh`), sys === "linux" ? s.linuxScript : s.macosScript, { mode: 0o755 });
     }
     const box = (tag, image, prep) => {
-        const n = `riq-cross-${tag}-${Date.now()}`; names.push(n);
+        const n = `adg-cross-${tag}-${Date.now()}`; names.push(n);
         assert.equal(dk("run", "-d", "--name", n, image, "sleep", "1800").status, 0);
         if (prep) dk("exec", n, "bash", "-c", prep);
         assert.equal(dk("cp", dirs.linux, `${n}:/w`).status, 0); assert.equal(dk("cp", dirs.macos, `${n}:/m`).status, 0);
@@ -217,20 +217,20 @@ else {
         const gone = (f) => dk("exec", n, "bash", "-c", `test ! -e ${f}`).status === 0;
         const by = (k) => CROSS.find((s) => s.key === k);
         const evil = [
-            ["all-restart-service", { RIQ_SERVICE: "x; touch /tmp/pwned1" }, "/tmp/pwned1"],
-            ["all-restart-service", { RIQ_SERVICE: "$(touch /tmp/pwned2)", RIQ_CONFIRM: "YES" }, "/tmp/pwned2"],
-            ["all-test-connection", { RIQ_HOST: "localhost; touch /tmp/pwned3" }, "/tmp/pwned3"],
-            ["all-test-connection", { RIQ_HOST: "localhost", RIQ_PORT: "22; touch /tmp/pwned4" }, "/tmp/pwned4"],
-            ["all-disk-usage", { RIQ_PATH: "/tmp; touch /tmp/pwned5" }, "/tmp/pwned5"],
-            ["all-top-processes", { RIQ_COUNT: "5; touch /tmp/pwned6" }, "/tmp/pwned6"],
-            ["all-recent-errors", { RIQ_HOURS: "1; touch /tmp/pwned7" }, "/tmp/pwned7"],
-            ["all-clean-temp", { RIQ_DAYS: "1; touch /tmp/pwned8", RIQ_DRY_RUN: "no", RIQ_CONFIRM: "YES" }, "/tmp/pwned8"],
-            ["all-stop-process", { RIQ_PROCESS: "x; touch /tmp/pwned9", RIQ_CONFIRM: "YES" }, "/tmp/pwned9"],
-            ["all-stop-process", { RIQ_PROCESS: "$(touch /tmp/pwned10)", RIQ_CONFIRM: "YES" }, "/tmp/pwned10"],
-            ["all-dns-lookup", { RIQ_NAME: "localhost; touch /tmp/pwned11" }, "/tmp/pwned11"],
-            ["all-dns-lookup", { RIQ_NAME: "$(touch /tmp/pwned12)" }, "/tmp/pwned12"],
-            ["all-file-hash", { RIQ_PATH: "/etc/hostname; touch /tmp/pwned13" }, "/tmp/pwned13"],
-            ["all-schedule-restart", { RIQ_MINUTES: "5; touch /tmp/pwned14", RIQ_CONFIRM: "NO" }, "/tmp/pwned14"],
+            ["all-restart-service", { ADG_SERVICE: "x; touch /tmp/pwned1" }, "/tmp/pwned1"],
+            ["all-restart-service", { ADG_SERVICE: "$(touch /tmp/pwned2)", ADG_CONFIRM: "YES" }, "/tmp/pwned2"],
+            ["all-test-connection", { ADG_HOST: "localhost; touch /tmp/pwned3" }, "/tmp/pwned3"],
+            ["all-test-connection", { ADG_HOST: "localhost", ADG_PORT: "22; touch /tmp/pwned4" }, "/tmp/pwned4"],
+            ["all-disk-usage", { ADG_PATH: "/tmp; touch /tmp/pwned5" }, "/tmp/pwned5"],
+            ["all-top-processes", { ADG_COUNT: "5; touch /tmp/pwned6" }, "/tmp/pwned6"],
+            ["all-recent-errors", { ADG_HOURS: "1; touch /tmp/pwned7" }, "/tmp/pwned7"],
+            ["all-clean-temp", { ADG_DAYS: "1; touch /tmp/pwned8", ADG_DRY_RUN: "no", ADG_CONFIRM: "YES" }, "/tmp/pwned8"],
+            ["all-stop-process", { ADG_PROCESS: "x; touch /tmp/pwned9", ADG_CONFIRM: "YES" }, "/tmp/pwned9"],
+            ["all-stop-process", { ADG_PROCESS: "$(touch /tmp/pwned10)", ADG_CONFIRM: "YES" }, "/tmp/pwned10"],
+            ["all-dns-lookup", { ADG_NAME: "localhost; touch /tmp/pwned11" }, "/tmp/pwned11"],
+            ["all-dns-lookup", { ADG_NAME: "$(touch /tmp/pwned12)" }, "/tmp/pwned12"],
+            ["all-file-hash", { ADG_PATH: "/etc/hostname; touch /tmp/pwned13" }, "/tmp/pwned13"],
+            ["all-schedule-restart", { ADG_MINUTES: "5; touch /tmp/pwned14", ADG_CONFIRM: "NO" }, "/tmp/pwned14"],
         ];
         for (const dir of ["w", "m"]) for (const [key, env, file] of evil) {
             check(`${dir === "w" ? "Linux" : "macOS"} text of ${key} with ${Object.keys(env)[0]} = ${Object.values(env)[0].slice(0, 26)}: refused or harmless, nothing is run`, () => {
@@ -240,44 +240,44 @@ else {
         }
         check("bad input exits 2 in the Linux and the macOS text: service name, host, process, name, file, port", () => {
             for (const dir of ["w", "m"]) {
-                assert.equal(exec(n, dir, "all-restart-service", { RIQ_SERVICE: "bad name!", RIQ_CONFIRM: "YES" }).status, 2, `${dir} restart`);
+                assert.equal(exec(n, dir, "all-restart-service", { ADG_SERVICE: "bad name!", ADG_CONFIRM: "YES" }).status, 2, `${dir} restart`);
                 assert.equal(exec(n, dir, "all-test-connection", {}).status, 2, `${dir} host`);
-                assert.equal(exec(n, dir, "all-test-connection", { RIQ_HOST: "localhost", RIQ_PORT: "99999" }).status, 2, `${dir} port`);
-                assert.equal(exec(n, dir, "all-stop-process", { RIQ_PROCESS: "" }).status, 2, `${dir} process`);
-                assert.equal(exec(n, dir, "all-stop-process", { RIQ_PROCESS: dir === "w" ? "systemd" : "launchd", RIQ_CONFIRM: "YES" }).status, 2, `${dir} refused process`);
-                assert.equal(exec(n, dir, "all-stop-process", { RIQ_PROCESS: "RemoteIQ-Agent", RIQ_CONFIRM: "YES" }).status, 2, `${dir} refused RemoteIQ`);
+                assert.equal(exec(n, dir, "all-test-connection", { ADG_HOST: "localhost", ADG_PORT: "99999" }).status, 2, `${dir} port`);
+                assert.equal(exec(n, dir, "all-stop-process", { ADG_PROCESS: "" }).status, 2, `${dir} process`);
+                assert.equal(exec(n, dir, "all-stop-process", { ADG_PROCESS: dir === "w" ? "systemd" : "launchd", ADG_CONFIRM: "YES" }).status, 2, `${dir} refused process`);
+                assert.equal(exec(n, dir, "all-stop-process", { ADG_PROCESS: "AdgRmm-Agent", ADG_CONFIRM: "YES" }).status, 2, `${dir} refused ADG RMM`);
                 assert.equal(exec(n, dir, "all-dns-lookup", {}).status, 2, `${dir} name`);
-                assert.equal(exec(n, dir, "all-file-hash", { RIQ_PATH: "/no/such/file" }).status, 2, `${dir} file`);
-                assert.equal(exec(n, dir, "all-disk-usage", { RIQ_PATH: "/no/such/folder" }).status, 2, `${dir} path`);
+                assert.equal(exec(n, dir, "all-file-hash", { ADG_PATH: "/no/such/file" }).status, 2, `${dir} file`);
+                assert.equal(exec(n, dir, "all-disk-usage", { ADG_PATH: "/no/such/folder" }).status, 2, `${dir} path`);
             }
         });
         check("Linux: file hash is the real SHA-256; DNS lookup resolves localhost", () => {
             dk("exec", n, "bash", "-c", "printf 'hello cross platform' > /tmp/hash-me.txt");
             const want = require("node:crypto").createHash("sha256").update("hello cross platform").digest("hex");
-            const r = exec(n, "w", "all-file-hash", { RIQ_PATH: "/tmp/hash-me.txt" }); assert.equal(r.status, 0); assert.ok(r.stdout.includes(want), r.stdout);
-            const d = exec(n, "w", "all-dns-lookup", { RIQ_NAME: "localhost" }); assert.equal(d.status, 0, d.stdout); assert.match(d.stdout, /127\.0\.0\.1|::1/);
+            const r = exec(n, "w", "all-file-hash", { ADG_PATH: "/tmp/hash-me.txt" }); assert.equal(r.status, 0); assert.ok(r.stdout.includes(want), r.stdout);
+            const d = exec(n, "w", "all-dns-lookup", { ADG_NAME: "localhost" }); assert.equal(d.status, 0, d.stdout); assert.match(d.stdout, /127\.0\.0\.1|::1/);
         });
         check("Linux: clean temp removes ONLY old files and only with Dry run no AND Confirm YES", () => {
-            dk("exec", n, "bash", "-c", "mkdir -p /tmp/riq-ct && echo old > /tmp/riq-ct/old.txt && echo new > /tmp/riq-ct/new.txt && touch -d '40 days ago' /tmp/riq-ct/old.txt");
+            dk("exec", n, "bash", "-c", "mkdir -p /tmp/adg-ct && echo old > /tmp/adg-ct/old.txt && echo new > /tmp/adg-ct/new.txt && touch -d '40 days ago' /tmp/adg-ct/old.txt");
             const exists = (f) => dk("exec", n, "bash", "-c", `test -e ${f}`).status === 0;
-            exec(n, "w", "all-clean-temp", { RIQ_DAYS: "7", RIQ_DRY_RUN: "yes", RIQ_CONFIRM: "YES" }); assert.ok(exists("/tmp/riq-ct/old.txt"), "a dry run deleted");
-            exec(n, "w", "all-clean-temp", { RIQ_DAYS: "7", RIQ_DRY_RUN: "no", RIQ_CONFIRM: "NO" }); assert.ok(exists("/tmp/riq-ct/old.txt"), "no confirm but it deleted");
-            exec(n, "w", "all-clean-temp", { RIQ_DAYS: "7", RIQ_DRY_RUN: "no", RIQ_CONFIRM: "yes" }); assert.ok(exists("/tmp/riq-ct/old.txt"), "a lower-case yes counted as YES");
-            const r = exec(n, "w", "all-clean-temp", { RIQ_DAYS: "7", RIQ_DRY_RUN: "no", RIQ_CONFIRM: "YES" }); assert.equal(r.status, 0, r.stdout);
-            assert.ok(!exists("/tmp/riq-ct/old.txt"), "the old file is still there"); assert.ok(exists("/tmp/riq-ct/new.txt"), "the new file was deleted");
+            exec(n, "w", "all-clean-temp", { ADG_DAYS: "7", ADG_DRY_RUN: "yes", ADG_CONFIRM: "YES" }); assert.ok(exists("/tmp/adg-ct/old.txt"), "a dry run deleted");
+            exec(n, "w", "all-clean-temp", { ADG_DAYS: "7", ADG_DRY_RUN: "no", ADG_CONFIRM: "NO" }); assert.ok(exists("/tmp/adg-ct/old.txt"), "no confirm but it deleted");
+            exec(n, "w", "all-clean-temp", { ADG_DAYS: "7", ADG_DRY_RUN: "no", ADG_CONFIRM: "yes" }); assert.ok(exists("/tmp/adg-ct/old.txt"), "a lower-case yes counted as YES");
+            const r = exec(n, "w", "all-clean-temp", { ADG_DAYS: "7", ADG_DRY_RUN: "no", ADG_CONFIRM: "YES" }); assert.equal(r.status, 0, r.stdout);
+            assert.ok(!exists("/tmp/adg-ct/old.txt"), "the old file is still there"); assert.ok(exists("/tmp/adg-ct/new.txt"), "the new file was deleted");
         });
         check("Linux: stop-process lists, stops only with Confirm YES, and never touches itself", () => {
-            dk("exec", "-d", n, "bash", "-c", "exec -a riqsleeper sleep 600");
-            dk("exec", "-d", n, "bash", "-c", "cp /bin/sleep /tmp/riqsleeper && exec /tmp/riqsleeper 600");
-            const alive = () => dk("exec", n, "pgrep", "-x", "riqsleeper").status === 0;
+            dk("exec", "-d", n, "bash", "-c", "exec -a adgsleeper sleep 600");
+            dk("exec", "-d", n, "bash", "-c", "cp /bin/sleep /tmp/adgsleeper && exec /tmp/adgsleeper 600");
+            const alive = () => dk("exec", n, "pgrep", "-x", "adgsleeper").status === 0;
             assert.ok(alive(), "the test process did not start");
-            const a = exec(n, "w", "all-stop-process", { RIQ_PROCESS: "riqsleeper", RIQ_CONFIRM: "NO" }); assert.equal(a.status, 0); assert.match(a.stdout, /Nothing was stopped/); assert.ok(alive());
-            const b = exec(n, "w", "all-stop-process", { RIQ_PROCESS: "riqsleeper", RIQ_CONFIRM: "YES" }); assert.equal(b.status, 0, b.stdout + b.stderr);
+            const a = exec(n, "w", "all-stop-process", { ADG_PROCESS: "adgsleeper", ADG_CONFIRM: "NO" }); assert.equal(a.status, 0); assert.match(a.stdout, /Nothing was stopped/); assert.ok(alive());
+            const b = exec(n, "w", "all-stop-process", { ADG_PROCESS: "adgsleeper", ADG_CONFIRM: "YES" }); assert.equal(b.status, 0, b.stdout + b.stderr);
             assert.ok(!alive(), "it is still running");
         });
         check("Linux: schedule-restart without Confirm changes nothing; cancel without Confirm changes nothing", () => {
-            assert.match(exec(n, "w", "all-schedule-restart", { RIQ_MINUTES: "5", RIQ_CONFIRM: "NO" }).stdout, /Nothing was changed/);
-            assert.match(exec(n, "w", "all-schedule-restart", { RIQ_CANCEL: "YES", RIQ_CONFIRM: "NO" }).stdout, /Nothing was changed/);
+            assert.match(exec(n, "w", "all-schedule-restart", { ADG_MINUTES: "5", ADG_CONFIRM: "NO" }).stdout, /Nothing was changed/);
+            assert.match(exec(n, "w", "all-schedule-restart", { ADG_CANCEL: "YES", ADG_CONFIRM: "NO" }).stdout, /Nothing was changed/);
         });
     } finally {
         for (const n of names) dk("rm", "-f", n);

@@ -19,7 +19,7 @@ using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using Microsoft.Extensions.Logging;
-using RemoteIQ.Agent.Services;
+using AdgRmm.Agent.Services;
 
 [DllImport("winmm.dll")] static extern uint timeBeginPeriod(uint ms);
 timeBeginPeriod(1);
@@ -203,7 +203,7 @@ async Task<string> RunAsync(string engine, (string Name, double Loss, int DelayM
         }
     });
 
-    var profile = Path.Combine(Path.GetTempPath(), "riq-lab-" + Guid.NewGuid().ToString("N"));
+    var profile = Path.Combine(Path.GetTempPath(), "adg-lab-" + Guid.NewGuid().ToString("N"));
     var browser = Process.Start(new ProcessStartInfo(edge, $"--headless=new --user-data-dir=\"{profile}\" --no-first-run --no-default-browser-check --autoplay-policy=no-user-gesture-required --disable-features=WebRtcHideLocalIpsWithMdns --disable-background-timer-throttling http://127.0.0.1:{httpPort}/") { UseShellExecute = false, CreateNoWindow = true })!;
 
     string result;

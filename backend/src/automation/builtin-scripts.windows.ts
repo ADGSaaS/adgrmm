@@ -4,7 +4,7 @@
 //   - Windows PowerShell 5.1, ASCII only, nothing from outside the box.
 //   - Read-only, unless its name says "changes the device": those only act when the Confirm parameter is YES, and the ones that delete or
 //     disable also have a dry run that is on by default.
-//   - A parameter is read from the environment (RIQ_<NAME>), checked against a strict pattern, and passed as an ARGUMENT, never built into code.
+//   - A parameter is read from the environment (ADG_<NAME>), checked against a strict pattern, and passed as an ARGUMENT, never built into code.
 //   - Plain output, and a non-zero exit code only for a real problem (a check that found a fault, or a bad parameter).
 // The text lives in String.raw templates: it must contain no dollar-brace sequence and no backtick.
 import { CONFIRM_PARAM, type BuiltinScript } from "./builtin-scripts.types";
@@ -48,7 +48,7 @@ Get-NetIPAddress -AddressFamily IPv4 -ErrorAction SilentlyContinue |
         language: "powershell", category: "Diagnostics", timeoutSec: 120,
         parameters: [{ name: "count", label: "How many processes to list (1 to 50)", defaultValue: "10" }],
         script: String.raw`$n = 10
-if ($env:RIQ_COUNT -match '^[0-9]{1,2}$' -and [int]$env:RIQ_COUNT -ge 1 -and [int]$env:RIQ_COUNT -le 50) { $n = [int]$env:RIQ_COUNT }
+if ($env:ADG_COUNT -match '^[0-9]{1,2}$' -and [int]$env:ADG_COUNT -ge 1 -and [int]$env:ADG_COUNT -le 50) { $n = [int]$env:ADG_COUNT }
 Write-Output "Top $n processes by CPU time (seconds since they started):"
 Get-Process | Sort-Object CPU -Descending | Select-Object -First $n Name, Id,
   @{n='CPU_s'; e={[math]::Round($_.CPU, 1)}}, @{n='Memory_MB'; e={[math]::Round($_.WorkingSet64 / 1MB, 1)}} |
@@ -100,7 +100,7 @@ if ($reasons.Count -gt 0) { exit 1 }
         language: "powershell", category: "Diagnostics", timeoutSec: 300,
         parameters: [{ name: "hours", label: "How many hours back (1 to 720)", defaultValue: "24" }],
         script: String.raw`$h = 24
-if ($env:RIQ_HOURS -match '^[0-9]{1,3}$' -and [int]$env:RIQ_HOURS -ge 1 -and [int]$env:RIQ_HOURS -le 720) { $h = [int]$env:RIQ_HOURS }
+if ($env:ADG_HOURS -match '^[0-9]{1,3}$' -and [int]$env:ADG_HOURS -ge 1 -and [int]$env:ADG_HOURS -le 720) { $h = [int]$env:ADG_HOURS }
 $since = (Get-Date).AddHours(-$h)
 Write-Output "Errors and critical events since $since ($h hours):"
 try {
@@ -143,12 +143,12 @@ exit 1
         description: "Restarts one named service. Does nothing unless Confirm is YES. Give the short service name, for example Spooler.",
         language: "powershell", category: "Services and processes", timeoutSec: 180,
         parameters: [{ name: "service", label: "Service name (for example Spooler)", required: true }, CONFIRM_PARAM],
-        script: String.raw`$name = [string]$env:RIQ_SERVICE
+        script: String.raw`$name = [string]$env:ADG_SERVICE
 if ($name -notmatch '^[A-Za-z0-9_.@ -]{1,80}$') { Write-Output 'Give a valid service name in the Service parameter.'; exit 2 }
 $svc = Get-Service -Name $name -ErrorAction SilentlyContinue
 if (-not $svc) { Write-Output "There is no service named '$name'."; exit 2 }
 Write-Output "Service $($svc.Name) ($($svc.DisplayName)) is $($svc.Status)."
-if ($env:RIQ_CONFIRM -cne 'YES') {
+if ($env:ADG_CONFIRM -cne 'YES') {
   Write-Output 'Nothing was changed. Run again with Confirm set to YES to restart it.'
   exit 0
 }
@@ -192,7 +192,7 @@ Get-CimInstance Win32_StartupCommand -ErrorAction SilentlyContinue | Select-Obje
 Get-CimInstance Win32_LogicalDisk -Filter 'DriveType=3' | ForEach-Object {
   Write-Output ("  {0}  {1} GB total, {2} GB free ({3}% free)" -f $_.DeviceID, [math]::Round($_.Size / 1GB, 1), [math]::Round($_.FreeSpace / 1GB, 1), [math]::Round(100 * $_.FreeSpace / $_.Size, 0))
 }
-$p = [string]$env:RIQ_PATH
+$p = [string]$env:ADG_PATH
 if ([string]::IsNullOrWhiteSpace($p)) { $p = 'C:\' }
 if ($p -match '[<>|"?*]' -or $p.Length -gt 240 -or -not (Test-Path -LiteralPath $p -PathType Container)) { Write-Output ''; Write-Output "The Path parameter is not a folder on this computer: $p"; exit 2 }
 Write-Output ''
@@ -237,8 +237,8 @@ Write-Output 'All disks report Healthy.'
             CONFIRM_PARAM,
         ],
         script: String.raw`$days = 7
-if ($env:RIQ_DAYS -match '^[0-9]{1,3}$' -and [int]$env:RIQ_DAYS -ge 1 -and [int]$env:RIQ_DAYS -le 365) { $days = [int]$env:RIQ_DAYS }
-$delete = ($env:RIQ_DRY_RUN -ceq 'no' -and $env:RIQ_CONFIRM -ceq 'YES')
+if ($env:ADG_DAYS -match '^[0-9]{1,3}$' -and [int]$env:ADG_DAYS -ge 1 -and [int]$env:ADG_DAYS -le 365) { $days = [int]$env:ADG_DAYS }
+$delete = ($env:ADG_DRY_RUN -ceq 'no' -and $env:ADG_CONFIRM -ceq 'YES')
 $cut = (Get-Date).AddDays(-$days)
 $folders = @()
 $folders += Join-Path $env:windir 'Temp'
@@ -282,7 +282,7 @@ Write-Output 'Status:'
 $svc = Get-Service w32time -ErrorAction SilentlyContinue
 Write-Output ''
 Write-Output ("Windows Time service: {0}" -f $(if ($svc) { $svc.Status } else { 'not found' }))
-if ($env:RIQ_CONFIRM -ceq 'YES') {
+if ($env:ADG_CONFIRM -ceq 'YES') {
   Write-Output ''
   Write-Output 'Forcing a resync...'
   if ($svc -and $svc.Status -ne 'Running') { Start-Service w32time -ErrorAction SilentlyContinue }
@@ -300,7 +300,7 @@ if ($env:RIQ_CONFIRM -ceq 'YES') {
         language: "powershell", category: "Maintenance", timeoutSec: 60, parameters: [CONFIRM_PARAM],
         script: String.raw`$n = @(Get-DnsClientCache -ErrorAction SilentlyContinue).Count
 Write-Output "The DNS cache holds $n entries."
-if ($env:RIQ_CONFIRM -cne 'YES') { Write-Output 'Nothing was changed. Set Confirm to YES to flush it.'; exit 0 }
+if ($env:ADG_CONFIRM -cne 'YES') { Write-Output 'Nothing was changed. Set Confirm to YES to flush it.'; exit 0 }
 & ipconfig.exe /flushdns 2>&1 | ForEach-Object { Write-Output $_ }
 if ($LASTEXITCODE -ne 0) { exit 1 }
 `,
@@ -337,12 +337,12 @@ try { $t = Test-NetConnection -ComputerName 1.1.1.1 -Port 443 -WarningAction Sil
             { name: "host", label: "Host name or IP address", required: true },
             { name: "port", label: "TCP port to test (optional)", defaultValue: "" },
         ],
-        script: String.raw`$h = [string]$env:RIQ_HOST
+        script: String.raw`$h = [string]$env:ADG_HOST
 if ($h -notmatch '^[A-Za-z0-9][A-Za-z0-9._:-]{0,252}$') { Write-Output 'Give a valid host name or address in the Host parameter.'; exit 2 }
 $port = 0
-if ($env:RIQ_PORT) {
-  if ($env:RIQ_PORT -notmatch '^[0-9]{1,5}$' -or [int]$env:RIQ_PORT -lt 1 -or [int]$env:RIQ_PORT -gt 65535) { Write-Output 'The Port parameter must be a number from 1 to 65535.'; exit 2 }
-  $port = [int]$env:RIQ_PORT
+if ($env:ADG_PORT) {
+  if ($env:ADG_PORT -notmatch '^[0-9]{1,5}$' -or [int]$env:ADG_PORT -lt 1 -or [int]$env:ADG_PORT -gt 65535) { Write-Output 'The Port parameter must be a number from 1 to 65535.'; exit 2 }
+  $port = [int]$env:ADG_PORT
 }
 $failed = $false
 Write-Output "Ping $h (4 tries):"
@@ -432,7 +432,7 @@ Write-Output 'Nothing important is switched off.'
         language: "powershell", category: "Security", timeoutSec: 3600, parameters: [CONFIRM_PARAM],
         script: String.raw`try { $m = Get-MpComputerStatus -ErrorAction Stop } catch { Write-Output 'Microsoft Defender is not available on this computer.'; exit 1 }
 Write-Output ("Signatures {0}, {1} days old. Real-time protection: {2}. Last quick scan: {3}" -f $m.AntivirusSignatureVersion, $m.AntivirusSignatureAge, $m.RealTimeProtectionEnabled, $m.QuickScanEndTime)
-if ($env:RIQ_CONFIRM -cne 'YES') { Write-Output 'Nothing was changed. Set Confirm to YES to update signatures and run a quick scan.'; exit 0 }
+if ($env:ADG_CONFIRM -cne 'YES') { Write-Output 'Nothing was changed. Set Confirm to YES to update signatures and run a quick scan.'; exit 0 }
 Write-Output 'Updating signatures...'
 try { Update-MpSignature -ErrorAction Stop; Write-Output 'Signatures updated.' } catch { Write-Output ("Update failed: " + $_.Exception.Message) }
 Write-Output 'Running a quick scan...'
@@ -453,7 +453,7 @@ Write-Output 'No threats were detected.'
         language: "powershell", category: "Security", timeoutSec: 120,
         parameters: [{ name: "days", label: "Warn when a certificate expires within this many days (1 to 3650)", defaultValue: "30" }],
         script: String.raw`$days = 30
-if ($env:RIQ_DAYS -match '^[0-9]{1,4}$' -and [int]$env:RIQ_DAYS -ge 1 -and [int]$env:RIQ_DAYS -le 3650) { $days = [int]$env:RIQ_DAYS }
+if ($env:ADG_DAYS -match '^[0-9]{1,4}$' -and [int]$env:ADG_DAYS -ge 1 -and [int]$env:ADG_DAYS -le 3650) { $days = [int]$env:ADG_DAYS }
 $limit = (Get-Date).AddDays($days)
 $found = @()
 foreach ($store in 'My', 'WebHosting', 'Remote Desktop') {
@@ -523,7 +523,7 @@ try {
         language: "powershell", category: "Users and accounts", timeoutSec: 300,
         parameters: [{ name: "days", label: "How many days back (1 to 90)", defaultValue: "7" }],
         script: String.raw`$days = 7
-if ($env:RIQ_DAYS -match '^[0-9]{1,2}$' -and [int]$env:RIQ_DAYS -ge 1 -and [int]$env:RIQ_DAYS -le 90) { $days = [int]$env:RIQ_DAYS }
+if ($env:ADG_DAYS -match '^[0-9]{1,2}$' -and [int]$env:ADG_DAYS -ge 1 -and [int]$env:ADG_DAYS -le 90) { $days = [int]$env:ADG_DAYS }
 $types = @{ 2 = 'Console'; 7 = 'Unlock'; 10 = 'Remote Desktop'; 11 = 'Cached' }
 try {
   $ev = Get-WinEvent -FilterHashtable @{ LogName = 'Security'; Id = 4624; StartTime = (Get-Date).AddDays(-$days) } -MaxEvents 3000 -ErrorAction Stop
@@ -556,8 +556,8 @@ $rows | Group-Object User | Sort-Object Count -Descending | ForEach-Object { Wri
             CONFIRM_PARAM,
         ],
         script: String.raw`$days = 90
-if ($env:RIQ_DAYS -match '^[0-9]{1,4}$' -and [int]$env:RIQ_DAYS -ge 7 -and [int]$env:RIQ_DAYS -le 3650) { $days = [int]$env:RIQ_DAYS }
-$act = ($env:RIQ_DRY_RUN -ceq 'no' -and $env:RIQ_CONFIRM -ceq 'YES')
+if ($env:ADG_DAYS -match '^[0-9]{1,4}$' -and [int]$env:ADG_DAYS -ge 7 -and [int]$env:ADG_DAYS -le 3650) { $days = [int]$env:ADG_DAYS }
+$act = ($env:ADG_DRY_RUN -ceq 'no' -and $env:ADG_CONFIRM -ceq 'YES')
 $cut = (Get-Date).AddDays(-$days)
 $adminSid = 'S-1-5-32-544'
 $adminNames = @()
@@ -633,7 +633,7 @@ $cr = Join-Path $env:windir 'System32\catroot2'
 foreach ($p in $sd, $cr) {
   if (Test-Path -LiteralPath $p) { $mb = [math]::Round((Get-ChildItem -LiteralPath $p -Recurse -Force -File -ErrorAction SilentlyContinue | Measure-Object -Property Length -Sum).Sum / 1MB, 1); Write-Output "$p : $mb MB" }
 }
-if ($env:RIQ_CONFIRM -cne 'YES') { Write-Output 'Nothing was changed. Set Confirm to YES to reset the update cache.'; exit 0 }
+if ($env:ADG_CONFIRM -cne 'YES') { Write-Output 'Nothing was changed. Set Confirm to YES to reset the update cache.'; exit 0 }
 $stamp = Get-Date -Format 'yyyyMMdd-HHmmss'
 $services = 'wuauserv', 'bits', 'cryptsvc', 'msiserver'
 foreach ($s in $services) { Stop-Service -Name $s -Force -ErrorAction SilentlyContinue }

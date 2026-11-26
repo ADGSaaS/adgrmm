@@ -15,13 +15,13 @@ export const runtime = "nodejs";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "RemoteIQ",
+  title: "ADG RMM",
   description: "Next-generation Remote Monitoring & Management",
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   // The customer portal does not use the staff app's data providers.
-  const portal = (await headers()).get("x-riq-portal") === "1";
+  const portal = (await headers()).get("x-adg-portal") === "1";
   return (
     // important: keep suppressHydrationWarning on <html> for next-themes
     <html lang="en" suppressHydrationWarning>
@@ -32,7 +32,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       {/* DO NOT put a fixed bg here; use semantic tokens so light/dark both work */}
       <body className={cn("min-h-screen bg-background text-foreground font-sans antialiased", inter.className)}>
         <ToastProvider>
-          {/* ThemeProvider is what reads/writes the riq-theme key and toggles the `dark` class on <html> */}
+          {/* ThemeProvider is what reads/writes the adg-theme key and toggles the `dark` class on <html> */}
           <ThemeProvider>
             <BrandingProvider>
               <Providers portal={portal}>{children}</Providers>

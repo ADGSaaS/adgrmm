@@ -83,12 +83,12 @@ export class RunsService {
                 scriptText: [
                     "$file = [IO.Path]::ChangeExtension([IO.Path]::GetTempFileName(), '.cmd')",
                     "try {",
-                    "  [IO.File]::WriteAllText($file, $env:REMOTEIQ_BATCH_SCRIPT)",
+                    "  [IO.File]::WriteAllText($file, $env:ADG_BATCH_SCRIPT)",
                     "  & cmd.exe /c $file",
                     "  exit $LASTEXITCODE",
                     "} finally { Remove-Item -LiteralPath $file -ErrorAction SilentlyContinue }",
                 ].join("\n"),
-                env: { REMOTEIQ_BATCH_SCRIPT: input.script },
+                env: { ADG_BATCH_SCRIPT: input.script },
             };
         }
 

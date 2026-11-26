@@ -108,7 +108,7 @@ const run = (cmd, args, o = {}) => spawnSync(cmd, args, { encoding: "utf8", maxB
 const havePs = process.platform === "win32" && run("powershell", ["-NoProfile", "-Command", "1"]).status === 0;
 check("the Windows script runs on this machine, ends with D|ok, and what it printed is a valid report", () => {
     if (!havePs) return console.log("     (no Windows PowerShell, skipped)");
-    const f = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "riq-bk-")), "backup.ps1");
+    const f = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "adg-bk-")), "backup.ps1");
     fs.writeFileSync(f, S.WINDOWS_BACKUP_SCRIPT);
     const r = run("powershell", ["-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-File", f]);
     assert.equal(r.status, 0, r.stderr); assert.match(r.stdout, /D\|ok\s*$/);
@@ -119,11 +119,11 @@ check("the Windows script runs on this machine, ends with D|ok, and what it prin
 const docker = run("docker", ["info", "--format", "{{.ServerVersion}}"]).status === 0;
 check("the Linux script in Debian: with nothing it says none; with a zfs snapshot, a timeshift snapshot and a backup tool it reports each", () => {
     if (!docker) return console.log("     (Docker is not running, skipped)");
-    const name = `riq-bk-${Date.now()}`;
+    const name = `adg-bk-${Date.now()}`;
     try {
         assert.equal(run("docker", ["run", "-d", "--name", name, "debian:12", "sleep", "300"]).status, 0);
         const sh = (cmd, env = {}) => run("docker", ["exec", ...Object.entries(env).flatMap(([k, v]) => ["-e", `${k}=${v}`]), name, "bash", "-c", cmd]);
-        const tmp = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "riq-bk-")), "backup.sh");
+        const tmp = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "adg-bk-")), "backup.sh");
         fs.writeFileSync(tmp, S.LINUX_BACKUP_SCRIPT, { mode: 0o755 });
         assert.equal(run("docker", ["cp", tmp, `${name}:/backup.sh`]).status, 0);
         const empty = sh("bash /backup.sh"); assert.equal(empty.status, 0, empty.stderr);

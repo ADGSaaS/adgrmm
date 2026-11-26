@@ -19,7 +19,7 @@ check("write blocklist: roots and top-level keys cannot be created, deleted or g
         for (const op of ["value", "createkey", "deletekey"]) assert.ok(refused(p, op), `${p} ${op}`);
     }
     assert.ok(!refused("HKLM\\SOFTWARE\\Vendor"), "a key one level further is fine");
-    assert.ok(!refused("HKU\\S-1-5-21-1-2-3-1001\\Software\\RemoteIQ-Test"), "a user hive's Software key is fine (also a key named RemoteIQ-Test under HKU)");
+    assert.ok(!refused("HKU\\S-1-5-21-1-2-3-1001\\Software\\AdgRmm-Test"), "a user hive's Software key is fine (also a key named AdgRmm-Test under HKU)");
     assert.ok(!refused("HKU\\S-1-5-21-1-2-3-1001\\Software"));
 });
 
@@ -88,18 +88,18 @@ check("write blocklist: Policies\\System EnableLUA / ConsentPromptBehaviorAdmin 
     assert.ok(refused(k.replace("SOFTWARE\\", "SOFTWARE\\WOW6432Node\\"), "value", "EnableLUA"));
 });
 
-check("write blocklist: Windows Defender (settings, policies and services) and RemoteIQ's own keys (HKLM\\SOFTWARE anywhere, Services\\RemoteIQ*)", () => {
+check("write blocklist: Windows Defender (settings, policies and services) and ADG RMM's own keys (HKLM\\SOFTWARE anywhere, Services\\AdgRmm*)", () => {
     for (const p of ["HKLM\\SOFTWARE\\Microsoft\\Windows Defender", "HKLM\\SOFTWARE\\Microsoft\\Windows Defender\\Exclusions\\Paths", "HKLM\\SOFTWARE\\Policies\\Microsoft\\Windows Defender\\Real-Time Protection",
         "HKLM\\SOFTWARE\\Microsoft\\Windows Defender Security Center\\x", "HKLM\\SOFTWARE\\Microsoft\\Windows Advanced Threat Protection",
         "HKLM\\SYSTEM\\CurrentControlSet\\Services\\WinDefend", "HKLM\\SYSTEM\\ControlSet001\\Services\\WdFilter\\Parameters", "HKLM\\SYSTEM\\CurrentControlSet\\Services\\Sense", "HKLM\\SYSTEM\\CurrentControlSet\\Services\\WdBoot",
-        "HKLM\\SOFTWARE\\RemoteIQ", "HKLM\\SOFTWARE\\RemoteIQ\\Agent", "HKLM\\SOFTWARE\\WOW6432Node\\RemoteIQ", "HKLM\\SOFTWARE\\Vendor\\RemoteIQ Agent", "HKLM\\SOFTWARE\\remoteiq", "HKLM\\SOFTWARE\\Acme\\Deep\\xRemoteIQx",
-        "HKLM\\SYSTEM\\CurrentControlSet\\Services\\RemoteIQAgent", "HKLM\\SYSTEM\\ControlSet002\\Services\\RemoteIQ.Agent\\Parameters", "HKLM\\SYSTEM\\CurrentControlSet\\Services\\remoteiq"]) {
+        "HKLM\\SOFTWARE\\AdgRmm", "HKLM\\SOFTWARE\\AdgRmm\\Agent", "HKLM\\SOFTWARE\\WOW6432Node\\AdgRmm", "HKLM\\SOFTWARE\\Vendor\\AdgRmm Agent", "HKLM\\SOFTWARE\\adgrmm", "HKLM\\SOFTWARE\\Acme\\Deep\\xAdgRmmx",
+        "HKLM\\SYSTEM\\CurrentControlSet\\Services\\AdgRmmAgent", "HKLM\\SYSTEM\\ControlSet002\\Services\\AdgRmm.Agent\\Parameters", "HKLM\\SYSTEM\\CurrentControlSet\\Services\\adgrmm"]) {
         for (const op of ["value", "createkey", "deletekey"]) assert.ok(refused(p, op), `${p} ${op}`);
     }
     assert.ok(!refused("HKLM\\SOFTWARE\\Microsoft\\Windows DefenderX\\a"));
     assert.ok(!refused("HKLM\\SYSTEM\\CurrentControlSet\\Services\\WinDefendX"));
     assert.ok(!refused("HKLM\\SOFTWARE\\Vendor"));
-    assert.ok(!refused("HKU\\S-1-5-21-1\\Software\\RemoteIQ"), "the agent's keys are under HKLM; a user hive's RemoteIQ key is not blocked");
+    assert.ok(!refused("HKU\\S-1-5-21-1\\Software\\AdgRmm"), "the agent's keys are under HKLM; a user hive's ADG RMM key is not blocked");
 });
 
 check("write blocklist: everything the read blocklist has is refused for writing too (with a reason)", () => {
@@ -222,7 +222,7 @@ check("the write scripts: fixed text, no typed text, no WMI, no recursive delete
     for (const [kind, text] of Object.entries(R.REGISTRY_WRITE_SCRIPTS)) {
         assert.ok(!/DeleteSubKeyTree|Remove-Item|Remove-ItemProperty|Get-CimInstance|Get-WmiObject|Win32_|Invoke-Expression|\biex\b|Invoke-Command|Start-Process|Add-Type|reg\.exe|\breg\s+(delete|add|import)/i.test(text), `${kind} has a forbidden command`);
         assert.ok(/^[\x00-\x7f]*$/.test(text), `${kind} is ASCII only (no BOM trouble)`);
-        assert.ok(text.includes("$env:RIQ_REG_PATH"), kind);
+        assert.ok(text.includes("$env:ADG_REG_PATH"), kind);
         assert.ok(text.length < 30000, kind);
     }
     assert.ok(R.REGISTRY_WRITE_SCRIPTS.deleteKey.includes("DeleteSubKey($sp.leaf, $true)"), "delete key uses the non-recursive call that fails on sub keys");

@@ -1,5 +1,5 @@
 using System.Text;
-using RemoteIQ.Agent.Shared;
+using AdgRmm.Agent.Shared;
 
 /// <summary>Tests for software installs and the installed-software inventory. No network, no processes, no registry.</summary>
 static class SoftwareTests

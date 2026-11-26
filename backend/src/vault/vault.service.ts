@@ -3,7 +3,7 @@
 // The encrypted device-secrets vault: BitLocker recovery-key escrow and the managed local administrator password (LAPS style).
 //   - Secrets are sealed with vault.crypto.ts (AES-256-GCM, device id + kind + ref as associated data) and never leave this service as
 //     anything but the explicit reveal. Listings carry metadata only. The access table and the state table hold no secret material.
-//   - The two script jobs are "secret jobs" (RIQ_SECRET_JOB=1): when the result arrives, JobsService.finishJob stores a fixed text
+//   - The two script jobs are "secret jobs" (ADG_SECRET_JOB=1): when the result arrives, JobsService.finishJob stores a fixed text
 //     instead of the output and calls the handlers registered here with the output in memory. Nothing is read back from the job later.
 //   - Everything defaults off: a device is only touched when the effective policy says so (security.bitlockerEscrow, laps.*).
 import { BadRequestException, ConflictException, HttpException, Injectable, Logger, NotFoundException, OnModuleInit } from "@nestjs/common";
@@ -71,7 +71,7 @@ export function cleanReason(raw: unknown): string {
 }
 
 export const lapsWarning = (status: SecretStatus, kind: SecretKind, newestIsUnconfirmed: boolean): string | null => {
-    if (status === "unconfirmed") return "RemoteIQ set this password on the device but could not confirm it with a test logon. If it does not work, try the previous password, which is also listed. This warning applies for 7 days.";
+    if (status === "unconfirmed") return "ADG RMM set this password on the device but could not confirm it with a test logon. If it does not work, try the previous password, which is also listed. This warning applies for 7 days.";
     if (status === "previous" && kind === "local_admin") return newestIsUnconfirmed ? "This is the password before the last change. The newer one could not be confirmed, so this one may still be the one that works." : "This password has been replaced. Use it only if the newer one does not work.";
     if (status === "previous") return "This recovery key belongs to a protector that is no longer on the device. It is kept in case the disk is restored from an old state.";
     return null;
@@ -110,7 +110,7 @@ export class VaultService implements OnModuleInit {
     }
 
     private async lock(db: Db, deviceId: string) {
-        await db.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${"riq-vault:" + deviceId}))`;
+        await db.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${"adg-vault:" + deviceId}))`;
     }
 
     /** One access row. It never holds secret material: kind, label, who, why, outcome and a short fixed error code. */
@@ -138,7 +138,7 @@ export class VaultService implements OnModuleInit {
                 escrow: { enabled: sc["security.bitlockerEscrow"]?.value === "on", source: src("security.bitlockerEscrow") },
                 laps: {
                     enabled: sc["laps.enabled"]?.value === true, source: src("laps.enabled"),
-                    account: typeof sc["laps.account"]?.value === "string" ? String(sc["laps.account"]!.value) : "riq-admin",
+                    account: typeof sc["laps.account"]?.value === "string" ? String(sc["laps.account"]!.value) : "adg-admin",
                     passwordLength: num("laps.passwordLength", 20), rotateDays: num("laps.rotateDays", 30), rotateAfterRevealMinutes: num("laps.rotateAfterRevealMinutes", 60),
                 },
             });
@@ -211,9 +211,9 @@ export class VaultService implements OnModuleInit {
             if (await this.isLinuxDevice(deviceId)) {
                 // The volumes that already have a stored key are listed, so the device adds a key slot only where there is none yet.
                 const have = await this.prisma.$queryRaw<{ ref: string }[]>`SELECT ref FROM public.device_secrets WHERE device_id = ${deviceId}::uuid AND kind = 'luks_recovery' AND status = 'current'`;
-                job = await this.jobs.createRunScriptJob({ agentId, language: "bash", scriptText: LINUX_LUKS_ESCROW_SCRIPT, env: { RIQ_TOOL: TOOL_LUKS, [SECRET_JOB_MARKER]: "1", RIQ_LUKS_HAVE: have.map((h) => h.ref).filter((r) => isCanonicalUuid(r)).join(",") }, timeoutSec: LUKS_TIMEOUT_SEC });
+                job = await this.jobs.createRunScriptJob({ agentId, language: "bash", scriptText: LINUX_LUKS_ESCROW_SCRIPT, env: { ADG_TOOL: TOOL_LUKS, [SECRET_JOB_MARKER]: "1", ADG_LUKS_HAVE: have.map((h) => h.ref).filter((r) => isCanonicalUuid(r)).join(",") }, timeoutSec: LUKS_TIMEOUT_SEC });
             } else {
-                job = await this.jobs.createRunScriptJob({ agentId, language: "powershell", scriptText: BITLOCKER_KEYS_SCRIPT, env: { RIQ_TOOL: TOOL_BITLOCKER, [SECRET_JOB_MARKER]: "1" }, timeoutSec: JOB_TIMEOUT_SEC });
+                job = await this.jobs.createRunScriptJob({ agentId, language: "powershell", scriptText: BITLOCKER_KEYS_SCRIPT, env: { ADG_TOOL: TOOL_BITLOCKER, [SECRET_JOB_MARKER]: "1" }, timeoutSec: JOB_TIMEOUT_SEC });
             }
             await this.prisma.$executeRaw`UPDATE public.device_secret_state SET escrow_pending_job_id = ${job.id}::uuid WHERE device_id = ${deviceId}::uuid AND escrow_pending_job_id = ${claim}::uuid`;
         } catch (e) {
@@ -230,7 +230,7 @@ export class VaultService implements OnModuleInit {
             const linux = await this.isLinuxDevice(deviceId);
             const job = await this.jobs.createRunScriptJob({
                 agentId, language: linux ? "bash" : "powershell", scriptText: linux ? LINUX_LAPS_ROTATE_SCRIPT : LAPS_ROTATE_SCRIPT, timeoutSec: JOB_TIMEOUT_SEC,
-                env: { RIQ_TOOL: TOOL_LAPS, [SECRET_JOB_MARKER]: "1", RIQ_LAPS_ACCOUNT: s.account, RIQ_LAPS_LENGTH: String(s.passwordLength) },
+                env: { ADG_TOOL: TOOL_LAPS, [SECRET_JOB_MARKER]: "1", ADG_LAPS_ACCOUNT: s.account, ADG_LAPS_LENGTH: String(s.passwordLength) },
             });
             await this.prisma.$executeRaw`UPDATE public.device_secret_state SET laps_pending_job_id = ${job.id}::uuid WHERE device_id = ${deviceId}::uuid AND laps_pending_job_id = ${claim}::uuid`;
         } catch (e) {
@@ -272,7 +272,7 @@ export class VaultService implements OnModuleInit {
                 await this.lock(tx, deviceId);
                 const st = await this.state(tx, deviceId);
                 await tx.$executeRaw`UPDATE public.device_secret_state SET escrow_pending_job_id = NULL, escrow_pending_at = NULL, escrow_attempted_at = now(), escrow_message = ${msg}::text WHERE device_id = ${deviceId}::uuid`;
-                await this.recordAccess(tx, { deviceId, userId: st?.escrow_by_user, userName: st?.escrow_by_name ?? "RemoteIQ (scheduled)", action: "escrow", reason: st?.escrow_trigger ?? null, outcome: "failed", error: e.reason ?? "other" });
+                await this.recordAccess(tx, { deviceId, userId: st?.escrow_by_user, userName: st?.escrow_by_name ?? "ADG RMM (scheduled)", action: "escrow", reason: st?.escrow_trigger ?? null, outcome: "failed", error: e.reason ?? "other" });
                 return true;
             }
             throw e;
@@ -315,7 +315,7 @@ export class VaultService implements OnModuleInit {
             ON CONFLICT (device_id) DO UPDATE SET escrow_pending_job_id = NULL, escrow_pending_at = NULL, escrow_attempted_at = now(), escrow_ok_at = now(), escrow_message = NULL`;
         const trigger = st?.escrow_trigger ?? "scheduled";
         if (added > 0 || trigger !== "scheduled") {
-            await this.recordAccess(tx, { deviceId, userId: st?.escrow_by_user, userName: st?.escrow_by_name ?? "RemoteIQ (scheduled)", action: "escrow", reason: trigger, outcome: "ok", error: null, label: `${keys.length} read, ${added} new` });
+            await this.recordAccess(tx, { deviceId, userId: st?.escrow_by_user, userName: st?.escrow_by_name ?? "ADG RMM (scheduled)", action: "escrow", reason: trigger, outcome: "ok", error: null, label: `${keys.length} read, ${added} new` });
         }
         return true;
     }
@@ -333,7 +333,7 @@ export class VaultService implements OnModuleInit {
                 await this.lock(tx, deviceId);
                 const st = await this.state(tx, deviceId);
                 await tx.$executeRaw`UPDATE public.device_secret_state SET escrow_pending_job_id = NULL, escrow_pending_at = NULL, escrow_attempted_at = now(), escrow_message = ${msg}::text WHERE device_id = ${deviceId}::uuid`;
-                await this.recordAccess(tx, { deviceId, userId: st?.escrow_by_user, userName: st?.escrow_by_name ?? "RemoteIQ (scheduled)", action: "escrow", reason: st?.escrow_trigger ?? null, outcome: "failed", error: e.reason ?? "other" });
+                await this.recordAccess(tx, { deviceId, userId: st?.escrow_by_user, userName: st?.escrow_by_name ?? "ADG RMM (scheduled)", action: "escrow", reason: st?.escrow_trigger ?? null, outcome: "failed", error: e.reason ?? "other" });
                 return true;
             }
             throw e;
@@ -354,7 +354,7 @@ export class VaultService implements OnModuleInit {
         }
         const count = (s: LuksVolumeState) => res.volumes.filter((v) => v.state === s).length;
         const problems: string[] = [];
-        if (count("no_unlock")) problems.push(`${count("no_unlock")} encrypted volume(s) could not get a recovery key: RemoteIQ can only add one without the passphrase when the volume unlocks with the machine's TPM or with a key file listed in /etc/crypttab`);
+        if (count("no_unlock")) problems.push(`${count("no_unlock")} encrypted volume(s) could not get a recovery key: ADG RMM can only add one without the passphrase when the volume unlocks with the machine's TPM or with a key file listed in /etc/crypttab`);
         if (count("no_cryptenroll")) problems.push(`${count("no_cryptenroll")} volume(s) need systemd-cryptenroll from systemd 248 or newer`);
         if (count("not_luks2")) problems.push(`${count("not_luks2")} volume(s) use LUKS1, which cannot be given a recovery key this way`);
         if (count("unreadable")) problems.push(`${count("unreadable")} volume(s) got a new recovery key slot but the key could not be read back, so it is lost; remove the extra slot with cryptsetup luksKillSlot`);
@@ -365,7 +365,7 @@ export class VaultService implements OnModuleInit {
             ON CONFLICT (device_id) DO UPDATE SET escrow_pending_job_id = NULL, escrow_pending_at = NULL, escrow_attempted_at = now(), escrow_ok_at = now(), escrow_message = ${message}::text`;
         const trigger = st?.escrow_trigger ?? "scheduled";
         if (added > 0 || trigger !== "scheduled") {
-            await this.recordAccess(tx, { deviceId, userId: st?.escrow_by_user, userName: st?.escrow_by_name ?? "RemoteIQ (scheduled)", action: "escrow", reason: trigger, outcome: added > 0 || !problems.length ? "ok" : "failed", error: null, label: `${res.volumes.length} volume(s), ${added} new key(s)` });
+            await this.recordAccess(tx, { deviceId, userId: st?.escrow_by_user, userName: st?.escrow_by_name ?? "ADG RMM (scheduled)", action: "escrow", reason: trigger, outcome: added > 0 || !problems.length ? "ok" : "failed", error: null, label: `${res.volumes.length} volume(s), ${added} new key(s)` });
         }
         return true;
     }
@@ -373,7 +373,7 @@ export class VaultService implements OnModuleInit {
     private async ingestLaps(tx: Prisma.TransactionClient, ctx: SecretJobContext, r: SecretJobResult): Promise<boolean> {
         const deviceId = await this.deviceOfAgent(tx, ctx.agentId);
         if (!deviceId) return false;
-        const expected = { account: String(ctx.env.RIQ_LAPS_ACCOUNT ?? ""), length: Number(ctx.env.RIQ_LAPS_LENGTH) };
+        const expected = { account: String(ctx.env.ADG_LAPS_ACCOUNT ?? ""), length: Number(ctx.env.ADG_LAPS_LENGTH) };
         let res;
         try {
             res = parseLapsResult(r.stdout, expected);
@@ -383,7 +383,7 @@ export class VaultService implements OnModuleInit {
                 await this.lock(tx, deviceId);
                 const st = await this.state(tx, deviceId);
                 await tx.$executeRaw`UPDATE public.device_secret_state SET laps_pending_job_id = NULL, laps_pending_at = NULL, laps_attempted_at = now(), laps_attempt = 'failed', laps_message = ${msg}::text WHERE device_id = ${deviceId}::uuid`;
-                await this.recordAccess(tx, { deviceId, kind: "local_admin", label: expected.account, userId: st?.laps_by_user, userName: st?.laps_by_name ?? "RemoteIQ (scheduled)", action: "rotate", reason: st?.laps_trigger ?? null, outcome: "failed", error: e.reason ?? "other" });
+                await this.recordAccess(tx, { deviceId, kind: "local_admin", label: expected.account, userId: st?.laps_by_user, userName: st?.laps_by_name ?? "ADG RMM (scheduled)", action: "rotate", reason: st?.laps_trigger ?? null, outcome: "failed", error: e.reason ?? "other" });
                 return true;
             }
             throw e;
@@ -407,7 +407,7 @@ export class VaultService implements OnModuleInit {
                 laps_attempt = ${res.verified ? "ok" : "unconfirmed"}::text, laps_message = ${message}::text, laps_rotate_due_at = NULL
             WHERE device_id = ${deviceId}::uuid`;
         await this.recordAccess(tx, {
-            deviceId, secretId: row[0]?.id, kind: "local_admin", label: res.account, userId: st?.laps_by_user, userName: st?.laps_by_name ?? "RemoteIQ (scheduled)",
+            deviceId, secretId: row[0]?.id, kind: "local_admin", label: res.account, userId: st?.laps_by_user, userName: st?.laps_by_name ?? "ADG RMM (scheduled)",
             action: "rotate", reason: st?.laps_trigger ?? null, outcome: res.verified ? "ok" : "unconfirmed",
         });
         return true;
@@ -421,12 +421,12 @@ export class VaultService implements OnModuleInit {
         if (ctx.tool === TOOL_BITLOCKER || ctx.tool === TOOL_LUKS) {
             const st = await this.state(tx, deviceId);
             await tx.$executeRaw`UPDATE public.device_secret_state SET escrow_pending_job_id = NULL, escrow_pending_at = NULL, escrow_attempted_at = now(), escrow_message = ${text}::text WHERE device_id = ${deviceId}::uuid`;
-            await this.recordAccess(tx, { deviceId, userId: st?.escrow_by_user, userName: st?.escrow_by_name ?? "RemoteIQ (scheduled)", action: "escrow", reason: st?.escrow_trigger ?? null, outcome: "failed", error: why });
+            await this.recordAccess(tx, { deviceId, userId: st?.escrow_by_user, userName: st?.escrow_by_name ?? "ADG RMM (scheduled)", action: "escrow", reason: st?.escrow_trigger ?? null, outcome: "failed", error: why });
         } else {
             const st = await this.state(tx, deviceId);
             const message = `${text} If the device changed the password anyway, the stored one may no longer be valid.`;
             await tx.$executeRaw`UPDATE public.device_secret_state SET laps_pending_job_id = NULL, laps_pending_at = NULL, laps_attempted_at = now(), laps_attempt = ${why === "timeout" ? "no_answer" : "failed"}::text, laps_message = ${message}::text WHERE device_id = ${deviceId}::uuid`;
-            await this.recordAccess(tx, { deviceId, kind: "local_admin", label: String(ctx.env.RIQ_LAPS_ACCOUNT ?? "") || null, userId: st?.laps_by_user, userName: st?.laps_by_name ?? "RemoteIQ (scheduled)", action: "rotate", reason: st?.laps_trigger ?? null, outcome: "failed", error: why });
+            await this.recordAccess(tx, { deviceId, kind: "local_admin", label: String(ctx.env.ADG_LAPS_ACCOUNT ?? "") || null, userId: st?.laps_by_user, userName: st?.laps_by_name ?? "ADG RMM (scheduled)", action: "rotate", reason: st?.laps_trigger ?? null, outcome: "failed", error: why });
         }
     }
 

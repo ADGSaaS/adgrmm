@@ -1,5 +1,5 @@
 import { apiUrl } from "@/lib/api";
-// remoteiq-frontend/lib/device-files-api.ts
+// adgrmm-frontend/lib/device-files-api.ts
 // Thin client for the device file browser endpoints (job-based).
 
 export type JobRow = {

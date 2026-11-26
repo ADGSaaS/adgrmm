@@ -6,7 +6,7 @@ export const TURNSTILE_VERIFY_URL = "https://challenges.cloudflare.com/turnstile
 
 /** Where the check goes. Only tests (a stand-in server) and air-gapped proxies have a reason to change it. */
 export function verifyUrl(): string {
-    return (process.env.RIQ_TURNSTILE_VERIFY_URL || "").trim() || TURNSTILE_VERIFY_URL;
+    return (process.env.ADG_TURNSTILE_VERIFY_URL || "").trim() || TURNSTILE_VERIFY_URL;
 }
 
 export type TurnstileResult =

@@ -113,7 +113,7 @@ export class NetworkDiscoveryService {
 
         const job = await this.jobs.createRunScriptJob({
             agentId: d.agents.id, language: windows ? "powershell" : "bash", scriptText: windows ? WINDOWS_DISCOVERY_SCRIPT : LINUX_DISCOVERY_SCRIPT,
-            env: { RIQ_TOOL: DISCOVERY_KIND, RIQ_RANGES: ranges.join(",") }, timeoutSec: DISCOVERY_TIMEOUT_SEC,
+            env: { ADG_TOOL: DISCOVERY_KIND, ADG_RANGES: ranges.join(",") }, timeoutSec: DISCOVERY_TIMEOUT_SEC,
         });
         const name = d.alias || d.hostname;
         const run = await this.prisma.$queryRaw<Array<{ id: string }>>`

@@ -13,7 +13,7 @@ export const STAR_LABELS: Record<number, string> = { 1: "Very unhappy", 2: "Unha
 
 /** Survey links are signed with a key of their own, derived from the server secret, so nothing else's token can pass as one. */
 function surveyKey(): string {
-    return createHmac("sha256", getJwtSecret()).update("remoteiq:ticket-survey:v1").digest("hex");
+    return createHmac("sha256", getJwtSecret()).update("adgrmm:ticket-survey:v1").digest("hex");
 }
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;

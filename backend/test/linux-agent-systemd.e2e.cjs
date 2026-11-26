@@ -1,9 +1,9 @@
 // The real Linux agent, installed by the real installer script as a real systemd service in a container, enrolling against a local
 // throwaway server, then doing real work for it: check-in, software inventory, device facts, a security scan, installing and removing
 // a package, a patch scan and an install (the pending list must clear without a manual scan).
-// Needs Docker, the built agent package in AGENT_PKG_DIR (linux/remoteiq-agent-linux-x64.tar.gz), and a server started with
+// Needs Docker, the built agent package in AGENT_PKG_DIR (linux/adgrmm-agent-linux-x64.tar.gz), and a server started with
 // AGENT_PKG_DIR set, listening on all interfaces (the container reaches it as host.docker.internal).
-//   RIQ_E2E_ALLOW=1 BASE_URL=http://127.0.0.1:3971 PUBLIC_URL=http://host.docker.internal:3971 AGENT_PKG_DIR=... DATABASE_URL=postgres://.../riq_x_e2e JWT_SECRET=... node test/linux-agent-systemd.e2e.cjs
+//   ADG_E2E_ALLOW=1 BASE_URL=http://127.0.0.1:3971 PUBLIC_URL=http://host.docker.internal:3971 AGENT_PKG_DIR=... DATABASE_URL=postgres://.../adg_x_e2e JWT_SECRET=... node test/linux-agent-systemd.e2e.cjs
 "use strict";
 const fs = require("node:fs");
 const path = require("node:path");
@@ -14,11 +14,11 @@ const { assert, call, runner, setup, uuid } = require("./groupc-helpers.cjs");
 const docker = (args, o = {}) => spawnSync("docker", args, { encoding: "utf8", maxBuffer: 1e8, timeout: 600_000, ...o });
 if (docker(["info", "--format", "{{.ServerVersion}}"]).status !== 0) { console.log("skipped: Docker is not running"); process.exit(0); }
 const PKG_DIR = process.env.AGENT_PKG_DIR;
-const tar = PKG_DIR && path.join(PKG_DIR, "linux", "remoteiq-agent-linux-x64.tar.gz");
+const tar = PKG_DIR && path.join(PKG_DIR, "linux", "adgrmm-agent-linux-x64.tar.gz");
 if (!tar || !fs.existsSync(tar)) { console.log("skipped: AGENT_PKG_DIR has no linux package"); process.exit(0); }
 
 const IMAGE = process.env.SYSTEMD_IMAGE || "jrei/systemd-debian:12";
-const NAME = `riq-lx-${Date.now()}`;
+const NAME = `adg-lx-${Date.now()}`;
 const DEB = /debian|ubuntu/i.test(IMAGE);
 const PKG_NAME = DEB ? "cowsay" : "tree";
 // the body of a failed answer, read only when it failed (a body can be read once)
@@ -61,8 +61,8 @@ async function main() {
             const r = sh("bash /install.sh 2>&1");
             installLog = (r.stdout || "") + (r.stderr || "");
             assert.match(installLog, /Done\. This device is now enrolled as agent /, installLog.slice(-600));
-            assert.match(sh("systemctl is-active remoteiq-agent").stdout, /^active/);
-            assert.match(sh("systemctl is-enabled remoteiq-agent").stdout, /^enabled/);
+            assert.match(sh("systemctl is-active adgrmm-agent").stdout, /^active/);
+            assert.match(sh("systemctl is-enabled adgrmm-agent").stdout, /^enabled/);
             const row = (await q(`SELECT d.id FROM devices d JOIN agents a ON a.device_id = d.id WHERE d.site_id = $1`, [siteId])).rows[0];
             assert.ok(row, "the device exists");
             deviceId = row.id;
@@ -128,33 +128,33 @@ async function main() {
                 assert.ok(Array.isArray(only.patches) && only.packageManager, "the scan answered with a package manager: " + only.packageManager);
                 return;
             }
-            // A tiny local apt repository gives the device a real pending update: riqdemo 1.0 is installed, 2.0 is available.
+            // A tiny local apt repository gives the device a real pending update: adgdemo 1.0 is installed, 2.0 is available.
             const repo = String.raw`set -e
 mkdir -p /srv/repo
-mk() { rm -rf /tmp/b; mkdir -p /tmp/b/DEBIAN; printf 'Package: riqdemo
+mk() { rm -rf /tmp/b; mkdir -p /tmp/b/DEBIAN; printf 'Package: adgdemo
 Version: %s
 Architecture: all
 Maintainer: t <t@example.test>
 Description: demo
-' "$1" > /tmp/b/DEBIAN/control; dpkg-deb -b /tmp/b /srv/repo/riqdemo_$1_all.deb >/dev/null; }
+' "$1" > /tmp/b/DEBIAN/control; dpkg-deb -b /tmp/b /srv/repo/adgdemo_$1_all.deb >/dev/null; }
 index() { cd /srv/repo; : > Packages; for f in *.deb; do dpkg-deb -f $f >> Packages; printf 'Filename: ./%s
 Size: %s
 SHA256: %s
 
 ' $f $(stat -c%s $f) $(sha256sum $f | cut -d' ' -f1) >> Packages; done; }
-echo 'deb [trusted=yes] file:/srv/repo ./' > /etc/apt/sources.list.d/riq.list
-mk 1.0; index; apt-get update -qq >/dev/null; DEBIAN_FRONTEND=noninteractive apt-get install -y -qq riqdemo >/dev/null
+echo 'deb [trusted=yes] file:/srv/repo ./' > /etc/apt/sources.list.d/adg.list
+mk 1.0; index; apt-get update -qq >/dev/null; DEBIAN_FRONTEND=noninteractive apt-get install -y -qq adgdemo >/dev/null
 mk 2.0; index; apt-get update -qq >/dev/null
-apt list --upgradable 2>/dev/null | grep riqdemo`;
+apt list --upgradable 2>/dev/null | grep adgdemo`;
             const rf = path.join(require("node:os").tmpdir(), `${NAME}-repo.sh`);
             fs.writeFileSync(rf, repo);
             docker(["cp", rf, `${NAME}:/repo.sh`]);
-            assert.match(sh("bash /repo.sh 2>&1").stdout, /riqdemo.*upgradable/);
+            assert.match(sh("bash /repo.sh 2>&1").stdout, /adgdemo.*upgradable/);
             let r = await call("/api/patches/scan", { method: "POST", token: admin.token, body: { deviceId } });
             assert.equal(r.status, 202, await why(r));
             const first = await until("the patch scan", async () => { const x = await (await call(`/api/patches/latest?deviceId=${deviceId}`, { token: admin.token })).json(); return x.lastScanAt && !x.scanPending ? x : null; });
             const required = first.patches.filter((p) => p.status === "Required");
-            const pick = (required.find((p) => p.id === "riqdemo") || {}).id;
+            const pick = (required.find((p) => p.id === "adgdemo") || {}).id;
             assert.ok(pick, "the scan lists the pending update: " + JSON.stringify(first.patches.map((p) => p.id)));
             r = await call("/api/patches/install", { method: "POST", token: admin.token, body: { deviceId, ids: [pick] } });
             assert.equal(r.status, 202, await why(r));
@@ -167,13 +167,13 @@ apt list --upgradable 2>/dev/null | grep riqdemo`;
             const scans = (await q(`SELECT count(*)::int AS n FROM agent_tasks t JOIN agents a ON a.id = t.agent_id WHERE a.device_id = $1 AND t.type = 'patch_scan'`, [deviceId])).rows[0].n;
             assert.ok(scans >= 2, "a scan was queued by the install finishing");
             assert.ok(!after.patches.some((p) => p.id === pick && p.status === "Required"), "the installed patch is not Required any more");
-            assert.match(sh("dpkg -s riqdemo | grep ^Version").stdout, /2\.0/, "the update really was installed");
+            assert.match(sh("dpkg -s adgdemo | grep ^Version").stdout, /2\.0/, "the update really was installed");
             // and a second one-package install does not bring the first back
             assert.ok(after.patches.every((p) => p.id !== pick || p.status === "Installed"));
         });
 
         await test("uninstalling the agent leaves nothing behind", async () => {
-            const r = sh("bash /opt/remoteiq-agent/uninstall.sh 2>&1; systemctl is-active remoteiq-agent; ls /opt/remoteiq-agent 2>&1 | head -2");
+            const r = sh("bash /opt/adgrmm-agent/uninstall.sh 2>&1; systemctl is-active adgrmm-agent; ls /opt/adgrmm-agent 2>&1 | head -2");
             assert.doesNotMatch(r.stdout, /^active$/m, r.stdout);
         });
     } finally {

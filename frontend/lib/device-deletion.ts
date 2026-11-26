@@ -1,5 +1,5 @@
 import { apiUrl } from "@/lib/api";
-// remoteiq-frontend/lib/device-deletion.ts
+// adgrmm-frontend/lib/device-deletion.ts
 
 type Json = any;
 

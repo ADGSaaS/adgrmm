@@ -8,8 +8,8 @@ const { Client } = require("pg");
 const BASE = process.env.BASE_URL || "http://127.0.0.1:3901";
 const DB_URL = process.env.DATABASE_URL || "";
 
-if (process.env.RIQ_E2E_ALLOW !== "1" || !/e2e/.test(DB_URL)) {
-    console.error("Refusing to run: set RIQ_E2E_ALLOW=1 and an e2e-named DATABASE_URL.");
+if (process.env.ADG_E2E_ALLOW !== "1" || !/e2e/.test(DB_URL)) {
+    console.error("Refusing to run: set ADG_E2E_ALLOW=1 and an e2e-named DATABASE_URL.");
     process.exit(2);
 }
 

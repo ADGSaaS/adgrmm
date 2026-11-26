@@ -21,7 +21,7 @@ export type Script = {
     macosScript?: string | null;
     timeoutSec: number;
     parameters: ScriptParameter[];
-    /** Shipped with RemoteIQ. It can be edited; the script then shows as Customized and stops following updates. */
+    /** Shipped with ADG RMM. It can be edited; the script then shows as Customized and stops following updates. */
     builtin?: boolean;
     /** A built-in whose text or settings were changed by a person. It can be reset to the shipped version. */
     customized?: boolean;

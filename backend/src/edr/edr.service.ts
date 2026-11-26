@@ -1,7 +1,7 @@
 // backend/src/edr/edr.service.ts
 //
 // EDR and antivirus consoles: the connections an administrator keeps (credentials encrypted, never shown again), the reading every half hour,
-// matching what each console reports to RemoteIQ's devices, a coverage view (which devices are protected and well, which are not known to any
+// matching what each console reports to ADG RMM's devices, a coverage view (which devices are protected and well, which are not known to any
 // console, which console endpoints are not managed here) and an alert for a matched device whose protection is unhealthy.
 import { BadRequestException, ConflictException, Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { Interval } from "@nestjs/schedule";

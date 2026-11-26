@@ -172,11 +172,11 @@ export default function SecurityPoliciesTab({ push }: { push: ToastFn }) {
                 </div>
                 <p className="text-xs text-muted-foreground">
                     The list cannot be saved if it leaves out your own address. If something goes wrong anyway, a server administrator can set
-                    <code className="mx-1 rounded bg-muted px-1">RIQ_IGNORE_IP_ALLOWLIST=1</code> in the server&apos;s environment and restart it.
+                    <code className="mx-1 rounded bg-muted px-1">ADG_IGNORE_IP_ALLOWLIST=1</code> in the server&apos;s environment and restart it.
                     The address used is the one the server&apos;s proxy reports (Cloudflare or Nginx).
                 </p>
                 {saved.env.allowlistIgnored ? (
-                    <p role="status" className="rounded-md border border-amber-500/40 bg-amber-500/10 p-2 text-sm">RIQ_IGNORE_IP_ALLOWLIST is set on the server, so this list is not being applied.</p>
+                    <p role="status" className="rounded-md border border-amber-500/40 bg-amber-500/10 p-2 text-sm">ADG_IGNORE_IP_ALLOWLIST is set on the server, so this list is not being applied.</p>
                 ) : null}
             </section>
 
@@ -203,11 +203,11 @@ export default function SecurityPoliciesTab({ push }: { push: ToastFn }) {
                 </label>
                 <p className="text-xs text-muted-foreground">
                     If the CAPTCHA ever blocks everyone (for example the secret was rotated at Cloudflare), a server administrator can set
-                    <code className="mx-1 rounded bg-muted px-1">RIQ_DISABLE_CAPTCHA=1</code> in the server&apos;s environment and restart it.
+                    <code className="mx-1 rounded bg-muted px-1">ADG_DISABLE_CAPTCHA=1</code> in the server&apos;s environment and restart it.
                     While it is on, the server needs to reach Cloudflare to sign people in.
                 </p>
                 {saved.env.captchaDisabled ? (
-                    <p role="status" className="rounded-md border border-amber-500/40 bg-amber-500/10 p-2 text-sm">RIQ_DISABLE_CAPTCHA is set on the server, so the sign-in page is not showing the CAPTCHA.</p>
+                    <p role="status" className="rounded-md border border-amber-500/40 bg-amber-500/10 p-2 text-sm">ADG_DISABLE_CAPTCHA is set on the server, so the sign-in page is not showing the CAPTCHA.</p>
                 ) : null}
             </section>
 

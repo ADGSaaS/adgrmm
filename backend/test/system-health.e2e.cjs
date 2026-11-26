@@ -1,7 +1,7 @@
-// Health of the RemoteIQ servers and the monthly restore test, in process against a throwaway database (name has "e2e").
+// Health of the ADG RMM servers and the monthly restore test, in process against a throwaway database (name has "e2e").
 "use strict";
 const path = require("node:path");
-if (process.env.RIQ_E2E_ALLOW !== "1" || !/e2e/.test(process.env.DATABASE_URL || "")) { console.error("Refusing to run: set RIQ_E2E_ALLOW=1 and an e2e-named DATABASE_URL."); process.exit(2); }
+if (process.env.ADG_E2E_ALLOW !== "1" || !/e2e/.test(process.env.DATABASE_URL || "")) { console.error("Refusing to run: set ADG_E2E_ALLOW=1 and an e2e-named DATABASE_URL."); process.exit(2); }
 process.env.JWT_SECRET ||= "e2e-only-not-a-real-secret-e2e-only-not-a-real-secret";
 process.env.DATA_ENCRYPTION_KEY ||= "e2e-only-data-key";
 process.env.PUBLIC_CONSOLE_URL ||= "http://127.0.0.1:9"; process.env.IMAP_POLL_ENABLED = "false"; process.env.NODE_ENV = "development";

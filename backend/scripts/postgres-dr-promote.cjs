@@ -200,13 +200,13 @@ function serviceMustBeOffline(
 ) {
     if (testMode) {
         if (
-            !/^remoteiq_dr_tooltest_[A-Za-z0-9_]+$/.test(
+            !/^adgrmm_dr_tooltest_[A-Za-z0-9_]+$/.test(
                 database
             )
         ) {
             throw new Error(
                 "--test-mode is restricted to " +
-                "remoteiq_dr_tooltest_* databases"
+                "adgrmm_dr_tooltest_* databases"
             );
         }
 
@@ -224,7 +224,7 @@ function serviceMustBeOffline(
         "systemctl",
         [
             "is-active",
-            "remoteiq-backend.service",
+            "adgrmm-backend.service",
         ],
         {
             encoding: "utf8",
@@ -237,7 +237,7 @@ function serviceMustBeOffline(
 
     if (state === "active") {
         throw new Error(
-            "remoteiq-backend.service is active; " +
+            "adgrmm-backend.service is active; " +
             "promotion and rollback require offline mode"
         );
     }
@@ -696,7 +696,7 @@ async function promote() {
             .replace(/[^A-Za-z0-9_]/g, "_");
 
     const safetyDir =
-        `/opt/remoteiq/deploy-backups/` +
+        `/opt/adgrmm/deploy-backups/` +
         `postgres-promotion/${stamp}`;
 
     await fsp.mkdir(
@@ -1039,7 +1039,7 @@ async function main() {
         "--confirm-live-database NAME\n\n" +
         "  --test-mode may only be used when the " +
         "DATABASE_URL database begins with " +
-        "remoteiq_dr_tooltest_"
+        "adgrmm_dr_tooltest_"
     );
 }
 

@@ -223,8 +223,8 @@ type ControlMsg =
 
 
 // One pop-out per device, so opening it twice brings the same window forward.
-const popoutWindowName = (deviceId: string) => `remoteiq_console_${deviceId.replace(/[^a-zA-Z0-9]/g, "_")}`;
-const popoutChannelName = (deviceId: string) => `remoteiq-console-${deviceId}`;
+const popoutWindowName = (deviceId: string) => `adgrmm_console_${deviceId.replace(/[^a-zA-Z0-9]/g, "_")}`;
+const popoutChannelName = (deviceId: string) => `adgrmm-console-${deviceId}`;
 const SIGNALING_PING_MS = 25_000;
 const PASTE_WAIT_MS = 150;
 const PASTE_HEAD_START_MS = 80;
@@ -471,7 +471,7 @@ export default function RemoteConsolePanel({ deviceId, agentUuid, popout }: Prop
     soundOnRef.current = soundOn;
     React.useEffect(() => {
         try {
-            if (window.localStorage.getItem("riq.console.chatSound") === "0") setSoundOn(false);
+            if (window.localStorage.getItem("adg.console.chatSound") === "0") setSoundOn(false);
         } catch {
             // Storage can be blocked. The default is fine.
         }
@@ -480,7 +480,7 @@ export default function RemoteConsolePanel({ deviceId, agentUuid, popout }: Prop
         setSoundOn((on) => {
             const next = !on;
             try {
-                window.localStorage.setItem("riq.console.chatSound", next ? "1" : "0");
+                window.localStorage.setItem("adg.console.chatSound", next ? "1" : "0");
             } catch {
                 // ignore
             }
@@ -490,8 +490,8 @@ export default function RemoteConsolePanel({ deviceId, agentUuid, popout }: Prop
     }, []);
     React.useEffect(() => {
         try {
-            if (window.localStorage.getItem("riq.console.chatOpen") === "0") setChatOpen(false);
-            if (window.localStorage.getItem("riq.console.showStats") === "1") setShowStats(true);
+            if (window.localStorage.getItem("adg.console.chatOpen") === "0") setChatOpen(false);
+            if (window.localStorage.getItem("adg.console.showStats") === "1") setShowStats(true);
         } catch {
             // Storage can be blocked. The defaults are fine.
         }
@@ -501,7 +501,7 @@ export default function RemoteConsolePanel({ deviceId, agentUuid, popout }: Prop
             const next = !open;
             if (next) setUnreadChat(0);
             try {
-                window.localStorage.setItem("riq.console.chatOpen", next ? "1" : "0");
+                window.localStorage.setItem("adg.console.chatOpen", next ? "1" : "0");
             } catch {
                 // ignore
             }
@@ -512,7 +512,7 @@ export default function RemoteConsolePanel({ deviceId, agentUuid, popout }: Prop
         setShowStats((on) => {
             const next = !on;
             try {
-                window.localStorage.setItem("riq.console.showStats", next ? "1" : "0");
+                window.localStorage.setItem("adg.console.showStats", next ? "1" : "0");
             } catch {
                 // ignore
             }
@@ -715,7 +715,7 @@ export default function RemoteConsolePanel({ deviceId, agentUuid, popout }: Prop
         [dcSendJson]
     );
 
-    const sizeKey = `riq.console.size.${deviceId}`;
+    const sizeKey = `adg.console.size.${deviceId}`;
 
     // The device reports what its screen can do. A size chosen earlier for this device is applied once
     // per session, so connecting does not change a screen the technician never asked to change.
@@ -1090,7 +1090,7 @@ export default function RemoteConsolePanel({ deviceId, agentUuid, popout }: Prop
             clipDcRef.current = clipDc;
 
             termDc.onopen = () => {
-                appendTermOut("\r\n[RemoteIQ] Terminal connected.\r\n");
+                appendTermOut("\r\n[ADG RMM] Terminal connected.\r\n");
                 scrollTermToBottom();
             };
             termDc.onmessage = (ev2) => {
@@ -2449,7 +2449,7 @@ export default function RemoteConsolePanel({ deviceId, agentUuid, popout }: Prop
         </div>
     ) : null;
 
-    const renderChatSender = (m: ChatMsg) => (m.from === "me" ? "You" : m.from === "remote" ? "Person at the device" : "RemoteIQ");
+    const renderChatSender = (m: ChatMsg) => (m.from === "me" ? "You" : m.from === "remote" ? "Person at the device" : "ADG RMM");
 
     // Header buttons shared by both layouts.
     const chatToggleButton = (

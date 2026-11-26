@@ -10,6 +10,6 @@
     <SelfContained>true</SelfContained>
   </PropertyGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\windows\RemoteIQ.Agent\RemoteIQ.Agent.csproj" />
+    <ProjectReference Include="..\..\windows\AdgRmm.Agent\AdgRmm.Agent.csproj" />
   </ItemGroup>
 </Project>

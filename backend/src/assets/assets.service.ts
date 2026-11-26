@@ -1,9 +1,9 @@
 // backend/src/assets/assets.service.ts
 //
-// Who owns assets, and the operations the rest of RemoteIQ needs from whoever does. The built-in asset manager is the default. When the
+// Who owns assets, and the operations the rest of ADG RMM needs from whoever does. The built-in asset manager is the default. When the
 // owner switches to an external one (Killian), the built-in one is switched OFF: assertBuiltin() makes its endpoints answer "managed
 // elsewhere", the hourly sync and the expiry emails stop, reports use their fallbacks, and nothing is deleted, so switching back loses nothing.
-// The external provider has no adapter yet (it waits for Killian's API): while it is on, RemoteIQ simply does not offer asset features.
+// The external provider has no adapter yet (it waits for Killian's API): while it is on, ADG RMM simply does not offer asset features.
 import { BadRequestException, ConflictException, Injectable } from "@nestjs/common";
 import { Prisma } from "@prisma/client";
 import { PrismaService } from "../storage/prisma.service";
@@ -93,7 +93,7 @@ export class AssetsService {
             assets: r.total, fromAgents: r.with_device, enteredByHand: r.manual, withWarrantyDate: r.with_warranty, expiringWithin30Days: r.expiring_30,
             linkedHosts: linked.hosts, linkedSnmpDevices: linked.snmp,
             willStop: ["The built-in asset list, create, change and delete (they answer that assets are managed elsewhere)", "The hourly fill-in of assets from agents", "The warranty and licence expiry emails"],
-            staysTheSame: ["The built-in records (nothing is deleted; switching back brings everything back)", "Reports: hardware age and warranty fall back to the firmware date the agent reports", "Everything else in RemoteIQ"],
+            staysTheSame: ["The built-in records (nothing is deleted; switching back brings everything back)", "Reports: hardware age and warranty fall back to the firmware date the agent reports", "Everything else in ADG RMM"],
         };
     }
 
@@ -107,12 +107,12 @@ export class AssetsService {
             notes: a.notes, source: a.source, details: a.details,
         }));
         const stamp = new Date().toISOString().slice(0, 10);
-        if (format === "json") return { contentType: "application/json; charset=utf-8", filename: `remoteiq-assets-${stamp}.json`, body: JSON.stringify({ exportedAt: new Date().toISOString(), count: items.length, assets: items }, null, 2) };
+        if (format === "json") return { contentType: "application/json; charset=utf-8", filename: `adgrmm-assets-${stamp}.json`, body: JSON.stringify({ exportedAt: new Date().toISOString(), count: items.length, assets: items }, null, 2) };
         const cols = ["id", "customerId", "customer", "deviceId", "name", "kind", "manufacturer", "model", "serialNumber", "location", "purchaseDate", "expiresAt", "notes", "source", "details"] as const;
-        return { contentType: "text/csv; charset=utf-8", filename: `remoteiq-assets-${stamp}.csv`, body: [cols.join(","), ...items.map((i) => cols.map((c) => csvCell((i as any)[c])).join(","))].join("\r\n") + "\r\n" };
+        return { contentType: "text/csv; charset=utf-8", filename: `adgrmm-assets-${stamp}.csv`, body: [cols.join(","), ...items.map((i) => cols.map((c) => csvCell((i as any)[c])).join(","))].join("\r\n") + "\r\n" };
     }
 
-    /* ------------------------------ what the rest of RemoteIQ asks ------------------------------ */
+    /* ------------------------------ what the rest of ADG RMM asks ------------------------------ */
 
     /** Purchase and warranty dates of devices' assets, for the reports. Empty while assets are external: the reports then use their fallbacks. */
     async deviceAssetInfos(deviceIds: string[]): Promise<Map<string, DeviceAssetInfo>> {

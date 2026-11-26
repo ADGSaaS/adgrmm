@@ -1,10 +1,10 @@
 // Check definitions, the agent's real result path, and scripts, against a real database.
-// Usage, from backend/ after building: RIQ_E2E_ALLOW=1 DATABASE_URL=postgres://.../riq_e2e node test/checks-scripts.e2e.cjs
+// Usage, from backend/ after building: ADG_E2E_ALLOW=1 DATABASE_URL=postgres://.../adg_e2e node test/checks-scripts.e2e.cjs
 const crypto = require("node:crypto");
 const path = require("node:path");
 
-if (process.env.RIQ_E2E_ALLOW !== "1" || !/e2e/.test(process.env.DATABASE_URL || "")) {
-    console.error("Refusing to run: set RIQ_E2E_ALLOW=1 and an e2e-named DATABASE_URL.");
+if (process.env.ADG_E2E_ALLOW !== "1" || !/e2e/.test(process.env.DATABASE_URL || "")) {
+    console.error("Refusing to run: set ADG_E2E_ALLOW=1 and an e2e-named DATABASE_URL.");
     process.exit(2);
 }
 
@@ -106,7 +106,7 @@ async function rejects(name, fn, pattern) {
     await rejects("a script needs content", () => scripts.create({ name: "Empty", language: "powershell", script: "  " }, null), /empty/);
     await rejects("parameter names are restricted", () => scripts.create({ name: "Bad", language: "powershell", script: "x", parameters: [{ name: "a b" }] }, null), /parameter name/);
 
-    const script = await scripts.create({ name: "Greet", language: "powershell", script: "Write-Output $env:RIQ_WHO", parameters: [{ name: "who", required: true }] }, null);
+    const script = await scripts.create({ name: "Greet", language: "powershell", script: "Write-Output $env:ADG_WHO", parameters: [{ name: "who", required: true }] }, null);
     await rejects("required parameters are enforced", () => scripts.run(script.id, [windows.id], {}, null), /required/);
 
     const result = await scripts.run(script.id, [windows.id, linux.id], { who: "world; rm -rf /" }, null);
@@ -114,7 +114,7 @@ async function rejects(name, fn, pattern) {
     check("it says why it skipped the rest", result.skipped.length === 1 && /does not run/.test(result.skipped[0].reason), result.skipped);
 
     const job = await prisma.jobs.findUnique({ where: { id: result.started[0].jobId } });
-    check("a value travels as an environment variable", job.payload.env.RIQ_WHO === "world; rm -rf /" && !job.payload.scriptText.includes("world"), job.payload);
+    check("a value travels as an environment variable", job.payload.env.ADG_WHO === "world; rm -rf /" && !job.payload.scriptText.includes("world"), job.payload);
 
     const history = await scripts.history({ automationId: script.id });
     check("the run appears in the history", history.items.length === 1 && history.items[0].device.name === "WIN-1", history.items);

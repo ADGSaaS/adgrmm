@@ -295,7 +295,7 @@ export class ProvisioningService {
       : path.join(process.cwd(), "assets", "agent-packages");
 
     if (os === "windows") {
-      const filename = "remoteiq-agent-windows.zip";
+      const filename = "adgrmm-agent-windows.zip";
       const absPath = process.env.AGENT_PKG_WINDOWS_PATH
         ? path.resolve(process.env.AGENT_PKG_WINDOWS_PATH)
         : path.join(baseDir, "windows", filename);
@@ -303,7 +303,7 @@ export class ProvisioningService {
     }
 
     if (os === "linux") {
-      const filename = "remoteiq-agent-linux-x64.tar.gz";
+      const filename = "adgrmm-agent-linux-x64.tar.gz";
       const absPath = process.env.AGENT_PKG_LINUX_PATH
         ? path.resolve(process.env.AGENT_PKG_LINUX_PATH)
         : path.join(baseDir, "linux", filename);
@@ -337,7 +337,7 @@ export class ProvisioningService {
   async getAgentPackage(os: InstallerOs): Promise<AgentPackage> {
     const location = this.agentPackagePath(os);
     if (!location) {
-      throw new ServiceUnavailableException(`There is no RemoteIQ agent for ${os} yet.`);
+      throw new ServiceUnavailableException(`There is no ADG RMM agent for ${os} yet.`);
     }
 
     let stat: any;
@@ -387,19 +387,19 @@ export class ProvisioningService {
     const built =
       os === "windows"
         ? {
-            filename: "RemoteIQ-Installer-Windows.ps1",
+            filename: "AdgRmm-Installer-Windows.ps1",
             content: windowsInstallerScript(values),
           }
         : {
-            filename: "RemoteIQ-Installer-Linux.sh",
+            filename: "AdgRmm-Installer-Linux.sh",
             content: linuxInstallerScript(values),
           };
 
     const label = [onlyIfMissing ? "GPO" : "", String(dto.label ?? "").trim()].filter(Boolean).join("-");
     const filename = label
       ? built.filename.replace(
-        /RemoteIQ-Installer/,
-        `RemoteIQ-Installer-${label.replace(/[^a-zA-Z0-9-_]+/g, "-")}`
+        /AdgRmm-Installer/,
+        `AdgRmm-Installer-${label.replace(/[^a-zA-Z0-9-_]+/g, "-")}`
       )
       : built.filename;
 
