@@ -116,3 +116,17 @@ The dashboard follows the update and shows a toast when it is done. Success mean
 In the device list, open a device's menu and choose **Update agent**. The agent checks immediately instead of waiting for its next scheduled check, and it skips the waiting periods after failed attempts. Signature and hash checks, and automatic rollback, still apply.
 
 This needs the `devices.actions` permission and an online agent on version 1.3.0 or later. If updates are turned off with `AGENT_UPDATES_ENABLED`, the action says so.
+
+## Moving agents from the RemoteIQ build (before 0.2.0) to ADG RMM
+
+The rename changed the agent's service name, folders and executable (`RemoteIQ.Agent.exe` became `AdgRmm.Agent.exe`). An old agent checks that an update contains its own executable name, so it rejects an ADG RMM package with "The package failed verification. Nothing was changed." No old agent can update itself into the new one. Each device needs a one-time reinstall:
+
+1. Remove the old agent. On Windows, in an administrator PowerShell: stop and delete the service `RemoteIQAgent` (`Stop-Service`, then `sc.exe delete`), stop any process still running from `C:\Program Files\RemoteIQ`, then delete that folder.
+2. Generate a new installer in the console and run it as administrator. The device keeps its existing record when the hostname matches, so it is not duplicated.
+3. After that, normal pilot and stable updates work.
+
+If the server's `agent-packages` folder still holds the old build in the stable slot, the new installer downloads that build and stops with "The agent package is missing AdgRmm.Agent.exe". Promote the ADG RMM build to stable first.
+
+## Package slots on an installed server
+
+A release ships its agent packages as the **stable** build, in a read-only folder. A fresh install is therefore ready to enrol devices, but there is no candidate slot to test a new build in and the Admin page cannot promote (it needs to write). To use the staged rollout on a live install, keep the packages in a writable folder (stable, candidate and previous slots), mount it over `AGENT_PKG_DIR` with a compose override, and pass that override on every `docker compose` command and upgrade. Without it the bundled stable build comes back and is offered to every ring.
