@@ -214,7 +214,7 @@ export default function ApiTab({ push }: ApiTabProps) {
                         <div className="font-medium">Quickstart</div>
                         <div className="text-xs text-muted-foreground">Example curl:</div>
                         <pre className="overflow-x-auto rounded bg-muted p-3 text-xs">
-                            <code>{`curl -H "Authorization: Bearer rk_live_xxx" \\\n  https://api.adgrmm.local/v1/devices`}</code>
+                            <code>{`curl -H "Authorization: Bearer rk_live_xxx" \\\n  https://api.adgsaas.com/v1/devices`}</code>
                         </pre>
                     </div>
 

@@ -24,7 +24,7 @@ export default function InvoicesTab({ push }: InvoicesTabProps) {
         footer: "ADG RMM • 123 Example St • Anytown, CA 90210",
         showCompanyAddress: true,
         attachPdfToEmail: true,
-        emailFrom: "billing@adgrmm.local",
+        emailFrom: "billing@adgsaas.com",
     });
 
     return (
