@@ -24,6 +24,9 @@ import { AuthCookieGuard } from "./auth/auth-cookie.guard";
 import { PermissionsGuard } from "./auth/permissions.guard";
 import { getJwtSecret } from "./auth/jwt-secret";
 import { assertAdminApiKeyConfig } from "./common/admin-key";
+import { isDemoMode } from "./demo-mode/demo-mode.rules";
+import { createDemoGate } from "./demo-mode/demo-gate.middleware";
+import { DemoModeService } from "./demo-mode/demo-mode.service";
 
 /** Mount /docs only when allowed (and if @nestjs/swagger is present). */
 async function maybeSetupSwagger(app: INestApplication) {
@@ -153,6 +156,8 @@ async function bootstrap() {
   app.use(/^\/api\/devices\/[^/]+\/files\/write\/?$/, (req: any, res: any, next: any) => fileWriteBodyParser(req, res, next));
 
   app.use(cookieParser());
+  // The public demo: refuse everything that could reach outside, add a device or show how the server is set up (see demo-mode/).
+  if (isDemoMode()) app.use(createDemoGate(app.get(DemoModeService)));
   configureCors(app);
 
   // ✅ TS-only fix for Nest websocket adapter interface mismatch

@@ -67,6 +67,7 @@ import { BillingModule } from "./billing/billing.module";
 import { ItDocsModule } from "./itdocs/itdocs.module";
 import { ReportsModule } from "./reports/reports.module";
 import { DemoModule } from "./demo/demo.module";
+import { DemoModeModule } from "./demo-mode/demo-mode.module";
 import { FlagsModule } from "./flags/flags.module";
 import { ComplianceModule } from "./compliance/compliance.module";
 import { DataExchangeModule } from "./data-exchange/data-exchange.module";
@@ -157,6 +158,7 @@ import { DashboardModule } from "./dashboard/dashboard.module";
         ItDocsModule,
         ReportsModule,
         DemoModule,
+        DemoModeModule,
         FlagsModule,
         ComplianceModule,
         DataExchangeModule,
