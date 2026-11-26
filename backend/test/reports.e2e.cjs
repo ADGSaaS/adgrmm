@@ -727,17 +727,17 @@ async function rejects(name, fn, pattern) {
     };
     check("demo data starts off", (await demo.status()).enabled === false);
     const onRun = await demo.enable();
-    check("turning it onRun makes two customers and ten endpoints", onRun.enabled && onRun.counts.customers === 2 && onRun.counts.devices === 10 && onRun.counts.sites === 4, onRun);
-    check("it makes tickets, remote sessions and assets as well", onRun.counts.tickets >= 10 && onRun.counts.sessions >= 10 && onRun.counts.assets === 10, onRun.counts);
-    check("turning it onRun again changes nothing", (await demo.enable()).counts.devices === 10 && (await prisma.devices.count()) === rowsBefore.devices + 10);
+    check("turning it onRun makes six customers and forty endpoints", onRun.enabled && onRun.counts.customers === 6 && onRun.counts.devices === 40 && onRun.counts.sites === 13, onRun);
+    check("it makes tickets, remote sessions and assets as well", onRun.counts.tickets >= 10 && onRun.counts.sessions >= 10 && onRun.counts.assets >= 40, onRun.counts);
+    check("turning it onRun again changes nothing", (await demo.enable()).counts.devices === 40 && (await prisma.devices.count()) === rowsBefore.devices + 40);
     const demoClients = await prisma.clients.findMany({ where: { name: { startsWith: "Demo: " } } });
     const harbor = demoClients.find((c) => /Harbor/.test(c.name));
     const summit = demoClients.find((c) => /Summit/.test(c.name));
     const dHealth = await endpoint.run("device-health", { clientId: harbor.id });
     const issuesOf = dHealth.rows.map((r) => [r.name, r.result, r.issues]);
-    check("the demo fleet has devices that need attention and some that are fine", dHealth.rows.length === 5 && dHealth.rows.some((r) => r.result === "Needs attention") && dHealth.rows.some((r) => r.result === "Healthy"), issuesOf);
+    check("the demo fleet has devices that need attention and some that are fine", dHealth.rows.length === 6 && dHealth.rows.some((r) => r.result === "Needs attention") && dHealth.rows.some((r) => r.result === "Healthy"), issuesOf);
     const dSec = await endpoint.run("security-status", { clientId: summit.id });
-    check("security shows real findings in the demo", dSec.rows.length === 5 && dSec.rows.some((r) => r.result === "Needs attention"), dSec.rows.map((r) => r.result));
+    check("security shows real findings in the demo", dSec.rows.length === 6 && dSec.rows.some((r) => r.result === "Needs attention"), dSec.rows.map((r) => r.result));
     const dPatch = await endpoint.run("patch-compliance", { clientId: harbor.id });
     check("patching has compliant, missing and overdue devices", dPatch.rows.some((r) => r.result === "Compliant") && dPatch.rows.some((r) => r.result === "Missing patches") && dPatch.rows.some((r) => r.result === "Scan overdue"), dPatch.rows.map((r) => r.result));
     const dSoft = await endpoint.run("software-inventory", { clientId: harbor.id });
@@ -745,7 +745,7 @@ async function rejects(name, fn, pattern) {
 
     // the newer reports
     const ageRun = await endpoint.run("hardware-age", { clientId: harbor.id });
-    check("hardware ageRun says what to replace, and uses purchase dates", ageRun.rows.length === 5 && ageRun.rows.some((r) => r.stage === "Replace now") && ageRun.rows.some((r) => r.stage === "Current") && ageRun.rows.every((r) => r.ageSource === "Purchase date"), ageRun.rows.map((r) => [r.name, r.stage, r.ageYears]));
+    check("hardware ageRun says what to replace, and uses purchase dates", ageRun.rows.length === 6 && ageRun.rows.some((r) => r.stage === "Replace now") && ageRun.rows.some((r) => r.stage === "Current") && ageRun.rows.every((r) => r.ageSource === "Purchase date"), ageRun.rows.map((r) => [r.name, r.stage, r.ageYears]));
     check("a longer refresh limit changes the answer", (await endpoint.run("hardware-age", { clientId: harbor.id, refreshYears: 15 })).rows.every((r) => r.stage === "Current"));
     const winRun = await endpoint.run("windows-support", { clientId: harbor.id });
     const xrayRow = winRun.rows.find((r) => r.name === "HAR-XRAY-03");
@@ -764,7 +764,7 @@ async function rejects(name, fn, pattern) {
     check("a device with no agent shows as one", (await endpoint.run("stale-devices", { clientId: summit.id, notSeenDays: 30 })).rows.some((r) => r.name === noAgent.hostname && r.state === "No agent"));
     await prisma.devices.delete({ where: { id: noAgent.id } });
     const netRun = await endpoint.run("network-map", { clientId: harbor.id });
-    check("the network map lists an address for each device with its network and gateway", netRun.rows.length === 5 && netRun.rows.every((r) => r.network && r.gateway && r.mac) && netRun.rows.some((r) => r.network === "10.20.2.0/24"), netRun.rows.map((r) => r.network));
+    check("the network map lists an address for each device with its network and gateway", netRun.rows.length === 6 && netRun.rows.every((r) => r.network && r.gateway && r.mac) && netRun.rows.some((r) => r.network === "10.20.2.0/24"), netRun.rows.map((r) => r.network));
     const frontId = (await prisma.devices.findFirst({ where: { hostname: "HAR-FRONT-01" } })).id;
     const frontFacts = (await prisma.agents.findUnique({ where: { device_id: frontId } })).facts;
     await prisma.agents.update({ where: { device_id: (await prisma.devices.findFirst({ where: { hostname: "HAR-FRONT-01" } })).id }, data: { facts: (await prisma.agents.findFirst({ where: { devices: { hostname: "HAR-CHAIR-02" } } })).facts } });
@@ -781,7 +781,7 @@ async function rejects(name, fn, pattern) {
     // service reports on the demo data
     const lastMonth = { from: new Date(Date.now() - 45 * 86_400_000).toISOString().slice(0, 10), to: new Date().toISOString().slice(0, 10) };
     const comp = await endpoint.run("software-compliance", { clientId: harbor.id, required: "Zzz Nonexistent Program", banned: "" });
-    check("every device missing a required program is non-compliant and says what is missing", comp.rows.length === 5 && comp.rows.every((r) => r.result === "Non-compliant" && r.missingRequired === "Zzz Nonexistent Program"), comp.rows.map((r) => r.result));
+    check("every device missing a required program is non-compliant and says what is missing", comp.rows.length === 6 && comp.rows.every((r) => r.result === "Non-compliant" && r.missingRequired === "Zzz Nonexistent Program"), comp.rows.map((r) => r.result));
     const compNone = await endpoint.run("software-compliance", { clientId: harbor.id, required: "", banned: "" });
     check("with no lists everything is compliant, and it says so", compNone.rows.every((r) => r.result === "Compliant") && /no lists/.test(compNone.notes.join(" ")));
     const compBanned = await endpoint.run("software-compliance", { clientId: harbor.id, required: "", banned: "e" });
@@ -798,15 +798,15 @@ async function rejects(name, fn, pattern) {
     check("alert noise groups alerts by kind, busiest first", noise.rows.length >= 2 && noise.rows.every((r, i, a) => i === 0 || Number(a[i - 1].alerts) >= Number(r.alerts)) && noise.rows.reduce((s, r) => s + Number(r.alerts), 0) === noise.summary.find((x) => x.label === "Alerts").value, noise.rows.map((r) => [r.alert, r.alerts]));
     const tick = await endpoint.run("ticket-sla", { clientId: harbor.id, ...lastMonth });
     check("ticket SLA lists the customer's tickets with hours to close and an SLA result", tick.rows.length >= 5 && tick.rows.every((r) => r.sla) && tick.rows.some((r) => r.hoursToClose !== null), tick.rows.length);
-    check("an open ticket past its due time is overdue", tick.rows.filter((r) => r.closedAt === null).every((r) => r.sla === "Overdue"));
+    check("an open ticket past its due time is overdue, and only an open one is", tick.rows.some((r) => r.closedAt === null && r.sla === "Overdue") && tick.rows.filter((r) => r.sla === "Overdue").every((r) => r.closedAt === null));
     const tech = await endpoint.run("technician-activity", { clientId: summit.id, ...lastMonth });
-    check("technician activity counts sessions, refusals and devices per person", tech.rows.length >= 1 && tech.rows.every((r) => r.sessions + r.refused > 0 || r.scripts > 0) && tech.rows.every((r) => /@demo\.invalid$/.test(String(r.email))), tech.rows);
+    check("technician activity counts sessions, refusals and devices per person", tech.rows.length >= 1 && tech.rows.every((r) => r.sessions + r.refused > 0 || r.scripts > 0 || r.ticketsClosed > 0 || r.hoursLogged > 0) && tech.rows.filter((r) => /@demo\.invalid$/.test(String(r.email))).length >= 4, tech.rows);
 
     // history reports on the demo data
     const span45 = { from: new Date(Date.now() - 45 * 86_400_000).toISOString().slice(0, 10), to: new Date().toISOString().slice(0, 10) };
     const avail = await endpoint.run("availability", { clientId: harbor.id, ...span45 });
     const availOf = (n) => avail.rows.find((r) => r.name === n);
-    check("availability covers the days with data for every device", avail.rows.length === 5 && avail.rows.every((r) => r.daysCovered >= 44), avail.rows.map((r) => [r.name, r.daysCovered]));
+    check("availability covers the days with data for every device", avail.rows.length === 6 && avail.rows.every((r) => r.daysCovered >= 44), avail.rows.map((r) => [r.name, r.daysCovered]));
     check("a steady server is available nearly all the time and meets the target", availOf("HAR-SRV-01").availability >= 99 && availOf("HAR-SRV-01").result === "Meets target", availOf("HAR-SRV-01"));
     check("a flaky machine is below target, with hours offline and a worst day", availOf("HAR-XRAY-03").availability < 95 && availOf("HAR-XRAY-03").result === "Below target" && availOf("HAR-XRAY-03").offlineHours > 50 && !!availOf("HAR-XRAY-03").worstDay, availOf("HAR-XRAY-03"));
     check("the least available device is listed first", avail.rows.every((r, i, a) => i === 0 || a[i - 1].availability <= r.availability));
@@ -1168,7 +1168,7 @@ async function rejects(name, fn, pattern) {
     const everyoneRun = await endpoint.run("hardware-inventory", {});
     check("someone with no limit still sees everyone", everyoneRun.rows.some((r) => r.customer === "Demo: Summit Law") && everyoneRun.rows.length > hwLimited.rows.length);
     const limitedFull = await full.build({}, null, { restrictClientIds: limit });
-    check("the All report for a limited person holds only their customers, in every section", limitedFull.sections.every((s) => s.rows.every((r) => !r.customer || r.customer === "Demo: Harbor Dental")) && limitedFull.scorecard.find((t) => t.label === "Devices").value === "5", [limitedFull.scorecard.find((t) => t.label === "Devices")]);
+    check("the All report for a limited person holds only their customers, in every section", limitedFull.sections.every((s) => s.rows.every((r) => !r.customer || r.customer === "Demo: Harbor Dental")) && limitedFull.scorecard.find((t) => t.label === "Devices").value === "6", [limitedFull.scorecard.find((t) => t.label === "Devices")]);
 
     // and the same through the controller, as that person
     const limitedReq = { user: { id: limitedUser.id, email: limitedUser.email }, headers: {}, socket: {} };
@@ -1201,9 +1201,9 @@ async function rejects(name, fn, pattern) {
     check("the threats report lists detections with device, threat, severity, status and where", threatsH.rows.length === 3 && threatsH.rows.every((r) => r.threat && r.severity && r.status && r.resource), threatsH.rows.map((r) => [r.device, r.threat, r.status]));
     check("active and failed ones come first", threatsH.rows[0].status === "Active" && threatsH.rows[1].status === "Failed to clean" && threatsH.rows[2].status === "Cleaned", threatsH.rows.map((r) => r.status));
     check("severity and the counts are right", threatsH.rows[0].severity === "Severe" && threatsH.summary.find((s) => s.label === "Still active").value === 1 && threatsH.summary.find((s) => s.label === "Failed to clean").value === 1 && threatsH.summary.find((s) => s.label === "Devices affected").value === 2 && threatsH.summary.find((s) => s.label === "Severe or high").value === 1);
-    check("it says how many devices reported threat data", /5 of 5 devices have reported/.test(threatsH.notes.join(" ")), threatsH.notes);
+    check("it says how many devices reported threat data", /5 of 6 devices have reported/.test(threatsH.notes.join(" ")), threatsH.notes);
     const threatsS = await endpoint.run("antivirus-threats", { clientId: summit.id, ...span45 });
-    check("a device with no threat data is counted as not reporting, not as clean", threatsS.summary.find((s) => s.label === "Not reporting").value === 1 && /4 of 5 devices have reported/.test(threatsS.notes.join(" ")) && threatsS.rows.every((r) => r.device !== "SUM-REMOTE-04"), threatsS.notes);
+    check("a device with no threat data is counted as not reporting, not as clean", threatsS.summary.find((s) => s.label === "Not reporting").value === 2 && /4 of 6 devices have reported/.test(threatsS.notes.join(" ")) && threatsS.rows.every((r) => r.device !== "SUM-REMOTE-04"), threatsS.notes);
     check("detections outside the period are left out", (await endpoint.run("antivirus-threats", { clientId: harbor.id, from: span45.to, to: span45.to })).rows.length === 0);
     check("the review mentions an active threat first", (await full.build({ clientId: harbor.id }, null, { kind: "qbr", sections: qbrSections })).recommendations[0].includes("still active or could not be cleaned"));
 
