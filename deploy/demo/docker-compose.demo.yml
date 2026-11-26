@@ -1,0 +1,43 @@
+# Extra settings for the public ADG RMM demo, laid over the compose file the installer writes (docker mode):
+#   docker compose -f /opt/adgrmm/docker-compose.yml -f /opt/adgrmm/docker-compose.demo.yml --env-file /opt/adgrmm/config/compose.env up -d
+#
+# What it adds:
+#   * the database, the API and the web app sit on a network with NO route to the outside, so even a flaw in the demo's rules cannot
+#     send email, call a URL or scan anyone;
+#   * only the edge router (a small proxy) is also on a normal network, so the port can be published;
+#   * the API's own port is not published at all;
+#   * the demo settings (DEMO_MODE and the demo user) come from config/demo.env, outside the dashboard;
+#   * every container restarts by itself. The demo relies on that: it exits when the last visitor has gone, to start with fresh data.
+name: adgrmm
+
+networks:
+  inner:
+    internal: true
+  front: {}
+
+services:
+  postgres:
+    networks: [inner]
+    restart: always
+  adg-backend:
+    networks: [inner]
+    ports: !reset []
+    env_file:
+      - /opt/adgrmm/config/adgrmm.env
+      - /opt/adgrmm/config/demo.env
+    restart: always
+    mem_limit: 1200m
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: [ALL]
+  adg-frontend:
+    networks: [inner]
+    restart: always
+    mem_limit: 700m
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: [ALL]
+  adg-edge:
+    networks: [inner, front]
+    restart: always
+    mem_limit: 200m
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: [ALL]
