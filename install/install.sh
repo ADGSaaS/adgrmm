@@ -3,7 +3,7 @@
 #
 #   curl -fsSL https://github.com/adgsaas/adgrmm/releases/latest/download/install.sh | sudo bash
 #
-# Installs ADG RMM on this machine (Ubuntu 22.04/24.04 or Debian 12, x86_64) and walks you through the first setup:
+# Installs ADG RMM on this machine (Ubuntu 22.04/24.04/26.04 or Debian 12, x86_64) and walks you through the first setup:
 # where it runs, its web address and HTTPS, the database, your administrator account, company name, email sending,
 # the customer portal and a first customer with the agent install command.
 #
@@ -162,8 +162,8 @@ preflight() {
     # shellcheck disable=SC1091
     . /etc/os-release
     case "${ID:-}:${VERSION_ID:-}" in
-        ubuntu:22.04|ubuntu:24.04|debian:12) ;;
-        *) die "This installer supports Ubuntu 22.04, Ubuntu 24.04 and Debian 12. This is ${PRETTY_NAME:-unknown}." ;;
+        ubuntu:22.04|ubuntu:24.04|ubuntu:26.04|debian:12) ;;
+        *) die "This installer supports Ubuntu 22.04, 24.04 and 26.04, and Debian 12. This is ${PRETTY_NAME:-unknown}." ;;
     esac
     OS_ID="$ID"; OS_VERSION="$VERSION_ID"; OS_CODENAME="${VERSION_CODENAME:-}"
     command -v apt-get >/dev/null 2>&1 || die "apt-get is missing."

@@ -8,7 +8,7 @@ Do the setup in Parts A to D first. Every later section assumes that setup is do
 
 | Item | Needed for |
 |---|---|
-| A server (a virtual machine is fine): Ubuntu 22.04, Ubuntu 24.04 or Debian 12, 64-bit, 2 GB memory or more, 6 GB free disk | Part A |
+| A server (a virtual machine is fine): Ubuntu 22.04, 24.04, 26.04 or Debian 12, 64-bit, 2 GB memory or more, 6 GB free disk | Part A |
 | A domain name pointing at that server, for example `rmm.example.com`, with ports 80 and 443 reachable from the internet (or your own reverse proxy) | Part A |
 | One or more Windows 10 or 11 computers (a virtual machine is fine) | Part C, most tests |
 | One Linux virtual machine (Ubuntu or Debian) | Part C, the Linux tests |
@@ -726,7 +726,7 @@ Expected result: Installed updates move out of the Required list by themselves, 
 Report if: installed patches stay under Required after 10 minutes, patches show as Required that you installed, or the device keeps scanning over and over.
 
 ### 1.50 Linux agent tested on more distributions
-Needs: Linux machines or VMs. Ideal: one of Debian 12, Ubuntu 22.04 or 24.04, Fedora 40 or newer, and especially Rocky 9 and openSUSE Leap 15.6 (these were not tried as services). An ARM machine is optional (not supported yet).
+Needs: Linux machines or VMs. Ideal: one of Debian 12, Ubuntu 22.04, 24.04 or 26.04, Fedora 40 or newer, and especially Rocky 9 and openSUSE Leap 15.6 (these were not tried as services). An ARM machine is optional (not supported yet).
 Steps:
 1. In the console, go to Devices and use the Add device or install command shown there for Linux; run it as root on the machine.
 2. When the installer finishes, wait up to two minutes and check that the device appears in the Devices list and goes online.
@@ -1876,7 +1876,7 @@ Expected result: A new restore test appears and completes in under a minute or t
 Report if: The test fails (note the reason shown), takes much longer than a minute, or the console slows or errors while it runs. The 30 day and 35 day warnings only show with time, so you cannot test them directly.
 
 ### 10.17 One-command self-hosted install
-Needs: A fresh Ubuntu 22.04, 24.04 or Debian 12 machine or VM with a sudo user and internet; optionally a real domain name pointing to it (for Let's Encrypt) and a real mailbox.
+Needs: A fresh Ubuntu 22.04, 24.04, 26.04 or Debian 12 machine or VM with a sudo user and internet; optionally a real domain name pointing to it (for Let's Encrypt) and a real mailbox.
 Steps:
 1. Ask the developer for the install command or the release (GitHub Releases, v0.1.4) and copy install/install.sh to the machine.
 2. Run it and choose Docker or native, then built-in HTTPS or your own proxy. Answer the first-run questions.

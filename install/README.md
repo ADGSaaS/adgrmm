@@ -11,7 +11,7 @@ reaches the script). If you host the release files yourself, set `ADG_RELEASE_BA
 
 ## What you need
 
-- A server with **Ubuntu 22.04, Ubuntu 24.04 or Debian 12**, 64-bit Intel/AMD, 2 GB of memory or more, 6 GB of free disk.
+- A server with **Ubuntu 22.04, 24.04, 26.04 or Debian 12**, 64-bit Intel/AMD, 2 GB of memory or more, 6 GB of free disk.
 - Root access (`sudo`).
 - A **domain name** for ADG RMM (for example `rmm.example.com`) pointing at the server. For the built-in HTTPS, ports
   **80 and 443** must be free and reachable from the internet.
