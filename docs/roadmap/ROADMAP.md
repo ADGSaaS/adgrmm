@@ -313,6 +313,7 @@ Recommendation: integrate with established security products instead of building
 | 10.5 | Off-server backup of the job signing key | ⛔ | Needs a safe place from you. Now covers the data key too: losing it means re-entering credentials and losing encrypted backups |
 | 10.6 | Encrypt backup archives | 🧪 | Built and off by default. Tested for tampering, but the full database restore is untested |
 | 10.7 | Outside penetration test | ⬜ | Do before any public release |
+| 10.24 | Agent network allow-list (only accept agent traffic from listed IP ranges) | ⬜ | Asked for by an MSP testing the RMM on 2026-11-27: their agents only ever arrive from their Global Secure Access egress addresses, and they want the backend to refuse agent requests from anywhere else. Today only staff sign-in has an IP allow-list (owners exempt); agent traffic can only be restricted at the reverse proxy or firewall (paths /api/agent/, /ws/desktop-tunnel, /api/provisioning/agent-packages/). Plan: an opt-in list under Administration > Security for the agent HTTP routes and agent websockets; a trusted-proxy setting, because the backend currently believes CF-Connecting-IP and X-Forwarded-For without checking who sent them (an IP rule built on that could be bypassed); a report-only mode first; every refusal audited; refuse to enable a list that would exclude all currently connected agents. |
 
 ### Build and release
 
