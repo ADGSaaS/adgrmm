@@ -93,3 +93,17 @@ secret that can read the web app repository.
 
 The web app is built once with placeholder addresses; `install.sh` swaps in the real address on each server, so one
 bundle serves every installation.
+
+## Several installs on one server (Docker mode)
+
+A hosting provider can run many separate installs on one server. Give each one its own folder, compose project name and local API port, and its own proxy port:
+
+```bash
+sudo ADG_HOME=/srv/tenants/acme ADG_PROJECT=acme ADG_API_PORT=19001 bash install.sh
+```
+
+- `ADG_HOME` is the install folder (default `/opt/adgrmm`). Once installed, the `install.sh` inside that folder manages that install by itself, so `status`, `upgrade` and `uninstall` work from any directory.
+- `ADG_PROJECT` is the Docker Compose project name (default `adgrmm`). Use lower-case letters, digits, `-` and `_`.
+- `ADG_API_PORT` is the API's port on this server's loopback address (default `3001`). Each install needs a different one, and it must differ from that install's proxy port.
+
+Each install has its own database, keys and containers. The packaged images are shared between installs of the same version. The default single install is unchanged.

@@ -25,7 +25,16 @@ set -Eeuo pipefail
 ADG_REPO_GIVEN="${ADG_REPO:-}"
 ADG_REPO="${ADG_REPO:-adgsaas/adgrmm}"
 ADG_RELEASE_BASE="${ADG_RELEASE_BASE:-}"
-ADG_HOME="${ADG_HOME:-/opt/adgrmm}"
+# Which install this is. A script that sits inside an install (its folder has install.conf) manages that install, so several
+# installs can live on one server, each in its own folder. Otherwise the default is /opt/adgrmm.
+if [ -z "${ADG_HOME:-}" ]; then
+    _here=""
+    [ -f "${BASH_SOURCE[0]:-}" ] && _here="$(cd "$(dirname "${BASH_SOURCE[0]}")" 2>/dev/null && pwd || true)"
+    if [ -n "$_here" ] && [ -f "$_here/install.conf" ]; then ADG_HOME="$_here"; else ADG_HOME="/opt/adgrmm"; fi
+fi
+# Docker mode, several installs on one server: each needs its own compose project name and its own local API port.
+ADG_PROJECT_NAME="${ADG_PROJECT:-adgrmm}"
+API_HOST_PORT="${ADG_API_PORT:-3001}"
 ASSET="adgrmm-linux-x64.tar.gz"
 PLACEHOLDER="adg-public-url.invalid"
 COOKIE_PLACEHOLDER="adg-cookie-placeholder"
@@ -415,6 +424,7 @@ wizard() {
     [ -z "$ADG_RELEASE_BASE" ] || conf_set RELEASE_BASE "$ADG_RELEASE_BASE"
     [ -z "$ADG_REPO_GIVEN" ] || conf_set REPO "$ADG_REPO_GIVEN"
     conf_set EDGE_PORT "$EDGE_PORT"; conf_set BIND_EDGE "$BIND_EDGE"; conf_set ACME_EMAIL "${ACME_EMAIL:-}"
+    conf_set API_PORT "$API_HOST_PORT"; conf_set PROJECT "$ADG_PROJECT_NAME"
     conf_set DB_MODE "$DB_MODE"; conf_set COMPANY "$COMPANY"; conf_set ADMIN_EMAIL "$ADMIN_EMAIL"; conf_set PORTAL_DOMAIN "$PORTAL_DOMAIN"
     if [ "$DB_MODE" = external ]; then conf_set DB_HOST "$DB_HOST"; conf_set DB_PORT "$DB_PORT"; conf_set DB_NAME "$DB_NAME"; conf_set DB_USER "$DB_USER"; conf_set DB_PASSWORD "$DB_PASSWORD"; conf_set DB_SSL "$DB_SSL"; fi
 }
@@ -512,7 +522,7 @@ write_compose() {
     chown -R 1000:1000 "$ADG_HOME/data/uploads" "$ADG_HOME/data/config" "$ADG_HOME/data/var" "$ADG_HOME/secrets"
     if [ "$TLS" = 2 ]; then edge_publish="\"$BIND_EDGE:$EDGE_PORT:8080\""; else edge_publish="\"127.0.0.1:$EDGE_PORT:8080\""; fi
     {
-        echo "name: adgrmm"
+        echo "name: $ADG_PROJECT_NAME"
         echo "services:"
         if [ "$DB_MODE" = local ]; then
             mkdir -p "$ADG_HOME/data/postgres"
@@ -543,7 +553,7 @@ YAML
     env_file: $ADG_HOME/config/adgrmm.env
 $depends
     ports:
-      - "127.0.0.1:3001:3001"
+      - "127.0.0.1:$API_HOST_PORT:3001"
     volumes:
       - $ADG_HOME/data/uploads:/app/public/uploads
       - $ADG_HOME/data/config:/app/config
@@ -786,7 +796,7 @@ wait_healthy() {
     local i
     printf '  Waiting for ADG RMM to start '
     for i in $(seq 1 90); do
-        if curl -fsS --max-time 3 http://127.0.0.1:3001/healthz >/dev/null 2>&1; then printf ' %sup%s\n' "$G" "$N"; return 0; fi
+        if curl -fsS --max-time 3 "http://127.0.0.1:$API_HOST_PORT/healthz" >/dev/null 2>&1; then printf ' %sup%s\n' "$G" "$N"; return 0; fi
         printf '.'; sleep 2
     done
     printf '\n'
@@ -815,7 +825,7 @@ run_tool() {
 json_escape() { printf '%s' "$1" | sed -e 's/\\/\\\\/g' -e 's/"/\\"/g' -e 's/\t/\\t/g' | tr -d '\n\r'; }
 
 first_run_setup() {
-    local answers="$ADG_HOME/config/first-run.json" db_url api_base="http://127.0.0.1:3001"
+    local answers="$ADG_HOME/config/first-run.json" db_url api_base="http://127.0.0.1:3001"  # the setup tool runs inside the API container (docker) or beside it (native): 3001 is the API port there
     db_url="$(database_url)"
     umask 077
     cat >"$answers" <<JSON
@@ -948,9 +958,17 @@ preflight_ports() {
     if [ "$TLS" != 2 ]; then
         for p in 80 443; do port_in_use "$p" && die "Port $p is already in use on this server, and the built-in HTTPS needs it. Stop what is using it (ss -ltnp | grep :$p) or choose the 'I already have a reverse proxy' option."; done
     fi
+    [ "$MODE" = docker ] || API_HOST_PORT=3001
     case "$EDGE_PORT" in 3000|3001) die "Port $EDGE_PORT is used inside ADG RMM. Choose another port for the proxy, such as 8080." ;; esac
     port_in_use "$EDGE_PORT" && die "Port $EDGE_PORT is already in use."
-    port_in_use 3001 && die "Port 3001 is already in use."
+    if [ "$MODE" = docker ]; then
+        valid_port "$API_HOST_PORT" || die "ADG_API_PORT must be a port number."
+        [ "$API_HOST_PORT" != "$EDGE_PORT" ] || die "The API port and the proxy port must be different."
+        port_in_use "$API_HOST_PORT" && die "Port $API_HOST_PORT is already in use (the API's local port). To run another install on this server, give it its own folder (ADG_HOME), ADG_PROJECT and ADG_API_PORT."
+        printf '%s' "$ADG_PROJECT_NAME" | grep -Eq '^[a-z0-9][a-z0-9_-]*$' || die "ADG_PROJECT may only have lower-case letters, digits, - and _."
+    else
+        port_in_use 3001 && die "Port 3001 is already in use."
+    fi
     port_in_use 3000 && [ "$MODE" = native ] && die "Port 3000 is already in use."
     return 0
 }
@@ -960,6 +978,9 @@ load_state() {
     MODE="$(conf_get MODE)"; DOMAIN="$(conf_get DOMAIN)"; TLS="$(conf_get TLS)"; PUBLIC_URL="$(conf_get PUBLIC_URL)"
     EDGE_PORT="$(conf_get EDGE_PORT)"; BIND_EDGE="$(conf_get BIND_EDGE)"; ACME_EMAIL="$(conf_get ACME_EMAIL)"; DB_MODE="$(conf_get DB_MODE)"
     PORTAL_DOMAIN="$(conf_get PORTAL_DOMAIN)"; CURRENT_VERSION="$(conf_get VERSION)"
+    API_HOST_PORT="$(conf_get API_PORT)"; [ -n "$API_HOST_PORT" ] || API_HOST_PORT=3001
+    ADG_PROJECT_NAME="$(conf_get PROJECT)"; [ -n "$ADG_PROJECT_NAME" ] || ADG_PROJECT_NAME=adgrmm
+    [ "$MODE" = docker ] || API_HOST_PORT=3001
     # Upgrades come from where the installation came from, unless told otherwise.
     [ -n "$ADG_RELEASE_BASE" ] || ADG_RELEASE_BASE="$(conf_get RELEASE_BASE)"
     if [ -z "$ADG_REPO_GIVEN" ] && [ -n "$(conf_get REPO)" ]; then ADG_REPO="$(conf_get REPO)"; fi
@@ -1088,10 +1109,10 @@ cmd_status() {
     rule
     local tries api=0
     for tries in 1 2 3 4 5 6 7 8; do
-        if curl -fsS --max-time 5 http://127.0.0.1:3001/healthz >/dev/null 2>&1; then api=1; break; fi
+        if curl -fsS --max-time 5 "http://127.0.0.1:$API_HOST_PORT/healthz" >/dev/null 2>&1; then api=1; break; fi
         sleep 2
     done
-    if [ "$api" = 1 ]; then ok "API answers"; else warn "API does not answer on 127.0.0.1:3001"; bad=1; fi
+    if [ "$api" = 1 ]; then ok "API answers"; else warn "API does not answer on 127.0.0.1:$API_HOST_PORT"; bad=1; fi
     if curl -fsS --max-time 8 -o /dev/null "http://127.0.0.1:$EDGE_PORT/login" 2>/dev/null; then ok "Web app answers"; else warn "Web app does not answer on port $EDGE_PORT"; bad=1; fi
     if curl -fsS --max-time 10 -o /dev/null "$PUBLIC_URL/login" 2>/dev/null || curl -fsSk --max-time 10 -o /dev/null "$PUBLIC_URL/login" 2>/dev/null; then ok "$PUBLIC_URL is reachable from this server"; else warn "$PUBLIC_URL is not reachable from this server (DNS, firewall, certificate or proxy)"; fi
     [ -s "$ADG_HOME/secrets/data-encryption.key" ] && ok "Data encryption key present" || warn "Data encryption key is missing"
