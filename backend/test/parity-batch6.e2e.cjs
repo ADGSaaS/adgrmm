@@ -350,7 +350,7 @@ async function twoFactor(ctx) {
     const recovery = confirmed.raw.recoveryCodes;
     await step("overview shows enabled", get(`${ME}/security`, sessionCookie));
 
-    const challenge = async (label = "challenge", extra = {}) => (await login(`tfa ${label}`.replace("tfa ", "tfa ") && "tfa", extra)).raw.challengeToken;
+    const challenge = async (label = "challenge", extra = {}) => (await login("tfa", extra)).raw.challengeToken;
 
     let c = await challenge();
     await step("challenge is no cookie", get(`${ME}/security`, c));

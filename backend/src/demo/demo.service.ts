@@ -707,7 +707,7 @@ export class DemoService implements OnModuleInit, OnModuleDestroy {
                 const periodEnd = addDays(firstOfMonth(m - 1), -1);
                 const monthName = issue.toLocaleString("en-US", { month: "long", year: "numeric", timeZone: "UTC" });
                 const count = c.kind === "per_device" ? deviceCount(c.cust) : c.kind === "per_user" ? c.qty! : 1;
-                const lines: Array<{ description: string; qty: number; price: number; taxable: boolean; time?: boolean }> = [{ description: `${c.name.replace("Managed", "Managed")} (${monthName})${c.kind === "flat" ? "" : `, ${count} ${c.kind === "per_device" ? "devices" : c.cust === 5 ? "seats" : "users"}`}`, qty: c.kind === "flat" ? 1 : count, price: c.price, taxable: false }];
+                const lines: Array<{ description: string; qty: number; price: number; taxable: boolean; time?: boolean }> = [{ description: `${c.name} (${monthName})${c.kind === "flat" ? "" : `, ${count} ${c.kind === "per_device" ? "devices" : c.cust === 5 ? "seats" : "users"}`}`, qty: c.kind === "flat" ? 1 : count, price: c.price, taxable: false }];
                 if (c.cust === 2 || c.cust === 3) lines.push({ description: "Managed firewall (per site)", qty: c.cust === 2 ? 2 : 3, price: 9900, taxable: false });
                 if (m >= 1 && [0, 1, 3, 4].includes(c.cust)) { const h = [2.5, 4, 1.5, 6][[0, 1, 3, 4].indexOf(c.cust)] + (m === 2 ? 1 : 0); lines.push({ description: `Help desk time beyond the plan (${monthName})`, qty: h, price: 13500, taxable: false, time: true }); }
                 if (m === 1 && c.cust === 3) lines.push({ description: "24 inch monitor", qty: 2, price: 18900, taxable: true });
