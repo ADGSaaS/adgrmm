@@ -3,6 +3,7 @@
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import TopBar from "@/components/top-bar";
+import { EntitlementsBanner } from "@/components/entitlements-bar";
 
 // Flexible helper: honor NEXT_PUBLIC_API_BASE if set, otherwise same-origin
 function getApiBase(): string {
@@ -131,7 +132,10 @@ export default function AdminGate({ children }: { children: React.ReactNode }) {
                 className="bg-background h-[calc(100vh-3.5rem)] overflow-y-scroll"
                 style={{ scrollbarGutter: "stable both-edges" }}
             >
-                <div className="pt-14">{children}</div>
+                <div className="pt-14">
+                    <EntitlementsBanner />
+                    {children}
+                </div>
             </div>
         </>
     );

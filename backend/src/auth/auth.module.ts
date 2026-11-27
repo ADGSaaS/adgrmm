@@ -5,6 +5,7 @@ import { getJwtSecret } from "./jwt-secret";
 import { Module } from "@nestjs/common";
 import { JwtModule } from "@nestjs/jwt";
 import { StorageModule } from "../storage/storage.module";
+import { EntitlementsModule } from "../entitlements/entitlements.module";
 
 import { AuthService } from "./auth.service";
 import { AuthController } from "./auth.controller";
@@ -35,6 +36,7 @@ const EXPIRES_IN_SECONDS = parseExpiresToSeconds(process.env.JWT_EXPIRES, 60 * 6
 @Module({
   imports: [
     StorageModule,
+    EntitlementsModule,
     JwtModule.register({
       secret: getJwtSecret(),
       signOptions: { expiresIn: EXPIRES_IN_SECONDS },

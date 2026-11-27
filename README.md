@@ -139,6 +139,7 @@ The backend reads environment variables, usually from `backend/.env`. [`backend/
 | **Agents** | `AGENT_PKG_DIR`, `PUBLIC_API_BASE_URL`, `INSTALLER_BASE_URL`, `AGENT_UPDATES_ENABLED` | Where agent packages are served from and what URL agents are told to use |
 | **Keys** | `JOB_SIGNING_KEY_FILE`, `DATA_ENCRYPTION_KEY_FILE` | Paths to two key files; see [Security model](#security-model) |
 | **Remote Console relay** | `TURN_PROVIDER` (`builtin`, `cloudflare` or `none`), plus the provider's own settings | See [`docs/remote-console-turn.md`](docs/remote-console-turn.md) |
+| **Seat limits (hosted plans)** | `ENTITLEMENTS_FILE` (default `/config/entitlements.json`) | Optional. No file means no limits. See [`docs/entitlements.md`](docs/entitlements.md) |
 | **Retention** | `CHECK_RUNS_RETENTION_DAYS`, `AUDIT_RETENTION_DAYS` | |
 | **Mail** | `IMAP_POLL_ENABLED` and the SMTP/IMAP settings stored through the admin screens | Passwords are encrypted with the data key |
 

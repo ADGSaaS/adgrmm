@@ -106,7 +106,7 @@ function startProvider() {
     const { SsoService } = dist("auth/sso.service.js");
     const prisma = new PrismaService();
     const orgs = new OrganizationContextService(prisma);
-    const svc = new SsoService(prisma, orgs, { findUserById: async (id) => ({ id }) });
+    const svc = new SsoService(prisma, orgs, { findUserById: async (id) => ({ id }) }, { assertCanAddTechnicians: async () => { } });
     const org = await orgs.getDefaultOrganizationId();
     const idp = await startProvider();
     const stamp = Date.now().toString(36);

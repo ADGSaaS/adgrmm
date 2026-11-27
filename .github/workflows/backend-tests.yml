@@ -53,7 +53,7 @@ jobs:
       - run: npx tsc -p tsconfig.json
       - name: Run the flows
         run: |
-          for test in test/billing.e2e.cjs test/itdocs.e2e.cjs test/alerts.e2e.cjs test/reports.e2e.cjs test/reports-http.e2e.cjs test/report-view.cjs test/demo-mode-rules.cjs test/device-data.cjs test/schedule-time.cjs test/device-changes.cjs test/report-settings.cjs test/customer-profile.e2e.cjs test/policy-engine.cjs test/policies.e2e.cjs test/patch-automation.e2e.cjs test/policy-extras.e2e.cjs test/checks-scripts.e2e.cjs test/secrets-at-rest.e2e.cjs test/credential-encryption.cjs test/backup-archive-encryption.cjs; do
+          for test in test/billing.e2e.cjs test/itdocs.e2e.cjs test/alerts.e2e.cjs test/reports.e2e.cjs test/reports-http.e2e.cjs test/report-view.cjs test/demo-mode-rules.cjs test/device-data.cjs test/schedule-time.cjs test/device-changes.cjs test/report-settings.cjs test/customer-profile.e2e.cjs test/policy-engine.cjs test/policies.e2e.cjs test/patch-automation.e2e.cjs test/policy-extras.e2e.cjs test/checks-scripts.e2e.cjs test/secrets-at-rest.e2e.cjs test/credential-encryption.cjs test/backup-archive-encryption.cjs test/entitlements.cjs test/entitlements.e2e.cjs; do
             echo "== $test"
             node "$test"
           done
@@ -63,11 +63,13 @@ jobs:
           PORT: "3901"
           CONSOLE_ORIGIN: http://console.test
           AUTH_COOKIE_NAME: auth_token
+          # The seat-limit flow writes and removes this file; with no file there are no limits for the other flows.
+          ENTITLEMENTS_FILE: /tmp/adg-entitlements-e2e.json
         run: |
           NODE_ENV=production SWAGGER=false DATABASE_SSL=false IMAP_POLL_ENABLED=false FRONTEND_ORIGINS=http://console.test node dist/main.js > /tmp/backend.log 2>&1 &
           for i in $(seq 1 60); do curl -sf "$BASE_URL/healthz" > /dev/null && break; sleep 1; done
           status=0
-          for test in test/security-lockdown.e2e.cjs test/customers-http.e2e.cjs test/policies-http.e2e.cjs test/limits-http.e2e.cjs test/access-http.e2e.cjs test/audit-events.e2e.cjs test/billing-http.e2e.cjs; do
+          for test in test/security-lockdown.e2e.cjs test/customers-http.e2e.cjs test/policies-http.e2e.cjs test/limits-http.e2e.cjs test/access-http.e2e.cjs test/audit-events.e2e.cjs test/billing-http.e2e.cjs test/entitlements-http.e2e.cjs; do
             echo "== $test"
             node "$test" || status=1
           done

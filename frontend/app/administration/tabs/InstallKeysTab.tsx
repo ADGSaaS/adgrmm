@@ -8,6 +8,7 @@ import { KeyRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { jfetch } from "@/lib/api";
+import { EndpointLimitNote } from "@/components/entitlements-bar";
 import type { ToastFn } from "../types";
 
 type InstallKey = {
@@ -99,6 +100,8 @@ export default function InstallKeysTab({ push }: { push: ToastFn }) {
                     including long-lived ones for Group Policy. Here you can see which are still in use and stop any of them. The key itself is shown only once, when it is made.
                 </p>
             </div>
+
+            <EndpointLimitNote />
 
             <div className="flex flex-wrap items-center gap-3 text-sm">
                 <label className="flex items-center gap-2">

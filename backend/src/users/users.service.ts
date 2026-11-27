@@ -12,6 +12,7 @@ import { Prisma } from "@prisma/client";
 import { PrismaService } from "../storage/prisma.service";
 import { OrganizationContextService } from "../storage/organization-context.service";
 import { GroupsService } from "../groups/groups.service";
+import { EntitlementsService } from "../entitlements/entitlements.service";
 import { Actor, assertCanGrant } from "../access/grant-rules";
 import { isOwnerRoleName } from "../auth/policy";
 import { queryUserIdentityById } from "../auth/user-identity.util";
@@ -94,6 +95,7 @@ export class UsersService {
         private readonly prisma: PrismaService,
         private readonly orgs: OrganizationContextService,
         private readonly groups: GroupsService,
+        private readonly entitlements: EntitlementsService,
     ) { }
 
     private mapUserRow(row: DbUserRow): UserRow {
@@ -390,6 +392,8 @@ export class UsersService {
         const existing = await this.prisma.users.findFirst({ where: { organization_id: orgId, email }, select: { id: true, status: true } });
         if (existing && existing.status !== "invited") throw new ConflictException(`${email} already has an account. Edit them instead.`);
         if (existing) await this.assertCanManage(actor, existing.id, false);
+        // Inviting someone new takes a technician seat on a hosted plan (re-sending an invite does not: they already hold one).
+        if (!existing) await this.entitlements.assertCanAddTechnicians(1);
 
         const fallbackName = email.split("@")[0];
         const displayName = coalesceString(dto.name) || fallbackName;
@@ -417,6 +421,8 @@ export class UsersService {
         let created = 0;
         const skipped: { email: string; reason: string }[] = [];
         if ((dto.invites?.length ?? 0) > 200) throw new BadRequestException("Invite at most 200 people at a time.");
+        // On a hosted plan with a technician limit, as many invites are sent as fit, in the order given; the rest are listed in
+        // `skipped` with the plan message (each invite checks the seat count again, so the batch never overshoots the limit).
         for (const inv of dto.invites || []) {
             try {
                 await this.inviteOne(actor, inv);
@@ -441,6 +447,11 @@ export class UsersService {
         const user = await this.ensureUserExists(id);
         await this.assertCanManage(actor, id, false);
         if (suspended) await this.assertNotLastOwner(id, user.organization_id);
+        // Turning a disabled person back on takes a technician seat on a hosted plan. Suspending never needs one.
+        if (!suspended) {
+            const now = await this.prisma.users.findUnique({ where: { id }, select: { status: true } });
+            if (now?.status === "disabled") await this.entitlements.assertCanAddTechnicians(1);
+        }
         const status: DbUserStatus = suspended ? "disabled" : "active"; // <- WRITE DB-SAFE VALUE
         const { count } = await this.prisma.users.updateMany({
             where: { id },
@@ -489,6 +500,8 @@ export class UsersService {
             throw new BadRequestException("Invalid status");
         }
         const dbStatus: DbUserStatus = apiToDbStatus(inputStatus);
+        // An account created switched off holds no seat; any other takes a technician seat on a hosted plan.
+        if (dbStatus !== "disabled") await this.entitlements.assertCanAddTechnicians(1);
         // An existing account is never overwritten from here: that would silently replace its password and roles.
         await this.assertEmailFree(orgId, email);
         // The password rules from Security Policies apply to every staff password that is set.

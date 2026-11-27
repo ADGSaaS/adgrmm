@@ -587,6 +587,9 @@ write_backend_env() {
         echo "TURN_PROVIDER=none"
         echo "AUDIT_RETENTION_DAYS=365"
         echo "CHECK_RUNS_RETENTION_DAYS=14"
+        # Seat limits written by the hosting control plane (hosted plans only). In docker mode the config folder is mounted
+        # at /config and the backend's default path applies; a missing file means no limits.
+        if [ "$mode" = native ]; then echo "ENTITLEMENTS_FILE=$ADG_HOME/config/entitlements.json"; fi
     } >"$file"
     chown root:"$([ "$mode" = native ] && echo adgrmm || echo root)" "$file" 2>/dev/null || true
     chmod 640 "$file"

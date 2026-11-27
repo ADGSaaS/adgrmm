@@ -882,7 +882,8 @@ async function main() {
         const { UsersService } = load("users/users.service.js");
         const { HumanSessionGuard } = load("auth/human-session.guard.js");
         const { queryUserIdentityById, toInet } = load("auth/user-identity.util.js");
-        const auth = new AuthService(prisma);
+        const noLimits = { assertCanEnrollEndpoint: async () => { }, assertCanAddTechnicians: async () => { } };
+        const auth = new AuthService(prisma, noLimits);
         const ws = new WsAuthService(jwtSvc, prisma);
         const userAuth = new UserAuthService(jwtSvc, prisma, null);
 
@@ -959,7 +960,7 @@ async function main() {
         });
         await check("getOne returns the same shape as the list", async () => {
             const orgs = { getDefaultOrganizationId: async () => ORG };
-            const svc = new UsersService(prisma, orgs);
+            const svc = new UsersService(prisma, orgs, undefined, noLimits);
             const one = await svc.getOne(U.first);
             assert.equal(one.name, "Only");
             assert.equal(one.role, "parity viewer");

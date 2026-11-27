@@ -5,6 +5,7 @@ import * as React from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import TopBar from "@/components/top-bar";
 import Sidebar from "@/components/sidebar";
+import { EntitlementsBanner } from "@/components/entitlements-bar";
 
 /**
  * Dashboard area shell
@@ -59,7 +60,11 @@ function SidebarVisibility({ children }: { children: React.ReactNode }) {
                     <Sidebar />
                 </aside>
             )}
-            <section className="flex-1 min-w-0">{children}</section>
+            <section className="flex-1 min-w-0">
+                {/* Only when a hosted plan has limits: warns near a limit, and stays when one is reached */}
+                <EntitlementsBanner />
+                {children}
+            </section>
         </div>
     );
 }

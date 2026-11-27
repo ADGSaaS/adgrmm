@@ -2,6 +2,7 @@ import { BadRequestException, Injectable, Logger } from "@nestjs/common";
 import * as bcrypt from "bcryptjs";
 import { randomBytes } from "node:crypto";
 import { PrismaService } from "../storage/prisma.service";
+import { EntitlementsService } from "../entitlements/entitlements.service";
 import { OrganizationContextService } from "../storage/organization-context.service";
 import { decryptSecret, encryptSecret } from "../common/secret-box";
 import { isCanonicalUuid } from "../common/agent-lookup.util";
@@ -48,7 +49,8 @@ export class SsoService {
     constructor(
         private readonly prisma: PrismaService,
         private readonly orgs: OrganizationContextService,
-        private readonly users: UserAuthService
+        private readonly users: UserAuthService,
+        private readonly entitlements: EntitlementsService
     ) { }
 
     // ---- Settings -------------------------------------------------------------------------------------------
@@ -269,6 +271,12 @@ export class SsoService {
         const [first, ...rest] = (c.name ?? "").trim().split(/\s+/).filter(Boolean);
         const firstName = (c.givenName ?? first ?? c.email!.split("@")[0]).slice(0, 100);
         const lastName = (c.familyName ?? (rest.join(" ") || null))?.slice(0, 100) ?? null;
+        // A hosted plan has a limited number of technician seats; a first sign-in through SSO takes one.
+        try {
+            await this.entitlements.assertCanAddTechnicians(1);
+        } catch (e: any) {
+            throw new OidcError(String(e?.response?.message ?? "The technician limit of your plan is reached. Ask an administrator."), "sso_seat_limit");
+        }
         // Nobody knows this password: the account is reached through single sign-on until someone sets one.
         const hash = await bcrypt.hash(randomBytes(32).toString("hex"), 10);
         return this.prisma.$transaction(async (tx) => {

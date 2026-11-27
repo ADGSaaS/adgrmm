@@ -77,6 +77,7 @@ import {
 } from "@/lib/api";
 
 import { errorText } from "@/components/policies/shared";
+import { refreshEntitlements } from "@/lib/entitlements";
 import { EffectiveAccess, GroupChoices } from "@/components/access/pickers";
 import { jfetch } from "@/lib/api";
 
@@ -708,9 +709,16 @@ export default function UsersTab({
                     desc: `${createdUsers.length} recipient${createdUsers.length > 1 ? "s" : ""}`,
                     kind: "success",
                 });
+                refreshEntitlements();
                 await refreshFromServer(false);
             }
         } catch (e: any) {
+            // A plan limit is an answer from the server, not a lost connection: show it as it is and add nobody.
+            if (e?.status === 402) {
+                push({ title: "Technician limit reached", desc: errorText(e), kind: "destructive" });
+                await refreshFromServer(false);
+                return;
+            }
             const newUsers: User[] = payload.invites.map((i) => {
                 const meta = resolveRoleSelection(i.role, roles);
                 return {
@@ -1361,6 +1369,7 @@ export default function UsersTab({
                         ]);
 
                         push({ title: "User created", kind: "success" });
+                        refreshEntitlements();
                         setCreateOpen(false);
                         await refreshFromServer(false);
                     } catch (e: any) {

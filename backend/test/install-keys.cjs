@@ -71,7 +71,7 @@ async function check(name, fn) {
     const { AuthService } = dist("auth/auth.service.js");
     const prisma = new PrismaService();
     const prov = new ProvisioningService(prisma);
-    const auth = new AuthService(prisma);
+    const auth = new AuthService(prisma, { assertCanEnrollEndpoint: async () => { } });
     const org = (await prisma.$queryRaw`SELECT id::text AS id FROM organizations ORDER BY created_at LIMIT 1`)[0].id;
     const stamp = Date.now().toString(36);
     const mkClient = async (name) => {

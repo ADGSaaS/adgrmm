@@ -11,6 +11,7 @@ import {
 } from "@nestjs/common";
 import { createHash, randomBytes, randomUUID, timingSafeEqual } from "node:crypto";
 import { PrismaService } from "../storage/prisma.service";
+import { EntitlementsService } from "../entitlements/entitlements.service";
 
 function newOpaqueToken(): string {
   return randomBytes(24).toString("base64url");
@@ -52,7 +53,7 @@ const REINSTALL_OFFLINE_MS = 3 * 60_000;
 export class AuthService {
   private readonly logger = new Logger(AuthService.name);
 
-  constructor(private readonly prisma: PrismaService) { }
+  constructor(private readonly prisma: PrismaService, private readonly entitlements: EntitlementsService) { }
 
   /** Accept either enrollmentSecret (one-time) or enrollmentKey (reusable). */
   private getEnrollmentToken(input: EnrollInput): string {
@@ -297,6 +298,22 @@ export class AuthService {
         };
       } else {
         await this.guardReenrollment(input, siteKey);
+      }
+    }
+
+    // 4) Seat limit (hosted plans): only a device with no agent yet takes a new seat, so re-enrollment always works.
+    //    A refused enrollment gives back the one-time token it consumed, so the same install command works after an upgrade.
+    const alreadyEnrolled = await this.prisma.agents.findUnique({ where: { device_id: input.deviceId }, select: { id: true } });
+    if (!alreadyEnrolled) {
+      try {
+        await this.entitlements.assertCanEnrollEndpoint();
+      } catch (e) {
+        if (oneTime) {
+          await this.prisma.endpoint_enrollments
+            .updateMany({ where: { token_hash: hashToken(this.getEnrollmentToken(input)) }, data: { used_at: null, updated_at: new Date() } })
+            .catch(() => { });
+        }
+        throw e;
       }
     }
 

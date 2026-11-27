@@ -34,6 +34,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { EndpointLimitNote } from "@/components/entitlements-bar";
 import {
     Select,
     SelectContent,
@@ -903,6 +904,7 @@ function CustomersActions() {
                                 </DialogHeader>
 
                                 <div className="grid gap-4 py-2">
+                                    <EndpointLimitNote />
                                     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                                         <div className="grid gap-2">
                                             <Label>Client</Label>

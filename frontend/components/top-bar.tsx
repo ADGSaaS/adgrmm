@@ -86,6 +86,7 @@ import RunScriptModal from "@/components/run-script-modal";
 import ToolsMenu from "@/components/tools/tools-menu";
 import GlobalSearch from "@/components/global-search";
 import AlertsBell from "@/components/alerts-bell";
+import { EntitlementsUsage } from "@/components/entitlements-bar";
 import { LayoutToggle, ThemeToggle } from "@/components/header-toggles";
 import RunningTimerBadge from "@/components/running-timer-badge";
 import { toast } from "@/components/ui/use-toast";
@@ -582,6 +583,7 @@ export default function TopBar() {
                         </DropdownMenu>
                     ) : null}
 
+                    <EntitlementsUsage />
                     <RunningTimerBadge />
                     <LayoutToggle />
                     <ThemeToggle />

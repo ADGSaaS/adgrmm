@@ -18,6 +18,7 @@ import { BrandingModule } from "./branding/branding.module";
 import { LocalizationModule } from "./localization/localization.module";
 import { SupportLegalModule } from "./support-legal/support-legal.module";
 import { UsersModule } from "./users/users.module";
+import { EntitlementsModule } from "./entitlements/entitlements.module";
 import { RolesModule } from "./roles/roles.module";
 import { GroupsModule } from "./groups/groups.module";
 import { SoftwareLibraryModule } from "./software-library/software-library.module";
@@ -115,6 +116,7 @@ import { DashboardModule } from "./dashboard/dashboard.module";
         LocalizationModule,
         SupportLegalModule,
         UsersModule,
+        EntitlementsModule,
         RolesModule,
         GroupsModule,
         SoftwareLibraryModule,
