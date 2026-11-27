@@ -534,7 +534,7 @@ export function ReportsTab() {
                     <div className="grid gap-1"><Label htmlFor="r-to">To</Label><Input id="r-to" type="date" value={to} onChange={(e) => setTo(e.target.value)} /></div>
                 </div>
                 <Button asChild variant="outline">
-                    <a href={billingUrl(`/api/billing/reports/invoices.csv?from=${from}&to=${to}`)}><Download className="mr-1 h-4 w-4" /> Export for accounting (CSV)</a>
+                    <a href={billingUrl(`/api/billing/reports/invoices.csv?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`)}><Download className="mr-1 h-4 w-4" /> Export for accounting (CSV)</a>
                 </Button>
             </div>
 

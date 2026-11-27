@@ -40,6 +40,7 @@ export class SsoController {
         try {
             return res.redirect(await this.sso.start(returnTo, redirectUriOf(req)));
         } catch (e: any) {
+            res.setHeader("X-Content-Type-Options", "nosniff");
             return res.status(400).type("text/plain").send(e?.message ?? "Single sign-on is not available.");
         }
     }
@@ -55,6 +56,8 @@ export class SsoController {
                 u.searchParams.set("sso_error", code);
                 return res.redirect(u.toString());
             }
+            // Plain text with nosniff: a browser shows the message as text and never as markup, whatever the provider sent.
+            res.setHeader("X-Content-Type-Options", "nosniff");
             return res.status(400).type("text/plain").send(message);
         };
         if (q.error) {

@@ -50,6 +50,7 @@ import {
 } from "@/components/ui/dialog";
 import { Slider } from "@/components/ui/slider";
 import { cn } from "@/lib/utils";
+import { safeImageSrc } from "@/lib/safe-url";
 
 /* =============================================================================
  * Types / Props
@@ -701,12 +702,12 @@ export default function BrandingTab({ push }: BrandingTabProps) {
                                     <div className="flex items-center gap-3 mb-4">
                                         <picture>
                                             {/* eslint-disable-next-line @next/next/no-img-element */}
-                                            <source srcSet={logoDarkUrl || ""} media="(prefers-color-scheme: dark)" />
+                                            <source srcSet={safeImageSrc(logoDarkUrl) || ""} media="(prefers-color-scheme: dark)" />
                                             {/* eslint-disable-next-line @next/next/no-img-element */}
                                             <img
                                                 src={
-                                                    logoLightUrl ||
-                                                    logoDarkUrl ||
+                                                    safeImageSrc(logoLightUrl) ||
+                                                    safeImageSrc(logoDarkUrl) ||
                                                     "data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs="
                                                 }
                                                 alt="Logo preview"
@@ -836,8 +837,8 @@ export default function BrandingTab({ push }: BrandingTabProps) {
                                             {/* eslint-disable-next-line @next/next/no-img-element */}
                                             <img
                                                 src={
-                                                    logoLightUrl ||
-                                                    logoDarkUrl ||
+                                                    safeImageSrc(logoLightUrl) ||
+                                                    safeImageSrc(logoDarkUrl) ||
                                                     "data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs="
                                                 }
                                                 alt="Light logo preview"
@@ -856,8 +857,8 @@ export default function BrandingTab({ push }: BrandingTabProps) {
                                             {/* eslint-disable-next-line @next/next/no-img-element */}
                                             <img
                                                 src={
-                                                    logoDarkUrl ||
-                                                    logoLightUrl ||
+                                                    safeImageSrc(logoDarkUrl) ||
+                                                    safeImageSrc(logoLightUrl) ||
                                                     "data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs="
                                                 }
                                                 alt="Dark logo preview"
@@ -936,12 +937,12 @@ export default function BrandingTab({ push }: BrandingTabProps) {
                                             <div className="flex items-center gap-2 mb-3">
                                                 <picture>
                                                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                                                    <source srcSet={logoDarkUrl || ""} media="(prefers-color-scheme: dark)" />
+                                                    <source srcSet={safeImageSrc(logoDarkUrl) || ""} media="(prefers-color-scheme: dark)" />
                                                     {/* eslint-disable-next-line @next/next/no-img-element */}
                                                     <img
                                                         src={
-                                                            logoLightUrl ||
-                                                            logoDarkUrl ||
+                                                            safeImageSrc(logoLightUrl) ||
+                                                            safeImageSrc(logoDarkUrl) ||
                                                             "data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs="
                                                         }
                                                         alt="Logo preview"
@@ -1017,7 +1018,7 @@ export default function BrandingTab({ push }: BrandingTabProps) {
                                 {faviconUrl ? (
                                     <div className="flex items-center gap-3">
                                         {/* eslint-disable-next-line @next/next/no-img-element */}
-                                        <img src={faviconUrl} alt="favicon" width={24} height={24} className="rounded" />
+                                        <img src={safeImageSrc(faviconUrl)} alt="favicon" width={24} height={24} className="rounded" />
                                         <code className="text-xs break-all">{faviconUrl}</code>
                                     </div>
                                 ) : (
