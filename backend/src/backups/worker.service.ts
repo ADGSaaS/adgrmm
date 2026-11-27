@@ -34,6 +34,8 @@ import {
     sha256File,
     validatePostgresDump,
 } from "./postgres-dr";
+import { trimBoth } from "../common/text-util";
+import { sanitizeLocalPath } from "./local-path";
 
 type Job = { id: string; status: string; cancelled: boolean };
 
@@ -330,8 +332,9 @@ export class WorkerService {
             let successCount = 0;
 
             if (dest.kind === "local") {
-                const full = path.join(dest.path, path.basename(archivePath));
-                await ensureDir(dest.path);
+                const localDir = sanitizeLocalPath(dest.path);
+                const full = path.join(localDir, path.basename(archivePath));
+                await ensureDir(localDir);
                 await fsp.copyFile(archivePath, full);
                 await fsp.chmod(full, 0o600);
                 artifactLoc = { kind: "local", path: full };
@@ -344,7 +347,7 @@ export class WorkerService {
                 const cfgS3 = { ...(conn.config || {}), ...(conn.secrets || {}) };
                 const bucket = dest.bucket || cfgS3.bucket;
                 if (!bucket) throw new Error("S3 bucket not specified");
-                const prefix = (dest.prefix || cfgS3.prefix || "").replace(/^\/+|\/+$/g, "");
+                const prefix = trimBoth(String(dest.prefix || cfgS3.prefix || ""), "/");
                 const key = (prefix ? `${prefix}/` : "") + path.basename(archivePath);
                 await s3PutObject(cfgS3, bucket, key, fs.createReadStream(archivePath));
                 await s3Head(cfgS3, bucket, key);
@@ -688,8 +691,9 @@ export class WorkerService {
             let successCount = 0;
 
             if (dest.kind === "local") {
-                const full = path.join(dest.path, archiveName);
-                await ensureDir(dest.path);
+                const localDir = sanitizeLocalPath(dest.path);
+                const full = path.join(localDir, archiveName);
+                await ensureDir(localDir);
                 await fsp.copyFile(archivePath, full);
                 await fsp.chmod(full, 0o600);
 
@@ -715,11 +719,7 @@ export class WorkerService {
                 const bucket = dest.bucket || s3Cfg.bucket;
                 if (!bucket) throw new Error("S3 bucket not specified");
 
-                const prefix = (
-                    dest.prefix ||
-                    s3Cfg.prefix ||
-                    ""
-                ).replace(/^\/+|\/+$/g, "");
+                const prefix = trimBoth(String(dest.prefix || s3Cfg.prefix || ""), "/");
 
                 const key =
                     (prefix ? `${prefix}/` : "") +
@@ -1205,8 +1205,9 @@ export class WorkerService {
         const tasks = ordered.map((dest) => async () => {
             try {
                 if (dest.kind === "local") {
-                    const out = path.join(dest.path, finalFileName);
-                    await ensureDir(dest.path);
+                    const localDir = sanitizeLocalPath(dest.path);
+                    const out = path.join(localDir, finalFileName);
+                    await ensureDir(localDir);
                     await fsp.copyFile(localArchivePath, out);
                     await fsp.chmod(out, 0o600);
                     await this.appendLog(jobId, `[replica:local] ${out}\n`);
@@ -1217,7 +1218,7 @@ export class WorkerService {
                     const s3Cfg = { ...(row.config || {}), ...(row.secrets || {}) };
                     const bucket = dest.bucket || s3Cfg.bucket;
                     if (!bucket) throw new Error("S3 bucket missing");
-                    const prefix = (dest.prefix || s3Cfg.prefix || "").replace(/^\/+|\/+$/g, "");
+                    const prefix = trimBoth(String(dest.prefix || s3Cfg.prefix || ""), "/");
                     const key = (prefix ? `${prefix}/` : "") + finalFileName;
                     await s3PutObject(s3Cfg, bucket, key, fs.createReadStream(localArchivePath));
                     await this.appendLog(jobId, `[replica:s3] s3://${bucket}/${key}\n`);

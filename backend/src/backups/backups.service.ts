@@ -24,6 +24,9 @@ import {
     normalizeBackupTargets,
 } from "./backup-targets";
 import { findStorageConnection, toJsonValue } from "./storage-connection-lookup";
+import { trimBoth } from "../common/text-util";
+import { isAbsolutePath, sanitizeLocalPath } from "./local-path";
+import * as pathMod from "path";
 
 type JobRow = {
     id: string;
@@ -53,14 +56,6 @@ function projectStatus(status: string): HistoryStatus {
     }
 }
 
-function isAbsolutePath(p: string) {
-    return p.startsWith("/") || /^[A-Za-z]:\\/.test(p);
-}
-function sanitizeLocalPath(p: string) {
-    if (!isAbsolutePath(p)) throw new BadRequestException("Path must be absolute");
-    if (p.includes("..") || p.includes("\0")) throw new BadRequestException("Invalid path");
-    return p;
-}
 function parseCursor(cur?: string | null): number {
     if (!cur) return 0;
     try {
@@ -678,11 +673,11 @@ export class BackupsService {
     // -------- Destination probe implementations --------
     async testDestination(dest: any) {
         if (dest.kind === "local") {
-            sanitizeLocalPath(dest.path);
+            const localDir = sanitizeLocalPath(dest.path);
             const { ensureDir } = await import("./storage-clients");
             const fs = await import("fs/promises");
-            const p = require("path").join(dest.path, ".adgrmm_probe.txt");
-            await ensureDir(dest.path);
+            const p = pathMod.join(localDir, ".adgrmm_probe.txt");
+            await ensureDir(localDir);
             await fs.writeFile(p, "probe");
             const r = await fs.readFile(p, "utf8");
             await fs.unlink(p);
@@ -695,7 +690,7 @@ export class BackupsService {
             if (!row) throw new BadRequestException("S3 connection not found");
             const cfgS3 = { ...(row.config || {}), ...(row.secrets || {}) };
             const bucket = dest.bucket || cfgS3.bucket;
-            const prefix = (dest.prefix || cfgS3.prefix || "").replace(/^\/+|\/+$/g, "");
+            const prefix = trimBoth(String(dest.prefix || cfgS3.prefix || ""), "/");
             const key = (prefix ? `${prefix}/` : "") + ".adgrmm_probe.txt";
             const { s3PutObject, s3Head, s3Delete } = await import("./storage-clients");
             await s3PutObject(cfgS3, bucket, key, Buffer.from("probe"));
