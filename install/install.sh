@@ -15,8 +15,10 @@
 #   install.sh help
 #
 # Options: --mode docker|native   --version X.Y.Z   --force (upgrade: reinstall the same version)   --no-color
+#          --answers FILE (install without questions, from KEY=VALUE lines)   --delete-answers   --yes (confirm prompts)
 # Environment: ADG_RELEASE_BASE (download from your own web server instead of GitHub), GITHUB_TOKEN (private repository),
-#              ADG_REPO (owner/name), ADG_HOME (install folder, default /opt/adgrmm).
+#              ADG_REPO (owner/name), ADG_HOME (install folder, default /opt/adgrmm), ADG_PROJECT and ADG_API_PORT
+#              (several Docker installs on one server).
 #
 # Everything is inside functions and main runs last, so a download that stops half way runs nothing.
 
@@ -50,6 +52,10 @@ WITH_LOGS=0
 PURGE=""
 FORCE=0
 RECONFIGURE=0
+# Unattended use: an answers file replaces the questions, and --yes answers the confirmations.
+ANSWERS_FILE="${ADG_ANSWERS:-}"
+DELETE_ANSWERS="${ADG_DELETE_ANSWERS:-0}"
+ASSUME_YES="${ADG_YES:-0}"
 
 # ------------------------------------------------------------------ output
 
@@ -85,7 +91,8 @@ on_error() {
 
 # ------------------------------------------------------------------ questions (read from the terminal, so "curl | bash" works)
 
-need_tty() { [ -r "$TTY" ] || die "This installer asks questions, so it needs a terminal. Download it first (curl -fsSLo install.sh <address>) and run: sudo bash install.sh"; }
+have_tty() { [ -r "$TTY" ] && { : <"$TTY"; } 2>/dev/null; }
+need_tty() { [ "$ASSUME_YES" = 1 ] || [ -n "$ANSWERS_FILE" ] || have_tty || die "This installer asks questions, so it needs a terminal. Download it first (curl -fsSLo install.sh <address>) and run: sudo bash install.sh"; }
 
 # ask "Question" "default" -> $REPLY_VALUE
 ask() {
@@ -113,6 +120,7 @@ ask_valid() {
 # ask_yn "Question" y|n  -> returns 0 for yes
 ask_yn() {
     local q="$1" def="${2:-y}" a hint="Y/n"
+    [ "$ASSUME_YES" = 1 ] && return 0
     [ "$def" = n ] && hint="y/N"
     while :; do
         printf '%s%s%s [%s]: ' "$B" "$q" "$N" "$hint" >"$TTY"
@@ -419,7 +427,11 @@ wizard() {
     printf '  First customer    %s\n' "$([ -n "$CUSTOMER" ] && echo "$CUSTOMER / $SITE" || echo none)"
     rule
     ask_yn "Install now?" y || die "Cancelled. Nothing was changed."
+    save_answers
+}
 
+# Remembers the answers (not the passwords) so a stopped install can pick up where it left off, and later commands know the setup.
+save_answers() {
     conf_set MODE "$MODE"; conf_set DOMAIN "$DOMAIN"; conf_set TLS "$TLS"; conf_set PUBLIC_URL "$PUBLIC_URL"
     [ -z "$ADG_RELEASE_BASE" ] || conf_set RELEASE_BASE "$ADG_RELEASE_BASE"
     [ -z "$ADG_REPO_GIVEN" ] || conf_set REPO "$ADG_REPO_GIVEN"
@@ -427,6 +439,87 @@ wizard() {
     conf_set API_PORT "$API_HOST_PORT"; conf_set PROJECT "$ADG_PROJECT_NAME"
     conf_set DB_MODE "$DB_MODE"; conf_set COMPANY "$COMPANY"; conf_set ADMIN_EMAIL "$ADMIN_EMAIL"; conf_set PORTAL_DOMAIN "$PORTAL_DOMAIN"
     if [ "$DB_MODE" = external ]; then conf_set DB_HOST "$DB_HOST"; conf_set DB_PORT "$DB_PORT"; conf_set DB_NAME "$DB_NAME"; conf_set DB_USER "$DB_USER"; conf_set DB_PASSWORD "$DB_PASSWORD"; conf_set DB_SSL "$DB_SSL"; fi
+}
+
+# ------------------------------------------------------------------ answers file (unattended install)
+
+is_true() { case "${1,,}" in true|yes|y|1) return 0 ;; *) return 1 ;; esac; }
+ans() { sed -n "s/^$1=\(.*\)\$/\1/p" "$ANSWERS_FILE" | tail -n 1 | sed 's/\r$//'; }
+need_ans() { local v; v="$(ans "$1")"; [ -n "$v" ] || die "The answers file needs $1."; REPLY_VALUE="$v"; }
+
+# Takes the place of wizard(): reads KEY=VALUE lines from the answers file, checks them the way the questions would,
+# and sets the same variables. Nothing is asked and nothing is run through a shell, so the file cannot run commands.
+wizard_from_file() {
+    local allowed="MODE DOMAIN TLS EDGE_PORT PUBLIC_HTTPS PROXY_ON_OTHER_MACHINE ACME_EMAIL DB_MODE DB_HOST DB_PORT DB_NAME DB_USER DB_PASSWORD DB_SSL COMPANY ADMIN_FIRST ADMIN_LAST ADMIN_EMAIL ADMIN_PASSWORD SMTP_HOST SMTP_SECURITY SMTP_PORT SMTP_USER SMTP_PASSWORD SMTP_FROM SEND_TEST_EMAIL PORTAL_DOMAIN CUSTOMER SITE" k perm
+    [ -f "$ANSWERS_FILE" ] || die "The answers file $ANSWERS_FILE does not exist."
+    perm="$(stat -c %a "$ANSWERS_FILE" 2>/dev/null || echo 777)"
+    case "$perm" in 600|400) ;; *) die "The answers file holds a password, so only its owner may read it (chmod 600 $ANSWERS_FILE)." ;; esac
+    while IFS= read -r k; do
+        case " $allowed " in *" $k "*) ;; *) die "The answers file has an unknown entry: $k" ;; esac
+    done < <(grep -E '^[A-Za-z_][A-Za-z0-9_]*=' "$ANSWERS_FILE" | cut -d= -f1)
+    title "ADG RMM setup (from the answers file)"
+
+    # how to run it, address, HTTPS
+    if [ -n "$WANT_MODE" ]; then MODE="$WANT_MODE"; else MODE="$(ans MODE)"; MODE="${MODE:-docker}"; fi
+    case "$MODE" in docker|native) ;; *) die "MODE is docker or native." ;; esac
+    need_ans DOMAIN; DOMAIN="$REPLY_VALUE"; valid_host "$DOMAIN" || die "DOMAIN is not a valid domain name."
+    TLS="$(ans TLS)"; TLS="${TLS:-2}"
+    case "$TLS" in
+        1|3) PUBLIC_URL="https://$DOMAIN"; BIND_EDGE="127.0.0.1"; EDGE_PORT="$EDGE_PORT_DEFAULT"; ACME_EMAIL="" ;;
+        2)
+            need_ans EDGE_PORT; EDGE_PORT="$REPLY_VALUE"; valid_edge_port "$EDGE_PORT" || die "EDGE_PORT must be a port other than 3000 and 3001."
+            if is_true "$(ans PUBLIC_HTTPS || true)" || [ -z "$(ans PUBLIC_HTTPS)" ]; then PUBLIC_URL="https://$DOMAIN"; else PUBLIC_URL="http://$DOMAIN"; fi
+            if is_true "$(ans PROXY_ON_OTHER_MACHINE)"; then BIND_EDGE="0.0.0.0"; else BIND_EDGE="127.0.0.1"; fi
+            ACME_EMAIL=""
+            ;;
+        *) die "TLS is 1, 2 or 3." ;;
+    esac
+    if [ "$TLS" = 1 ]; then need_ans ACME_EMAIL; ACME_EMAIL="$REPLY_VALUE"; valid_email "$ACME_EMAIL" || die "ACME_EMAIL is not a valid email address."; fi
+
+    # database
+    DB_MODE="$(ans DB_MODE)"; DB_MODE="${DB_MODE:-local}"
+    case "$DB_MODE" in
+        local) ;;
+        external)
+            need_ans DB_HOST; DB_HOST="$REPLY_VALUE"; valid_host "$DB_HOST" || die "DB_HOST is not valid."
+            DB_PORT="$(ans DB_PORT)"; DB_PORT="${DB_PORT:-5432}"; valid_port "$DB_PORT" || die "DB_PORT is not valid."
+            DB_NAME="$(ans DB_NAME)"; DB_NAME="${DB_NAME:-adgrmm}"; DB_USER="$(ans DB_USER)"; DB_USER="${DB_USER:-adgrmm}"
+            need_ans DB_PASSWORD; DB_PASSWORD="$REPLY_VALUE"
+            if is_true "$(ans DB_SSL)"; then DB_SSL=true; else DB_SSL=false; fi
+            ;;
+        *) die "DB_MODE is local or external." ;;
+    esac
+
+    # company and administrator
+    need_ans COMPANY; COMPANY="$REPLY_VALUE"; valid_name "$COMPANY" || die "COMPANY is too long (120 characters at most)."
+    need_ans ADMIN_FIRST; ADMIN_FIRST="$REPLY_VALUE"; valid_name "$ADMIN_FIRST" || die "ADMIN_FIRST is not valid."
+    ADMIN_LAST="$(ans ADMIN_LAST)"
+    need_ans ADMIN_EMAIL; ADMIN_EMAIL="$REPLY_VALUE"; valid_email "$ADMIN_EMAIL" || die "ADMIN_EMAIL is not a valid email address."
+    need_ans ADMIN_PASSWORD; ADMIN_PASSWORD="$REPLY_VALUE"
+    [ "${#ADMIN_PASSWORD}" -ge 10 ] || die "ADMIN_PASSWORD needs at least 10 characters."
+
+    # email, portal, first customer (all optional)
+    SMTP_HOST=""; SMTP_PORT=""; SMTP_SECURITY=""; SMTP_USER=""; SMTP_PASSWORD=""; SMTP_FROM=""; SMTP_TEST_TO=""
+    if [ -n "$(ans SMTP_HOST)" ]; then
+        SMTP_HOST="$(ans SMTP_HOST)"; valid_host "$SMTP_HOST" || die "SMTP_HOST is not valid."
+        SMTP_SECURITY="$(ans SMTP_SECURITY)"; SMTP_SECURITY="${SMTP_SECURITY:-starttls}"
+        case "$SMTP_SECURITY" in starttls) SMTP_PORT=587 ;; ssl) SMTP_PORT=465 ;; none) SMTP_PORT=25 ;; *) die "SMTP_SECURITY is starttls, ssl or none." ;; esac
+        [ -z "$(ans SMTP_PORT)" ] || SMTP_PORT="$(ans SMTP_PORT)"; valid_port "$SMTP_PORT" || die "SMTP_PORT is not valid."
+        SMTP_USER="$(ans SMTP_USER)"; SMTP_PASSWORD="$(ans SMTP_PASSWORD)"
+        SMTP_FROM="$(ans SMTP_FROM)"; SMTP_FROM="${SMTP_FROM:-${SMTP_USER:-$ADMIN_EMAIL}}"; valid_email "$SMTP_FROM" || die "SMTP_FROM is not a valid email address."
+        if is_true "$(ans SEND_TEST_EMAIL)"; then SMTP_TEST_TO="$ADMIN_EMAIL"; fi
+    fi
+    PORTAL_DOMAIN="$(ans PORTAL_DOMAIN)"
+    if [ -n "$PORTAL_DOMAIN" ]; then
+        valid_domain "$PORTAL_DOMAIN" || die "PORTAL_DOMAIN is not a valid domain name."
+        [ "$PORTAL_DOMAIN" != "$DOMAIN" ] || die "PORTAL_DOMAIN must differ from DOMAIN."
+    fi
+    CUSTOMER="$(ans CUSTOMER)"; SITE=""
+    if [ -n "$CUSTOMER" ]; then SITE="$(ans SITE)"; SITE="${SITE:-Main office}"; fi
+
+    if [ "$DELETE_ANSWERS" = 1 ]; then rm -f "$ANSWERS_FILE"; ok "Read the answers file and removed it"; else ok "Read the answers file"; fi
+    printf '  Web address       %s\n  Company           %s\n  Administrator     %s\n  Port for the proxy %s\n' "$PUBLIC_URL" "$COMPANY" "$ADMIN_EMAIL" "$EDGE_PORT"
+    save_answers
 }
 
 # ------------------------------------------------------------------ secrets and configuration
@@ -928,7 +1021,7 @@ cmd_install() {
     fi
     if [ -n "$(conf_get MODE)" ]; then warn "A previous install did not finish. Your earlier answers are offered as defaults."; fi
     check_connectivity
-    wizard
+    if [ -n "$ANSWERS_FILE" ]; then wizard_from_file; else wizard; fi
     if [ -z "$(conf_get INSTALLED)" ] && [ -z "$(conf_get PREVIOUS_RUN)" ]; then preflight_ports; else info "Skipping the port check: a previous run may be using them."; fi
     conf_set PREVIOUS_RUN 1
     AGENT_COMMANDS=()
@@ -995,7 +1088,7 @@ cmd_upgrade() {
     if [ "$RELEASE_VERSION" = "$CURRENT_VERSION" ] && [ "$FORCE" != 1 ]; then ok "ADG RMM $CURRENT_VERSION is already the latest."; return 0; fi
     new_dir="$RELEASE_DIR"
     if [ "$RELEASE_VERSION" = "$CURRENT_VERSION" ]; then say "Reinstalling ${B}$CURRENT_VERSION${N}"; else say "Upgrading ${B}$CURRENT_VERSION${N} to ${B}$RELEASE_VERSION${N}"; fi
-    ask_yn_or_default() { if [ -r "$TTY" ]; then ask_yn "$1" y; else return 0; fi; }
+    ask_yn_or_default() { if [ "$ASSUME_YES" != 1 ] && have_tty; then ask_yn "$1" y; else return 0; fi; }
     ask_yn_or_default "Continue? A database backup is taken first." || { say "Cancelled."; return 0; }
 
     ts="$(date +%Y%m%d-%H%M%S)"; mkdir -p "$ADG_HOME/backups"; dump="$ADG_HOME/backups/before-$RELEASE_VERSION-$ts.dump"
@@ -1160,12 +1253,19 @@ cmd_uninstall() {
         if ask_yn "Keep your data so you can reinstall later?" y; then purge=0; else purge=1; fi
     fi
     if [ "$purge" = 1 ]; then
-        printf '%sThis permanently deletes the database, files and keys.%s Type the word delete to confirm: ' "$R" "$N" >"$TTY"
-        local a; IFS= read -r a <"$TTY"; [ "$a" = delete ] || { say "Cancelled."; return 0; }
+        # Deleting everything is only ever done on purpose: typing the word, or passing both --yes and --purge.
+        case "$ADG_HOME" in /|/opt|/srv|/home|/root|/usr|/etc|/var|/tmp|"") die "Refusing to delete $ADG_HOME: it is not an ADG RMM install folder." ;; /*) ;; *) die "ADG_HOME must be an absolute path." ;; esac
+        [ -f "$CONF" ] || die "Refusing to delete $ADG_HOME: it has no install.conf."
+        if [ "$ASSUME_YES" != 1 ]; then
+            printf '%sThis permanently deletes the database, files and keys.%s Type the word delete to confirm: ' "$R" "$N" >"$TTY"
+            local a; IFS= read -r a <"$TTY"; [ "$a" = delete ] || { say "Cancelled."; return 0; }
+        fi
     fi
     if [ "$MODE" = docker ]; then
         dc down >>"$LOG" 2>&1 || true
-        docker rmi $(docker images -q 'adgrmm-*' 2>/dev/null | sort -u) >>"$LOG" 2>&1 || true
+        # Only this install's version, and Docker refuses to remove an image another install still uses.
+        local ver; ver="$(conf_get VERSION)"
+        if [ -n "$ver" ]; then docker rmi "adgrmm-backend:$ver" "adgrmm-frontend:$ver" >>"$LOG" 2>&1 || true; fi
     else
         systemctl disable --now adgrmm-edge adgrmm-frontend adgrmm-backend >>"$LOG" 2>&1 || true
         rm -f /etc/systemd/system/adgrmm-{backend,frontend,edge}.service; systemctl daemon-reload
@@ -1176,7 +1276,7 @@ cmd_uninstall() {
             runuser -u postgres -- psql -q -c 'DROP DATABASE IF EXISTS adgrmm;' -c 'DROP ROLE IF EXISTS adgrmm;' >>"$LOG" 2>&1 || true
         fi
         rm -rf "$ADG_HOME"
-        id adgrmm >/dev/null 2>&1 && userdel adgrmm >/dev/null 2>&1 || true
+        if [ "$MODE" = native ]; then id adgrmm >/dev/null 2>&1 && userdel adgrmm >/dev/null 2>&1 || true; fi
         ok "ADG RMM and all its data were removed."
     else
         rm -rf "$ADG_HOME/releases" "$ADG_HOME/current"; conf_set INSTALLED 0
@@ -1184,7 +1284,7 @@ cmd_uninstall() {
     fi
 }
 
-usage() { sed -n '2,19p' "$0" 2>/dev/null | sed 's/^# \{0,1\}//'; }
+usage() { sed -n '2,21p' "$0" 2>/dev/null | sed 's/^# \{0,1\}//'; }
 
 main() {
     trap 'on_error $LINENO' ERR
@@ -1194,6 +1294,9 @@ main() {
             install|upgrade|status|uninstall|reconfigure) cmd="$1" ;;
             help|-h|--help) usage; exit 0 ;;
             --mode) WANT_MODE="${2:-}"; shift ;;
+            --answers) ANSWERS_FILE="${2:-}"; shift ;;
+            --delete-answers) DELETE_ANSWERS=1 ;;
+            --yes|-y) ASSUME_YES=1 ;;
             --version) WANT_VERSION="${2:-}"; shift ;;
             --no-color) USE_COLOR=0 ;;
             --logs) WITH_LOGS=1 ;;

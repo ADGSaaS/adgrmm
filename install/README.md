@@ -107,3 +107,29 @@ sudo ADG_HOME=/srv/tenants/acme ADG_PROJECT=acme ADG_API_PORT=19001 bash install
 - `ADG_API_PORT` is the API's port on this server's loopback address (default `3001`). Each install needs a different one, and it must differ from that install's proxy port.
 
 Each install has its own database, keys and containers. The packaged images are shared between installs of the same version. The default single install is unchanged.
+
+## Installing without questions (answers file)
+
+For automation, put the answers in a file and pass it with `--answers`. The installer then asks nothing and needs no terminal:
+
+```bash
+sudo bash install.sh --answers /root/acme.answers --delete-answers --yes
+```
+
+The file holds `KEY=VALUE` lines. It is never run as a script, only read, and unknown keys are refused so typos do not go unnoticed. Because it contains the administrator's password it must be readable by its owner only (`chmod 600`), and `--delete-answers` removes it once it has been read.
+
+| Key | Meaning |
+|---|---|
+| `DOMAIN` | The web address (required). |
+| `TLS` | `2` your own proxy (default), `1` Caddy with Let's Encrypt, `3` Caddy with a self-signed certificate. |
+| `EDGE_PORT` | The port your proxy forwards to (required when `TLS=2`). |
+| `PUBLIC_HTTPS` | `true` (default) if the proxy serves the address over HTTPS. |
+| `PROXY_ON_OTHER_MACHINE` | `true` if the proxy is not on this server (listens on all addresses). |
+| `ACME_EMAIL` | Required when `TLS=1`. |
+| `DB_MODE` | `local` (default) or `external`, with `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `DB_SSL`. |
+| `COMPANY`, `ADMIN_FIRST`, `ADMIN_LAST`, `ADMIN_EMAIL`, `ADMIN_PASSWORD` | The company and the first administrator (the password needs at least 10 characters). |
+| `SMTP_HOST`, `SMTP_SECURITY`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_FROM`, `SEND_TEST_EMAIL` | Optional email sending. |
+| `PORTAL_DOMAIN` | Optional customer portal address. |
+| `CUSTOMER`, `SITE` | Optional first customer and site. |
+
+`--yes` answers the confirmation questions of the other commands too, so `upgrade` and `uninstall` also run without a terminal. `uninstall` deletes data only when you give `--yes` together with `--purge`; with `--yes` alone it keeps the data.
