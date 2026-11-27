@@ -1288,6 +1288,9 @@ usage() { sed -n '2,21p' "$0" 2>/dev/null | sed 's/^# \{0,1\}//'; }
 
 main() {
     trap 'on_error $LINENO' ERR
+    # Folders and files are created for the services to read, so do not inherit a stricter umask from whoever started this
+    # (secrets are given their own tight permissions where they are written).
+    umask 022
     local cmd=install
     while [ $# -gt 0 ]; do
         case "$1" in
