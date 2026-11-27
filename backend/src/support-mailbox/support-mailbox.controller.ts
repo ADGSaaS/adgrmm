@@ -69,6 +69,8 @@ export class SupportMailboxController {
             url.searchParams.set("message", message);
             return res.redirect(url.toString());
         }
+        // Plain text with nosniff: shown as text, never parsed as markup, whatever the provider's message contains.
+        res.setHeader("X-Content-Type-Options", "nosniff");
         res.status(ok ? 200 : 400).type("text/plain").send(ok ? `${message}. You can close this page.` : message);
     }
 

@@ -12,6 +12,7 @@ import { EMAILED_PERMISSIONS, FullReportService, QBR_SECTIONS, type FullReport }
 import { CustomReportsService } from "./custom-reports.service";
 import { checkRule, describeRule, localDate, nextRun as computeNextRun, previewRuns, type ScheduleRule } from "./schedule-time";
 import type { report_schedules } from "@prisma/client";
+import { looksLikeEmail } from "../common/text-util";
 
 /** What a person sends to say when a schedule runs. */
 export type TimingInput = {
@@ -333,7 +334,7 @@ export class ReportsService {
     }
 
     private validateSchedule(input: { recipients: string[]; format?: string }, reportKey?: string) {
-        if (!input.recipients?.length || input.recipients.some((r) => !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(r))) throw new BadRequestException("Enter valid email addresses.");
+        if (!input.recipients?.length || input.recipients.some((r) => !looksLikeEmail(r))) throw new BadRequestException("Enter valid email addresses.");
         if (input.recipients.length > MAX_RECIPIENTS) throw new BadRequestException(`Send to at most ${MAX_RECIPIENTS} addresses.`);
         if (input.format !== undefined) {
             if (isFullKind(reportKey ?? "")) {

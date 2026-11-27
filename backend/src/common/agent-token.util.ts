@@ -9,6 +9,16 @@ export function hashAgentToken(token: string): string {
   return createHash("sha256").update(token).digest("hex");
 }
 
+/** The token in "Bearer <token>" (white space between the two is allowed), or null. Linear time, unlike /^Bearer\s+(.+)$/. */
+export function bearerToken(header: string): string | null {
+  if (!header.startsWith("Bearer")) return null;
+  let i = 6;
+  while (i < header.length && /\s/.test(header[i])) i++;
+  if (i === 6) return null;
+  const token = header.slice(i);
+  return token && !/[\r\n\u2028\u2029]/.test(token) ? token : null;
+}
+
 export type AgentAuthContext = {
   id: string; // uuid
   deviceId?: string; // uuid (string)
@@ -31,12 +41,10 @@ export class AgentTokenGuard implements CanActivate {
       throw new UnauthorizedException("Missing Authorization header");
     }
 
-    const match = /^Bearer\s+(.+)$/.exec(authHeader);
-    if (!match) {
+    const token = bearerToken(authHeader);
+    if (!token) {
       throw new UnauthorizedException("Invalid Authorization header format");
     }
-
-    const token = match[1];
 
     const row = await this.prisma.agents.findFirst({
       where: { agent_token: hashAgentToken(token) },

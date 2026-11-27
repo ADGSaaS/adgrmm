@@ -15,6 +15,7 @@ import * as path from "path";
 import * as crypto from "crypto";
 import type { Readable as NodeReadable } from "stream";
 import { pipeline } from "stream/promises";
+import { trimTrailing } from "../common/text-util";
 
 /* ---------------- Types ---------------- */
 export type LocalLoc = { kind: "local"; path: string };
@@ -51,7 +52,7 @@ function normalizeDirPath(p: string) {
 }
 function normalizeFilePath(p: string) {
     const withLead = ensureLeadingSlash(p || "/");
-    const noTrail = collapseSlashes(withLead).replace(/\/+$/g, "");
+    const noTrail = trimTrailing(collapseSlashes(withLead), "/");
     return noTrail.length ? noTrail : "/";
 }
 
@@ -369,12 +370,17 @@ function makeDriveClient(credentialsJson: any) {
     return google.drive({ version: "v3", auth });
 }
 
+/** A value inside single quotes in a Drive search query: the backslash is escaped first, so a name cannot end its own quote. */
+export function escapeDriveQueryValue(v: string): string {
+    return String(v).replace(/\\/g, "\\\\").replace(/'/g, "\\'");
+}
+
 /** Find or create a subfolder inside a parent folder and return its id. Works with personal + Shared Drives. */
 async function ensureSubfolder(drive: any, parentId: string, name: string): Promise<string> {
     const q = [
-        `'${parentId}' in parents`,
+        `'${escapeDriveQueryValue(parentId)}' in parents`,
         `mimeType = 'application/vnd.google-apps.folder'`,
-        `name = '${name.replace(/'/g, "\\'")}'`,
+        `name = '${escapeDriveQueryValue(name)}'`,
         "trashed = false",
     ].join(" and ");
 

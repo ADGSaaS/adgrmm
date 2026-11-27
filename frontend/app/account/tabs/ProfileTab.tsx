@@ -16,6 +16,7 @@ import { useToast } from "@/lib/toast";
 import type { MeProfile } from "@/lib/api";
 import { getMyProfile, updateMyProfile } from "@/lib/api";
 import { apiUrl } from "@/lib/api";
+import { safeImageSrc } from "@/lib/safe-url";
 
 /* ---------------------- helpers: TZ & locale lists ---------------------- */
 
@@ -492,7 +493,7 @@ function AvatarPreview({ url, name }: { url?: string; name?: string }) {
   return url ? (
     // eslint-disable-next-line @next/next/no-img-element
     <img
-      src={url}
+      src={safeImageSrc(url)}
       alt="Avatar"
       className="h-20 w-20 rounded-full object-cover border"
       referrerPolicy="no-referrer"

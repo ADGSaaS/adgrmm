@@ -21,6 +21,7 @@ import {
     safeReturn,
     verifyIdToken,
 } from "./oidc";
+import { trimTrailing } from "../common/text-util";
 
 export type SsoPublic = { enabled: boolean; displayName: string; passwordLogin: boolean };
 
@@ -101,7 +102,7 @@ export class SsoService {
         const next = {
             enabled: input.enabled ?? cur?.enabled ?? false,
             display_name: (input.displayName ?? cur?.display_name ?? "Single sign-on").trim().slice(0, 60) || "Single sign-on",
-            issuer: (input.issuer ?? cur?.issuer ?? "").trim().replace(/\/+$/, ""),
+            issuer: trimTrailing((input.issuer ?? cur?.issuer ?? "").trim(), "/"),
             client_id: (input.clientId ?? cur?.client_id ?? "").trim(),
             scopes: (input.scopes ?? cur?.scopes ?? DEFAULT_SCOPES).trim().replace(/\s+/g, " "),
             jit_enabled: input.jitEnabled ?? cur?.jit_enabled ?? false,

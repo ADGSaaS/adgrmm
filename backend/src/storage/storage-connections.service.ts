@@ -14,6 +14,7 @@ import {
   webdavListDirs,
   sftpProbe,
 } from "../backups/storage-clients";
+import { trimBoth } from "../common/text-util";
 
 type StorageKind = "s3" | "nextcloud" | "gdrive" | "sftp";
 
@@ -451,7 +452,7 @@ export class StorageConnectionsService {
 
     if (body.kind === "s3") {
       const bucket = cfg.bucket;
-      const prefix = (cfg.prefix || "").replace(/^\/+|\/+$/g, "");
+      const prefix = trimBoth(String(cfg.prefix || ""), "/");
       const key = (prefix ? `${prefix}/` : "") + `.adgrmm_probe_${Date.now()}.txt`;
       const secret = {
         region: cfg.region,

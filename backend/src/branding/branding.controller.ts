@@ -21,6 +21,7 @@ import { UpdateBrandingDto } from "./dto/update-branding.dto";
 import { Public } from "../auth/public.decorator";
 import { RequirePerm } from "../auth/require-perm.decorator";
 import { brandingImageExtension } from "../common/upload-safety";
+import { trimTrailing } from "../common/text-util";
 
 /** A file-name-safe stem of the original name, without its extension. */
 function baseName(original: string | undefined): string {
@@ -31,7 +32,7 @@ function baseName(original: string | undefined): string {
 // Remove trailing slashes and a trailing /static if present
 function sanitizeBaseUrl(raw: string) {
     let base = (raw || "").trim();
-    base = base.replace(/\/+$/, ""); // trim trailing slashes
+    base = trimTrailing(base, "/"); // trim trailing slashes
     base = base.replace(/\/static\/?$/i, ""); // drop trailing /static
     return base;
 }

@@ -1,7 +1,9 @@
 /* lib/account-api.ts — Enhanced mocked account API */
 
+import { randomBelow, randomHex } from "./random";
+
 function sleep(ms = 500) { return new Promise((res) => setTimeout(res, ms)); }
-function rnd(n = 900000) { return (100000 + Math.floor(Math.random() * n)).toString(); }
+function rnd(n = 900000) { return (100000 + randomBelow(n)).toString(); }
 
 /* ===== Profile ===== */
 export type Profile = {
@@ -113,13 +115,13 @@ export async function listApiKeys(): Promise<ApiKey[]> {
 }
 export async function createApiKey(label: string, scopes: string[], expiresIn: "never" | "30d" | "90d", ipAllowlist?: string): Promise<ApiKey> {
   await sleep(500);
-  const id = `rk_live_${Math.random().toString(36).slice(2, 10)}`;
+  const id = `rk_live_${randomHex(5)}`;
   const expiresAt = expiresIn === "never" ? "" : new Date(Date.now() + (expiresIn === "30d" ? 30 : 90) * 24 * 3600 * 1000).toISOString();
   void ipAllowlist;
   return { id, label, scopes, expiresAt };
 }
 export async function revokeApiKey(id: string) { await sleep(400); return { ok: true, id }; }
-export async function regenerateApiKey(id: string) { await sleep(500); return { oldId: id, newKey: `rk_live_${Math.random().toString(36).slice(2, 10)}` }; }
+export async function regenerateApiKey(id: string) { await sleep(500); return { oldId: id, newKey: `rk_live_${randomHex(5)}` }; }
 export async function keyUsage(id: string) {
   await sleep(250);
   // mock 7-day request counts

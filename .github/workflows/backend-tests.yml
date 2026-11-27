@@ -53,7 +53,7 @@ jobs:
       - run: npx tsc -p tsconfig.json
       - name: Run the flows
         run: |
-          for test in test/billing.e2e.cjs test/itdocs.e2e.cjs test/alerts.e2e.cjs test/reports.e2e.cjs test/reports-http.e2e.cjs test/report-view.cjs test/demo-mode-rules.cjs test/device-data.cjs test/schedule-time.cjs test/device-changes.cjs test/report-settings.cjs test/customer-profile.e2e.cjs test/policy-engine.cjs test/policies.e2e.cjs test/patch-automation.e2e.cjs test/policy-extras.e2e.cjs test/checks-scripts.e2e.cjs test/secrets-at-rest.e2e.cjs test/credential-encryption.cjs test/backup-archive-encryption.cjs test/entitlements.cjs test/entitlements.e2e.cjs; do
+          for test in test/billing.e2e.cjs test/itdocs.e2e.cjs test/alerts.e2e.cjs test/reports.e2e.cjs test/reports-http.e2e.cjs test/report-view.cjs test/demo-mode-rules.cjs test/device-data.cjs test/schedule-time.cjs test/device-changes.cjs test/report-settings.cjs test/customer-profile.e2e.cjs test/policy-engine.cjs test/policies.e2e.cjs test/patch-automation.e2e.cjs test/policy-extras.e2e.cjs test/checks-scripts.e2e.cjs test/secrets-at-rest.e2e.cjs test/codeql-hardening.cjs test/credential-encryption.cjs test/backup-archive-encryption.cjs test/entitlements.cjs test/entitlements.e2e.cjs; do
             echo "== $test"
             node "$test"
           done

@@ -12,7 +12,7 @@
 // without opening anything.
 import { createCipheriv, createDecipheriv, randomBytes } from "node:crypto";
 import * as fsp from "node:fs/promises";
-import { join } from "node:path";
+import { join, resolve, sep } from "node:path";
 
 import { deriveDataKey } from "../common/secret-box";
 
@@ -28,7 +28,10 @@ export function recordingsRoot(): string {
     return base;
 }
 
-const pieceName = (seq: number) => `${String(seq).padStart(8, "0")}.piece`;
+const pieceName = (seq: number) => {
+    if (!Number.isSafeInteger(seq) || seq < 0) throw new Error("Invalid recording piece number.");
+    return `${String(seq).padStart(8, "0")}.piece`;
+};
 const aad = (recordingId: string, seq: number) => Buffer.from(`${recordingId}:${seq}`, "utf8");
 
 export function sealPiece(recordingId: string, seq: number, plain: Buffer): Buffer {
@@ -60,7 +63,11 @@ export function openPiece(recordingId: string, seq: number, sealed: Buffer): Buf
 /** The folder of one recording. The id is checked, so it can never point outside the recordings folder. */
 export function recordingDir(recordingId: string): string {
     if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(recordingId)) throw new Error("Invalid recording id.");
-    return join(recordingsRoot(), recordingId.toLowerCase());
+    const root = resolve(recordingsRoot());
+    const dir = resolve(root, recordingId.toLowerCase());
+    // The id pattern above already rules out separators and "..", this is the second, independent check that the folder is inside the root.
+    if (!dir.startsWith(root + sep)) throw new Error("Invalid recording id.");
+    return dir;
 }
 
 export async function writePiece(recordingId: string, seq: number, plain: Buffer): Promise<void> {
