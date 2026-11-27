@@ -40,6 +40,7 @@ export function builtinIceServers(env: NodeJS.ProcessEnv = process.env, nowMs = 
   }
 
   const username = `${Math.floor(nowMs / 1000) + TURN_CREDENTIAL_TTL_SEC}:adgrmm`;
+  // HMAC-SHA1 is what coturn's use-auth-secret (TURN REST API) mandates; the credential is short-lived and cannot be made with another hash.
   const credential = createHmac("sha1", secret).update(username).digest("base64");
   return [...stunServers(env), { urls, username, credential }];
 }

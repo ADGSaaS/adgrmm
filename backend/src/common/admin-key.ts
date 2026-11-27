@@ -32,6 +32,8 @@ export function assertAdminApiKeyConfig(raw: string | undefined = process.env.AD
  */
 export function safeEqual(provided: unknown, expected: unknown): boolean {
     if (typeof provided !== "string" || typeof expected !== "string") return false;
+    // The hash only makes both sides the same length for timingSafeEqual; nothing is stored. The key is a long random secret (see
+    // assertAdminApiKeyConfig), not a person's password, so a slow password hash would add cost and no protection here.
     const a = createHash("sha256").update(provided).digest();
     const b = createHash("sha256").update(expected).digest();
     return timingSafeEqual(a, b) && provided.length === expected.length;

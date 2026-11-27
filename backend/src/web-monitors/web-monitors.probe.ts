@@ -25,6 +25,9 @@ export async function publicAddress(host: string): Promise<string> {
 export async function readCertificate(host: string, port: number, timeoutMs = 10_000): Promise<CertificateResult> {
     const ip = await publicAddress(host);
     return new Promise<CertificateResult>((resolve, reject) => {
+        // rejectUnauthorized is false on purpose: the point of this probe is to read the certificate of a server whose certificate is
+        // expired, self-signed or made for another name, and to report that ("trusted", authError, nameError below). Nothing is sent over
+        // the connection: it is closed right after the handshake, so no data or credentials can be exposed to an untrusted peer.
         const socket = tls.connect({ host: ip, port, servername: isIP(host) ? undefined : host, rejectUnauthorized: false, timeout: timeoutMs });
         const fail = (msg: string) => { socket.destroy(); reject(new Error(msg)); };
         socket.once("timeout", () => fail(`${host}:${port} did not answer in ${Math.round(timeoutMs / 1000)} seconds.`));

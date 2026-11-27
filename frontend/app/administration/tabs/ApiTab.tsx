@@ -10,6 +10,7 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@
 import { cn } from "@/lib/utils";
 import { ToastFn, ApiKeyRow, ApiKeyScope } from "../types";
 import { LabeledInput, LabeledNumber } from "../helpers";
+import { randomHex } from "@/lib/random";
 
 interface ApiTabProps {
     push: ToastFn;
@@ -52,8 +53,8 @@ export default function ApiTab({ push }: ApiTabProps) {
         if (!newKeyLabel.trim()) {
             return push({ title: "Key label required", kind: "warning" });
         }
-        const id = Math.random().toString(36).slice(2);
-        const prefix = "rk_live_" + Math.random().toString(36).slice(2, 6);
+        const id = randomHex(8);
+        const prefix = "rk_live_" + randomHex(2);
         setApiKeys((prev) => [
             {
                 id,
@@ -82,7 +83,7 @@ export default function ApiTab({ push }: ApiTabProps) {
     }
 
     function rotateWebhookSecret() {
-        const next = "whsec_" + Math.random().toString(36).slice(2, 10);
+        const next = "whsec_" + randomHex(8);
         setWebhookSecret(next);
         push({ title: "Webhook secret rotated", kind: "success" });
     }
