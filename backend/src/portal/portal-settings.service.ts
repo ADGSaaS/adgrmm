@@ -2,6 +2,7 @@ import { BadRequestException, ConflictException, Injectable } from "@nestjs/comm
 import { PrismaService } from "../storage/prisma.service";
 import { OrganizationContextService } from "../storage/organization-context.service";
 import { normalizeDomain, PORTAL_MODULES } from "./portal.util";
+import { safeGet } from "../common/ssrf-guard";
 
 export type PortalSettingsView = {
     enabled: boolean;
@@ -134,7 +135,11 @@ export class PortalSettingsService {
         const { domain: host, error } = normalizeDomain(domain);
         if (error || !host) return { ok: false, message: error ?? "Enter the portal address first." };
         try {
-            const res = await fetch(`https://${host}/api/portal/config`, { signal: AbortSignal.timeout(8000), redirect: "manual", headers: { accept: "application/json" } });
+            // The name was typed by an administrator, so the request goes through the address guard: only https, no redirect, and the
+            // connection is made to an address that was checked. A name that points at this machine itself (loopback) or at a
+            // link-local / cloud-metadata address is refused; an ordinary local-network address is allowed, for networks where the
+            // portal name resolves to the proxy's inside address.
+            const res = await safeGet(`https://${host}/api/portal/config`, { timeoutMs: 8000, headers: { accept: "application/json" }, allowLan: true });
             if (!res.ok) return { ok: false, message: `The address answered, but not with the portal (HTTP ${res.status}). Check that the proxy points at the ADG RMM web app.` };
             const body = (await res.json().catch(() => null)) as { domain?: string | null } | null;
             if (!body || !("modules" in (body as object))) return { ok: false, message: "The address answered, but it is not this ADG RMM system." };
@@ -142,6 +147,7 @@ export class PortalSettingsService {
             return { ok: true, message: "The portal is reachable at this address." };
         } catch (e: any) {
             const code = e?.cause?.code || e?.code || "";
+            if (code === "EPRIVATEADDRESS") return { ok: false, message: "That name points at this machine or at a reserved address, so it is not checked from here." };
             if (code === "ENOTFOUND") return { ok: false, message: "That name does not resolve yet. Add the DNS record and try again." };
             if (/CERT|SSL|TLS/i.test(String(code) + String(e?.message))) return { ok: false, message: "The address answers, but its HTTPS certificate is not valid. Request the certificate in the proxy." };
             return { ok: false, message: "Could not reach that address over HTTPS. Check the DNS record, the proxy host and the certificate." };

@@ -145,6 +145,33 @@ export function isPrivateAddress(ip: string): boolean {
     return true;
 }
 
+/** The ranges that are private but belong to an ordinary local network (RFC 1918, carrier-grade NAT, unique local IPv6). */
+const V4_LAN: Array<[string, number]> = [["10.0.0.0", 8], ["100.64.0.0", 10], ["172.16.0.0", 12], ["192.168.0.0", 16]];
+const V4_LAN_INT = V4_LAN.map(([a, len]) => {
+    const mask = (0xffffffff << (32 - len)) >>> 0;
+    return { base: (v4ToInt(a.split(".").map(Number)) & mask) >>> 0, mask };
+});
+
+/**
+ * True for an address on an ordinary local network: 10/8, 172.16/12, 192.168/16, 100.64/10 and fc00::/7 (also when written as
+ * IPv4-mapped IPv6). Loopback, link-local and cloud-metadata (169.254.x.x), multicast and reserved ranges are not LAN addresses.
+ */
+export function isLanAddress(ip: string): boolean {
+    const s = String(ip ?? "").trim().replace(/^\[|\]$/g, "").split("%")[0];
+    const kind = isIP(s);
+    let v4: number[] | null = null;
+    if (kind === 4) v4 = parseV4(s);
+    else if (kind === 6) {
+        const b = parseV6(s);
+        if (!b) return false;
+        if ((b[0] & 0xfe) === 0xfc) return true;
+        if (allZero(b, 0, 10) && b[10] === 0xff && b[11] === 0xff) v4 = b.slice(12);
+    }
+    if (!v4) return false;
+    const n = v4ToInt(v4);
+    return V4_LAN_INT.some(({ base, mask }) => ((n & mask) >>> 0) === base);
+}
+
 type LookupCallback = (err: NodeJS.ErrnoException | null, address?: string | dns.LookupAddress[], family?: number) => void;
 
 /**
@@ -152,13 +179,22 @@ type LookupCallback = (err: NodeJS.ErrnoException | null, address?: string | dns
  * when one of them is private, so the address that is connected to is always one that was checked.
  */
 export function guardedLookup(hostname: string, options: any, callback?: LookupCallback): void {
+    return lookupChecked(hostname, options, callback, false);
+}
+
+/** guardedLookup, but names that resolve to an ordinary local network address (see isLanAddress) are let through. */
+export function guardedLookupAllowLan(hostname: string, options: any, callback?: LookupCallback): void {
+    return lookupChecked(hostname, options, callback, true);
+}
+
+function lookupChecked(hostname: string, options: any, callback: LookupCallback | undefined, allowLan: boolean): void {
     const cb: LookupCallback = typeof options === "function" ? options : callback!;
     const opts: dns.LookupOptions = typeof options === "object" && options ? options : typeof options === "number" ? { family: options } : {};
     dns.lookup(hostname, { ...opts, all: true }, (err, addresses) => {
         if (err) return cb(err);
         const list = (addresses as unknown as dns.LookupAddress[]) ?? [];
         if (!list.length) return cb(Object.assign(new Error(`${hostname} has no address.`), { code: "ENOTFOUND" }));
-        const bad = list.find((a) => isPrivateAddress(a.address));
+        const bad = list.find((a) => isPrivateAddress(a.address) && !(allowLan && isLanAddress(a.address)));
         if (bad) return cb(Object.assign(new Error(`${hostname} resolves to a private network address, which is refused.`), { code: "EPRIVATEADDRESS" }));
         if (opts.all) return cb(null, list);
         cb(null, list[0].address, list[0].family);
@@ -173,19 +209,33 @@ export type SafePostResponse = { status: number; ok: boolean; headers: { get(nam
  * With allowPrivate the address check is skipped (for receivers on the same private network, opted into deliberately).
  */
 export function safePost(rawUrl: string, init: { headers: Record<string, string>; body: string; timeoutMs: number; allowPrivate?: boolean; maxResponseBytes?: number }): Promise<SafePostResponse> {
+    return safeRequest("POST", rawUrl, init);
+}
+
+/**
+ * GET an address with the same protections (no redirect is followed, the connection only goes to a checked address, bounded time
+ * and size). With allowLan, ordinary local-network addresses are accepted too, for a name that is meant to resolve inside this
+ * network; loopback, link-local and metadata addresses stay refused.
+ */
+export function safeGet(rawUrl: string, init: { headers?: Record<string, string>; timeoutMs: number; allowLan?: boolean; maxResponseBytes?: number }): Promise<SafePostResponse & { json(): Promise<unknown> }> {
+    return safeRequest("GET", rawUrl, { headers: init.headers ?? {}, timeoutMs: init.timeoutMs, allowLan: init.allowLan, maxResponseBytes: init.maxResponseBytes ?? 256 * 1024 }) as any;
+}
+
+function safeRequest(method: "GET" | "POST", rawUrl: string, init: { headers: Record<string, string>; body?: string; timeoutMs: number; allowPrivate?: boolean; allowLan?: boolean; maxResponseBytes?: number }): Promise<SafePostResponse & { json(): Promise<unknown> }> {
     const url = new URL(rawUrl);
     const mod = url.protocol === "https:" ? https : url.protocol === "http:" ? http : null;
     if (!mod) return Promise.reject(new Error("Only http and https addresses can be called."));
     const host = url.hostname.replace(/^\[|\]$/g, "");
-    if (!init.allowPrivate && isIP(host) && isPrivateAddress(host)) return Promise.reject(new Error("That address is on a private network."));
+    if (!init.allowPrivate && isIP(host) && isPrivateAddress(host) && !(init.allowLan && isLanAddress(host))) return Promise.reject(new Error("That address is on a private network."));
     const limit = init.maxResponseBytes ?? 64 * 1024;
 
-    return new Promise<SafePostResponse>((resolve, reject) => {
+    const body = init.body;
+    return new Promise<SafePostResponse & { json(): Promise<unknown> }>((resolve, reject) => {
         const req = mod.request(url, {
-            method: "POST",
-            headers: { ...init.headers, "Content-Length": String(new TextEncoder().encode(init.body).byteLength) },
+            method,
+            headers: body === undefined ? init.headers : { ...init.headers, "Content-Length": String(new TextEncoder().encode(body).byteLength) },
             signal: AbortSignal.timeout(init.timeoutMs),
-            ...(init.allowPrivate ? {} : { lookup: guardedLookup as any }),
+            ...(init.allowPrivate ? {} : { lookup: (init.allowLan ? guardedLookupAllowLan : guardedLookup) as any }),
         }, (res) => {
             const chunks: Buffer[] = [];
             let size = 0;
@@ -199,10 +249,11 @@ export function safePost(rawUrl: string, init: { headers: Record<string, string>
                     ok: status >= 200 && status < 300,
                     headers: { get: (name: string) => { const v = res.headers[name.toLowerCase()]; return v == null ? null : Array.isArray(v) ? v.join(", ") : String(v); } },
                     text: async () => text,
+                    json: async () => JSON.parse(text),
                 });
             });
         });
         req.on("error", reject);
-        req.end(init.body);
+        req.end(body);
     });
 }
