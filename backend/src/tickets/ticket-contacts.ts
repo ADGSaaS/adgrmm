@@ -5,8 +5,9 @@ import { isCanonicalUuid } from "../common/agent-lookup.util";
 import { PrismaService } from "../storage/prisma.service";
 import { ClientAccessService } from "../reports/client-access.service";
 import { orgOf } from "./ticket-devices";
+import { looksLikeEmail } from "../common/text-util";
 
-const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const EMAIL = { test: (v: string) => looksLikeEmail(v) };
 const oneLine = (v: unknown) => String(v ?? "").replace(/\s+/g, " ").trim();
 
 const present = (c: { id: string; client_id: string; name: string; job_title: string | null; email: string | null; phone: string | null; mobile: string | null; role: string; is_primary: boolean }) => ({

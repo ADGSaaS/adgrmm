@@ -10,6 +10,8 @@ import { EmailTemplatesService } from "../templates/email-templates.service";
 import { decryptSecret, encryptSecret } from "../common/secret-box";
 import { addDays, addMonths, computeTotals, csvCell, formatMoney, lineAmount, parseDateOnly, toDateOnly } from "./billing.util";
 import { renderInvoicePdf } from "./invoice-pdf";
+import { trimTrailing } from "../common/text-util";
+import { looksLikeEmail } from "../common/text-util";
 
 export type ContractKind = "flat" | "per_device" | "per_user" | "block_hours" | "hourly";
 export type InvoiceKind = "invoice" | "quote";
@@ -147,7 +149,7 @@ export class BillingService {
                 labor_cost_cents: input.laborCostCents,
                 default_hourly_rate_cents: input.defaultHourlyRateCents,
                 footer: input.footer,
-                public_base_url: input.publicBaseUrl?.replace(/\/+$/, ""),
+                public_base_url: input.publicBaseUrl === undefined || input.publicBaseUrl === null ? input.publicBaseUrl : trimTrailing(String(input.publicBaseUrl), "/"),
                 ...(input.stripeSecretKey !== undefined
                     ? { stripe_secret_key: input.stripeSecretKey ? encryptSecret(input.stripeSecretKey) : null }
                     : {}),
@@ -845,7 +847,7 @@ export class BillingService {
         const existing = await this.fullInvoice(id);
         if (existing.status === "void" || existing.status === "declined") throw new ConflictException("This can no longer be sent.");
         const recipient = (to ?? existing.recipient_email ?? "").trim();
-        if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(recipient)) throw new BadRequestException("Enter the email address to send it to.");
+        if (!looksLikeEmail(recipient)) throw new BadRequestException("Enter the email address to send it to.");
 
         const token = randomBytes(32).toString("base64url");
         const today = parseDateOnly(toDateOnly(new Date()));

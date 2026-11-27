@@ -9,6 +9,7 @@ import { SmtpService } from "../smtp/smtp.service";
 import { EmailTemplatesService } from "../templates/email-templates.service";
 import { decryptSecret, encryptSecret } from "../common/secret-box";
 import { isPrivateAddress, safePost } from "../common/ssrf-guard";
+import { looksLikeEmail } from "../common/text-util";
 
 export type AlertEventName = "opened" | "escalated" | "reminder" | "resolved";
 
@@ -162,7 +163,7 @@ export class NotificationsService {
         if (input.kind === "email") {
             const recipients = (input.recipients ?? []).map((r) => r.trim()).filter(Boolean);
             if (!recipients.length) throw new BadRequestException("Add at least one email address.");
-            if (recipients.some((r) => !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(r))) {
+            if (recipients.some((r) => !looksLikeEmail(r))) {
                 throw new BadRequestException("One of those email addresses is not valid.");
             }
             return { recipients };

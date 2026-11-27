@@ -1,5 +1,7 @@
 // Talking to Freshdesk's API (v2), and turning what it sends into what this system stores. No database here.
 
+import { trimTrailing } from "../common/text-util";
+
 export class FreshdeskError extends Error {
     constructor(message: string, readonly status?: number) {
         super(message);
@@ -12,7 +14,8 @@ export class FreshdeskError extends Error {
 
 /** "acme", "acme.freshdesk.com" and "https://acme.freshdesk.com/helpdesk" all mean the same account. */
 export function freshdeskHost(input: string): string {
-    let s = String(input ?? "").trim().toLowerCase().replace(/^https?:\/\//, "").split(/[/?#]/)[0].replace(/\.+$/, "");
+    let s = String(input ?? "").trim().toLowerCase().replace(/^https?:\/\//, "").split(/[/?#]/)[0];
+    s = trimTrailing(s, ".");
     if (!s) throw new FreshdeskError("Enter your Freshdesk address, like yourcompany.freshdesk.com.");
     if (!s.includes(".")) s = `${s}.freshdesk.com`;
     // Only Freshdesk's own addresses: this server fetches from it, so it must not be pointed anywhere else.
@@ -131,11 +134,12 @@ const ENTITIES: Record<string, string> = { "&amp;": "&", "&lt;": "<", "&gt;": ">
 
 /** Plain text from HTML, for the (few) places Freshdesk only sends HTML. */
 export function htmlToText(html: unknown): string {
-    return String(html ?? "")
-        .replace(/<(script|style)[\s\S]*?<\/\1>/gi, "")
+    // A removal repeats until nothing changes, so taking out one tag cannot join the pieces around it into a new one ("<scr<script></script>ipt>").
+    const repeat = (text: string, re: RegExp) => { for (let prev = ""; prev !== text;) { prev = text; text = text.replace(re, ""); } return text; };
+    const withBreaks = repeat(String(html ?? ""), /<(script|style)[\s\S]*?<\/\1>/gi)
         .replace(/<br\s*\/?>/gi, "\n")
-        .replace(/<\/(p|div|li|tr|h[1-6])>/gi, "\n")
-        .replace(/<[^>]+>/g, "")
+        .replace(/<\/(p|div|li|tr|h[1-6])>/gi, "\n");
+    return repeat(withBreaks, /<[^>]+>/g)
         .replace(/&(amp|lt|gt|quot|#39|apos|nbsp);/g, (m) => ENTITIES[m] ?? m)
         .replace(/\r\n?/g, "\n")
         .replace(/[ \t]+\n/g, "\n")

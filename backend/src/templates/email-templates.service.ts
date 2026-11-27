@@ -3,8 +3,9 @@ import { PrismaService } from "../storage/prisma.service";
 import { OrganizationContextService } from "../storage/organization-context.service";
 import { SmtpService } from "../smtp/smtp.service";
 import { EMAIL_TEMPLATES, checkWording, renderSubject, renderText, sampleValues, templateDef, type EmailTemplateDef } from "./email-template-registry";
+import { looksLikeEmail } from "../common/text-util";
 
-const EMAIL = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
+const EMAIL = { test: (v: string) => looksLikeEmail(v) };
 
 /** The wording of the system emails: the built-in text, or what an administrator changed it to. */
 @Injectable()

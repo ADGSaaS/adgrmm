@@ -35,7 +35,12 @@ const HOST = /^(?=.{4,253}$)([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/
 export function normalizeDomain(input: unknown): { domain: string | null; error?: string } {
     let v = String(input ?? "").trim().toLowerCase();
     if (!v) return { domain: null };
-    v = v.replace(/^[a-z][a-z0-9+.-]*:\/\//, "").replace(/\/.*$/, "").replace(/\.$/, "");
+    // Longer than any host name (253), so the pattern work below is bounded; the checks after it reject anything odd.
+    if (v.length > 300 || /[\r\n]/.test(v)) return { domain: null, error: "That is not a valid domain name. Use something like portal.example.com." };
+    v = v.replace(/^[a-z][a-z0-9+.-]*:\/\//, "");
+    const slash = v.indexOf("/");
+    if (slash >= 0) v = v.slice(0, slash);
+    if (v.endsWith(".")) v = v.slice(0, -1);
     if (/:\d+$/.test(v)) return { domain: null, error: "Leave the port off: use just the name, like portal.example.com." };
     if (!HOST.test(v)) return { domain: null, error: "That is not a valid domain name. Use something like portal.example.com." };
     if (/^\d+(\.\d+){3}$/.test(v) || v === "localhost") return { domain: null, error: "Use a domain name, not an IP address." };
