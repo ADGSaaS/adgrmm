@@ -77,6 +77,16 @@ const mail = ({ from = "Pat Customer <pat@customer.test>", to = "support@msp.tes
         assert.match(u.searchParams.get("scope"), /Mail\.Send/);
         assert.match(u.searchParams.get("scope"), /offline_access/);
     });
+    await check("redeeming the sign-in code names exactly one resource (Microsoft error AADSTS28000)", async () => {
+        const real = global.fetch; let body = "";
+        global.fetch = async (_u, init) => { body = String(init.body); return { ok: true, status: 200, json: async () => ({ access_token: "a", refresh_token: "r", expires_in: 3600 }) }; };
+        try { await ms.exchangeCode({ tenant: "t.test", clientId: "11111111-2222-3333-4444-555555555555", clientSecret: "s", code: "c", redirectUri: "https://api.test/cb" }); } finally { global.fetch = real; }
+        const scope = new URLSearchParams(body).get("scope");
+        assert.match(scope, /IMAP\.AccessAsUser\.All/);
+        assert.doesNotMatch(scope, /graph\.microsoft\.com/);
+        const hosts = new Set(scope.split(" ").filter((x) => x.startsWith("https://")).map((x) => new URL(x).host));
+        assert.equal(hosts.size, 1);
+    });
     await check("the signed-in account is read from the ID token", () => {
         const tok = (p) => `x.${Buffer.from(JSON.stringify(p)).toString("base64url")}.y`;
         assert.equal(ms.accountFromIdToken(tok({ preferred_username: "Support@MSP.test" })), "support@msp.test");

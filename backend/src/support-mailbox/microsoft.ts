@@ -6,6 +6,9 @@ export const GRAPH_SEND_SCOPE = "https://graph.microsoft.com/Mail.Send";
 /** Asked for once, when a person signs in: IMAP to read mail, Graph to send, and a refresh token to stay signed in. */
 export const CONSENT_SCOPES = ["openid", "profile", "email", "offline_access", IMAP_SCOPE, GRAPH_SEND_SCOPE];
 
+/** A token request may name only ONE resource (Microsoft error AADSTS28000 otherwise), so the code is redeemed for the IMAP resource and Graph tokens are fetched later with the refresh token. */
+export const TOKEN_EXCHANGE_SCOPES = ["openid", "profile", "email", "offline_access", IMAP_SCOPE];
+
 const AUTHORITY = "https://login.microsoftonline.com";
 
 /** A tenant is a GUID or a domain; anything else could change where the request goes. */
@@ -70,7 +73,7 @@ export function exchangeCode(p: { tenant: string; clientId: string; clientSecret
         client_secret: p.clientSecret,
         code: p.code,
         redirect_uri: p.redirectUri,
-        scope: CONSENT_SCOPES.join(" "),
+        scope: TOKEN_EXCHANGE_SCOPES.join(" "),
     });
 }
 
