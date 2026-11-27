@@ -1,16 +1,13 @@
 # Builds the ADG RMM release bundle that install.sh downloads, and publishes it as a GitHub release.
 #
-# To make a release: push a tag named after the version.
-#     git tag v0.2.0 && git push origin v0.2.0
-# (or Actions > Release > Run workflow, once this file is on the default branch).
+# Run by hand only: Actions > Release > Run workflow. Official releases are currently built with install/build-release.sh
+# on a larger machine and published with gh release create; a pushed tag does not start this workflow.
 #
 # The Windows and Linux agents in the bundle are taken from the newest release that has them, unless you run
 # the workflow by hand and give the run id of a "Build agent packages" run (agent_run_id).
 name: Release
 
 on:
-  push:
-    tags: ["v*"]
   workflow_dispatch:
     inputs:
       version:
@@ -76,6 +73,8 @@ jobs:
           [ -d agent-packages ] || echo "No earlier release has agent packages; the bundle will have none."
 
       - name: Build the bundle
+        env:
+          NODE_OPTIONS: --max-old-space-size=6144
         run: |
           agents=""
           [ -d agent-packages ] && agents="--agents agent-packages"

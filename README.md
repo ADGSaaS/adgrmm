@@ -7,6 +7,20 @@
 
 # ADG RMM
 
+<p align="center">
+  [![Latest release](https://img.shields.io/github/v/release/adgsaas/adgrmm?label=release&color=5B8CFF)](https://github.com/adgsaas/adgrmm/releases/latest)
+  [![License: AGPL v3](https://img.shields.io/badge/license-AGPL--3.0-A06BFF)](LICENSE)
+  [![Last commit](https://img.shields.io/github/last-commit/adgsaas/adgrmm?color=FF5FA2)](https://github.com/adgsaas/adgrmm/commits/main)
+  [![Open issues](https://img.shields.io/github/issues/adgsaas/adgrmm)](https://github.com/adgsaas/adgrmm/issues)
+  [![Stars](https://img.shields.io/github/stars/adgsaas/adgrmm?style=flat)](https://github.com/adgsaas/adgrmm/stargazers)
+  ![Agents: Windows and Linux](https://img.shields.io/badge/agents-Windows%20%7C%20Linux-informational)
+  ![Backend: NestJS](https://img.shields.io/badge/backend-NestJS-E0234E?logo=nestjs&logoColor=white)
+  ![Frontend: Next.js](https://img.shields.io/badge/frontend-Next.js-000000?logo=nextdotjs&logoColor=white)
+  ![Database: PostgreSQL](https://img.shields.io/badge/database-PostgreSQL-4169E1?logo=postgresql&logoColor=white)
+  ![Agent: .NET 8](https://img.shields.io/badge/agent-.NET%208-512BD4?logo=dotnet&logoColor=white)
+  [![PRs welcome](https://img.shields.io/badge/PRs-welcome-brightgreen)](CONTRIBUTING.md)
+</p>
+
 ADG RMM is an all-in-one platform for managed service providers (MSPs): remote monitoring and management (RMM), a service desk, documentation, billing and client-facing tools in one product.
 
 This repository holds all of ADG RMM: the API, the web dashboard, the agents and the installer.
@@ -25,7 +39,7 @@ This repository holds all of ADG RMM: the API, the web dashboard, the agents and
 
 **Licence:** GNU Affero General Public License v3.0 (see [`LICENSE`](LICENSE)). Contributions are welcome: see [`CONTRIBUTING.md`](CONTRIBUTING.md). To report a security problem, see [`SECURITY.md`](SECURITY.md).
 
-> **Status:** under active development and not yet released. What works, what is untested and what is planned are tracked in [`docs/roadmap/ROADMAP.md`](docs/roadmap/ROADMAP.md) and [`docs/roadmap/FEATURE-STATUS.md`](docs/roadmap/FEATURE-STATUS.md). Treat those two files as the source of truth, because a README goes out of date faster than a tracker does.
+> **Status:** under active development (releases are published, but expect rough edges and rapid change). What works, what is untested and what is planned are tracked in [`docs/roadmap/ROADMAP.md`](docs/roadmap/ROADMAP.md) and [`docs/roadmap/FEATURE-STATUS.md`](docs/roadmap/FEATURE-STATUS.md). Treat those two files as the source of truth, because a README goes out of date faster than a tracker does.
 
 ---
 
