@@ -343,4 +343,7 @@ Things to know:
 
 ## License
 
-No license has been chosen yet. An open source release is planned; until then the code is private and all rights are reserved.
+ADG RMM is open source under the [GNU Affero General Public License v3.0](LICENSE).
+If you run a modified version as a network service, the AGPL requires you to offer
+its source to the people who use it. Contributions are welcome under the same
+license; see [CONTRIBUTING.md](CONTRIBUTING.md).
