@@ -6,9 +6,6 @@ One script installs ADG RMM on a server and walks you through the first setup.
 curl -fsSL https://github.com/adgsaas/adgrmm/releases/latest/download/install.sh | sudo bash
 ```
 
-If the repository is private, set a token that can read it first: `export GITHUB_TOKEN=...` (use `sudo -E` so it
-reaches the script). If you host the release files yourself, set `ADG_RELEASE_BASE=https://your.server/path`.
-
 ## What you need
 
 - A server with **Ubuntu 22.04, 24.04, 26.04 or Debian 12**, 64-bit Intel/AMD, 2 GB of memory or more, 6 GB of free disk.
